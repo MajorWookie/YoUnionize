@@ -1,0 +1,34 @@
+:root {
+  --background: #fff;
+  --color: #212529;
+  --positive: #069639;
+  --negative: #e53e3e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a1628;
+    --color: #f8f9fa;
+  }
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  background: var(--background);
+  color: var(--color);
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+/* Remove link underlines in tab bar */
+a {
+  text-decoration: none;
+  color: inherit;
+}

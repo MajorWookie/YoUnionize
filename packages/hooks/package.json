@@ -1,0 +1,31 @@
+{
+  "name": "@union/hooks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "oxlint src",
+    "lint:fix": "oxfmt src && oxlint --fix --fix-suggestions src"
+  },
+  "dependencies": {
+    "better-auth": "*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.8",
+    "oxfmt": "^0.16.0",
+    "oxlint": "^1.31.0",
+    "react": "^19.1.0"
+  }
+}

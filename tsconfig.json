@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "paths": {
+      "~/*": ["./src/*"]
+    },
+    "types": ["node", "react", "vite/client", "bun-types"]
+  },
+  "include": ["./src", "./app", "./env.d.ts"],
+  "exclude": ["./packages", "node_modules", "dist"]
+}
