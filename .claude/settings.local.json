@@ -4,7 +4,9 @@
       "Bash(bun remove:*)",
       "Bash(bun run:*)",
       "Bash(bun vitest:*)",
-      "Bash(bun --version)"
+      "Bash(bun --version)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/src -name *theme* -o -name *color*)",
+      "WebFetch(domain:mantine.dev)"
     ]
   },
   "outputStyle": "Explanatory"
