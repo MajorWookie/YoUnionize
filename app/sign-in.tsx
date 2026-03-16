@@ -15,9 +15,9 @@ export default function SignInPage() {
     setError(null)
     setSubmitting(true)
     try {
-      const result = await signIn(email, password)
-      if (result.error) {
-        setError(result.error.message ?? 'Sign in failed')
+      const { error: signInError } = await signIn(email, password)
+      if (signInError) {
+        setError(signInError.message ?? 'Sign in failed')
       } else {
         router.replace('/discover')
       }

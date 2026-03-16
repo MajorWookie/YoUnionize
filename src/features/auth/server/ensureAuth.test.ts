@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock the auth module
-vi.mock('./auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn(),
-    },
-  },
+// Mock the supabase module
+vi.mock('./supabase', () => ({
+  createRequestClient: vi.fn(),
 }))
 
 // Mock api-utils
@@ -19,9 +15,9 @@ vi.mock('~/server/api-utils', () => ({
 }))
 
 import { ensureAuth } from './ensureAuth'
-import { auth } from './auth'
+import { createRequestClient } from './supabase'
 
-const mockGetSession = auth.api.getSession as ReturnType<typeof vi.fn>
+const mockCreateRequestClient = createRequestClient as ReturnType<typeof vi.fn>
 
 describe('ensureAuth', () => {
   beforeEach(() => {
@@ -29,23 +25,33 @@ describe('ensureAuth', () => {
   })
 
   it('returns session when authenticated', async () => {
-    const mockSession = {
-      user: { id: 'user-1', email: 'test@example.com', name: 'Test' },
-      session: { id: 'session-1', expiresAt: new Date() },
+    const mockUser = {
+      id: 'user-1',
+      email: 'test@example.com',
+      user_metadata: { name: 'Test' },
     }
-    mockGetSession.mockResolvedValueOnce(mockSession)
+    mockCreateRequestClient.mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
+      },
+    })
 
     const request = new Request('http://localhost/api/test', {
-      headers: { cookie: 'session=abc123' },
+      headers: { authorization: 'Bearer test-token' },
     })
 
     const session = await ensureAuth(request)
     expect(session.user.id).toBe('user-1')
     expect(session.user.email).toBe('test@example.com')
+    expect(session.user.name).toBe('Test')
   })
 
   it('throws 401 Response when not authenticated', async () => {
-    mockGetSession.mockResolvedValueOnce(null)
+    mockCreateRequestClient.mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: { message: 'invalid' } }),
+      },
+    })
 
     const request = new Request('http://localhost/api/test')
 
@@ -62,14 +68,18 @@ describe('ensureAuth', () => {
     }
   })
 
-  it('passes request headers to getSession', async () => {
-    mockGetSession.mockResolvedValueOnce(null)
-
-    const headers = new Headers({
-      cookie: 'session=abc',
-      authorization: 'Bearer token',
+  it('creates a request client with the request', async () => {
+    mockCreateRequestClient.mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: { message: 'no session' } }),
+      },
     })
-    const request = new Request('http://localhost/api/test', { headers })
+
+    const request = new Request('http://localhost/api/test', {
+      headers: {
+        authorization: 'Bearer token',
+      },
+    })
 
     try {
       await ensureAuth(request)
@@ -77,6 +87,6 @@ describe('ensureAuth', () => {
       // Expected
     }
 
-    expect(mockGetSession).toHaveBeenCalledWith({ headers: request.headers })
+    expect(mockCreateRequestClient).toHaveBeenCalledWith(request)
   })
 })

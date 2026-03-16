@@ -1,44 +1,89 @@
-import { useCallback } from 'react'
-import { createAuthClient } from 'better-auth/react'
+import { useState, useEffect, useCallback } from 'react'
+import { type User, type Session, type AuthError } from '@supabase/supabase-js'
+import { getSupabaseBrowserClient } from '~/features/auth/client/authClient'
 
-const getBaseURL = () => {
-  if (typeof window !== 'undefined') {
-    return window.location.origin
-  }
-  return process.env.ONE_SERVER_URL ?? 'http://localhost:8081'
+interface SignInResult {
+  data: { user: User | null; session: Session | null } | null
+  error: AuthError | null
 }
 
-const authClient = createAuthClient({
-  baseURL: getBaseURL(),
-})
+interface SignUpResult {
+  data: { user: User | null; session: Session | null } | null
+  error: AuthError | null
+}
 
 export function useAuth() {
-  const session = authClient.useSession()
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient()
+
+    // Get the initial session
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setUser(data.session?.user ?? null)
+      setIsLoading(false)
+    })
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession)
+      setUser(newSession?.user ?? null)
+      setIsLoading(false)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
-      const result = await authClient.signIn.email({ email, password })
-      return result
+    async (email: string, password: string): Promise<SignInResult> => {
+      const supabase = getSupabaseBrowserClient()
+      const result = await supabase.auth.signInWithPassword({ email, password })
+      return {
+        data: result.data,
+        error: result.error,
+      }
     },
     [],
   )
 
   const signUp = useCallback(
-    async (email: string, password: string, name: string) => {
-      const result = await authClient.signUp.email({ email, password, name })
-      return result
+    async (email: string, password: string, name: string): Promise<SignUpResult> => {
+      const supabase = getSupabaseBrowserClient()
+      const result = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name },
+        },
+      })
+      return {
+        data: result.data,
+        error: result.error,
+      }
     },
     [],
   )
 
   const signOut = useCallback(async () => {
-    await authClient.signOut()
+    const supabase = getSupabaseBrowserClient()
+    await supabase.auth.signOut()
   }, [])
 
   return {
-    user: session.data?.user ?? null,
-    session: session.data?.session ?? null,
-    isLoading: session.isPending,
+    user: user
+      ? {
+          id: user.id,
+          email: user.email ?? '',
+          name: (user.user_metadata?.name as string) ?? '',
+        }
+      : null,
+    session,
+    isLoading,
     signIn,
     signUp,
     signOut,

@@ -1,12 +1,29 @@
-import { auth } from './auth'
+import { createRequestClient } from './supabase'
 import { unauthorized } from '~/server/api-utils'
 
-export async function ensureAuth(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers })
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+}
 
-  if (!session) {
+export interface AuthSession {
+  user: AuthUser
+}
+
+export async function ensureAuth(request: Request): Promise<AuthSession> {
+  const supabase = createRequestClient(request)
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data.user) {
     throw unauthorized()
   }
 
-  return session
+  return {
+    user: {
+      id: data.user.id,
+      email: data.user.email ?? '',
+      name: data.user.user_metadata?.name as string ?? '',
+    },
+  }
 }

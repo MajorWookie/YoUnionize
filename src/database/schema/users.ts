@@ -1,7 +1,7 @@
 import { integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
@@ -10,7 +10,7 @@ export const users = pgTable('users', {
 
 export const userProfiles = pgTable('user_profiles', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: text('user_id')
+  userId: uuid('user_id')
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: 'cascade' }),
@@ -24,7 +24,7 @@ export const userProfiles = pgTable('user_profiles', {
 
 export const userCostOfLiving = pgTable('user_cost_of_living', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: text('user_id')
+  userId: uuid('user_id')
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: 'cascade' }),
