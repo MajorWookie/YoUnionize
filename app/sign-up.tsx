@@ -28,9 +28,9 @@ export default function SignUpPage() {
 
     setSubmitting(true)
     try {
-      const result = await signUp(email, password, name)
-      if (result.error) {
-        setError(result.error.message ?? 'Sign up failed')
+      const { error: signUpError } = await signUp(email, password, name)
+      if (signUpError) {
+        setError(signUpError.message ?? 'Sign up failed')
       } else {
         router.replace('/onboarding')
       }

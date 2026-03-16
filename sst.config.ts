@@ -4,17 +4,17 @@
  * SST v3 Infrastructure-as-Code for Union
  *
  * Resources:
- *   - Aurora Serverless v2 (PostgreSQL 16 + pgvector)
- *   - S3 bucket (filing caches, future file storage)
  *   - ECS Fargate service (One web app)
  *   - CloudFront distribution
  *   - Lambda function (background filing ingestion)
  *   - Secrets management
  *
+ * Database, auth, and storage are provided by Supabase (external).
+ *
  * Stages:
- *   - dev        → local Docker only (no AWS resources deployed)
- *   - staging    → minimal Aurora, single ECS task
- *   - production → scaled Aurora, multi-AZ, larger ECS tasks
+ *   - dev        → local Supabase only (no AWS resources deployed)
+ *   - staging    → minimal ECS task
+ *   - production → scaled ECS tasks
  */
 
 export default $config({
@@ -40,9 +40,9 @@ export default $config({
     const isDev = !isProd && !isStaging
 
     // ── Dev stage: no AWS resources ─────────────────────────────────────
-    // Local development uses docker-compose exclusively.
+    // Local development uses Supabase CLI exclusively.
     if (isDev) {
-      console.info('[SST] Dev stage — no AWS resources. Use docker-compose for local dev.')
+      console.info('[SST] Dev stage — no AWS resources. Use `supabase start` + `bun dev` for local dev.')
       return
     }
 
@@ -51,77 +51,17 @@ export default $config({
     const secrets = {
       secApiKey: new sst.Secret('SecApiKey'),
       anthropicApiKey: new sst.Secret('AnthropicApiKey'),
-      betterAuthSecret: new sst.Secret('BetterAuthSecret'),
       postmarkApiKey: new sst.Secret('PostmarkApiKey'),
+      supabaseUrl: new sst.Secret('SupabaseUrl'),
+      supabaseAnonKey: new sst.Secret('SupabaseAnonKey'),
+      supabaseServiceRoleKey: new sst.Secret('SupabaseServiceRoleKey'),
+      databaseUrl: new sst.Secret('DatabaseUrl'),
     }
 
-    // ── VPC ─────────────────────────────────────────────────────────────
+    // ── VPC (for Lambda egress to Supabase) ───────────────────────────
 
     const vpc = new sst.aws.Vpc('Vpc', {
-      // EC2 NAT for Lambda VPC access (~$3/mo)
       nat: 'ec2',
-    })
-
-    // ── Aurora Serverless v2 (PostgreSQL 16 + pgvector) ─────────────────
-
-    const database = new sst.aws.Aurora('Postgres', {
-      vpc,
-      engine: 'postgres',
-      database: 'union',
-      version: '16.8',
-      scaling: isProd
-        ? { min: '0.5 ACU', max: '8 ACU' }
-        : { min: '0 ACU', max: '2 ACU' },
-      transform: {
-        cluster: {
-          backupRetentionPeriod: isProd ? 14 : 3,
-          preferredBackupWindow: '04:00-05:00',
-          deletionProtection: isProd,
-          finalSnapshotIdentifier: $interpolate`union-${$app.stage}-postgres-final-${Date.now()}`,
-        },
-        clusterParameterGroup: {
-          parameters: [
-            // Enable pgvector via shared_preload_libraries
-            {
-              name: 'shared_preload_libraries',
-              value: 'pg_stat_statements',
-              applyMethod: 'pending-reboot',
-            },
-            // Log slow queries (>1s)
-            {
-              name: 'log_min_duration_statement',
-              value: '1000',
-              applyMethod: 'pending-reboot',
-            },
-            // Log DDL statements
-            {
-              name: 'log_statement',
-              value: 'ddl',
-              applyMethod: 'pending-reboot',
-            },
-            // Connection limits
-            {
-              name: 'max_connections',
-              value: isProd ? '200' : '50',
-              applyMethod: 'pending-reboot',
-            },
-            // Idle timeout (30s)
-            {
-              name: 'idle_session_timeout',
-              value: '30000',
-              applyMethod: 'pending-reboot',
-            },
-          ],
-        },
-      },
-    })
-
-    const databaseUrl = $interpolate`postgres://${database.username}:${database.password}@${database.host}:${database.port}/${database.database}`
-
-    // ── S3 Bucket (filing caches, future file storage) ──────────────────
-
-    const bucket = new sst.aws.Bucket('Storage', {
-      public: false,
     })
 
     // ── ECS Cluster ─────────────────────────────────────────────────────
@@ -146,12 +86,13 @@ export default $config({
 
     const commonEnv = {
       NODE_ENV: 'production',
-      DATABASE_URL: databaseUrl,
+      DATABASE_URL: secrets.databaseUrl.value,
+      SUPABASE_URL: secrets.supabaseUrl.value,
+      SUPABASE_ANON_KEY: secrets.supabaseAnonKey.value,
+      SUPABASE_SERVICE_ROLE_KEY: secrets.supabaseServiceRoleKey.value,
       SEC_API_KEY: secrets.secApiKey.value,
       ANTHROPIC_API_KEY: secrets.anthropicApiKey.value,
-      BETTER_AUTH_SECRET: secrets.betterAuthSecret.value,
       POSTMARK_API_KEY: secrets.postmarkApiKey.value,
-      S3_BUCKET: bucket.name,
       GIT_SHA: gitSha,
     }
 
@@ -167,7 +108,6 @@ export default $config({
       cpu: isProd ? '2 vCPU' : '0.5 vCPU',
       memory: isProd ? '4 GB' : '1 GB',
       capacity: isStaging ? 'spot' : undefined,
-      link: [database, bucket],
       environment: {
         ...commonEnv,
         ONE_SERVER_URL: isProd
@@ -209,7 +149,6 @@ export default $config({
 
     const ingestionWorker = new sst.aws.Function('IngestionWorker', {
       vpc,
-      link: [database, bucket],
       handler: 'src/server/lambda/ingestion.handler',
       runtime: 'nodejs22.x',
       architecture: 'arm64',
@@ -228,13 +167,12 @@ export default $config({
 
     const migrator = new sst.aws.Function('DatabaseMigrator', {
       vpc,
-      link: [database],
       handler: 'src/server/lambda/migrate.handler',
       runtime: 'nodejs22.x',
       memory: '512 MB',
       timeout: '300 seconds',
       environment: {
-        DATABASE_URL: databaseUrl,
+        DATABASE_URL: secrets.databaseUrl.value,
       },
     })
 
@@ -248,8 +186,6 @@ export default $config({
 
     return {
       webUrl: webApp.url,
-      databaseHost: database.host,
-      bucketName: bucket.name,
       ingestionWorkerArn: ingestionWorker.arn,
     }
   },

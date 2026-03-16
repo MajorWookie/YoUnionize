@@ -3,32 +3,47 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "app"],
+  "workspaces": [
+    "packages/*",
+    "app"
+  ],
+  "packageManager": "bun@1.2.22",
   "scripts": {
-    "dev": "one dev",
+    "sst:dev": "bunx sst dev",
+    "sst:deploy": "bunx sst deploy",
+    "sst:remove": "bunx sst remove",
+    "sst:secrets": "bunx sst secret",
+
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset",
+    "supabase:generate": "drizzle-kit generate",
+    "supabase:add-migration": "drizzle-kit generate --name",
+    "supabase:migrate": "drizzle-kit migrate",
+    "supabase:studio": "drizzle-kit studio",
+
+    "dev": "supabase start && one dev",
     "build": "one build",
     "serve": "one serve",
+
     "lint": "oxlint src app packages",
     "lint:fix": "oxfmt src app packages && oxlint --fix --fix-suggestions src app packages",
     "format": "oxfmt src app packages",
+    "typecheck": "tsc --noEmit",
+
     "test": "vitest",
     "test:unit": "vitest run",
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "test:all": "vitest run && playwright test --config e2e/playwright.config.ts",
-    "check:all": "oxlint src app packages && tsc --noEmit; vitest run",
-    "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "db:add-migration": "drizzle-kit generate --name",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "sst:deploy": "bunx sst deploy",
-    "sst:dev": "bunx sst dev",
-    "sst:remove": "bunx sst remove",
-    "sst:secrets": "bunx sst secret"
+
+    "check:all": "oxlint src app packages && tsc --noEmit; vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@react-navigation/bottom-tabs": "^7.15.5",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.99.2",
     "@tamagui/config": "^2.0.0-rc.15",
     "@tamagui/vite-plugin": "^2.0.0-rc.15",
     "@union/ai": "workspace:*",
@@ -40,7 +55,6 @@
     "@vxrn/query-string": "^1.10.6",
     "@vxrn/safe-area": "^1.10.6",
     "@vxrn/url-parse": "^1.10.6",
-    "better-auth": "^1.5.5",
     "drizzle-orm": "^0.40.0",
     "one": "^1.9.5",
     "pg": "^8.16.0",
@@ -72,6 +86,5 @@
     "@playwright/test": "^1.50.0",
     "sst": "^3.17.0",
     "vitest": "^3.0.0"
-  },
-  "packageManager": "bun@1.2.0"
+  }
 }

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun remove:*)",
+      "Bash(bun run:*)",
+      "Bash(bun vitest:*)",
+      "Bash(bun --version)"
+    ]
+  },
+  "outputStyle": "Explanatory"
+}

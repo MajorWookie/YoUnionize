@@ -1,9 +1,17 @@
-import { authHandler } from '~/features/auth/server/handler'
-
-export function GET(request: Request) {
-  return authHandler(request)
+/**
+ * Auth is now handled by Supabase client-side.
+ * This catch-all route returns 404 for any legacy auth API calls.
+ */
+export function GET() {
+  return Response.json(
+    { error: { code: 'NOT_FOUND', message: 'Auth is handled by Supabase client-side' } },
+    { status: 404 },
+  )
 }
 
-export function POST(request: Request) {
-  return authHandler(request)
+export function POST() {
+  return Response.json(
+    { error: { code: 'NOT_FOUND', message: 'Auth is handled by Supabase client-side' } },
+    { status: 404 },
+  )
 }

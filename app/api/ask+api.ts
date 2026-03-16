@@ -213,14 +213,15 @@ const handlers = withLogging('/api/ask', {
       // Step 4: Add user profile context if authenticated
       let userContext = ''
       try {
-        // Try to get session — this is optional, don't fail if unauthenticated
-        const { auth } = await import('~/features/auth/server/auth')
-        const session = await auth.api.getSession({ headers: request.headers })
-        if (session) {
+        // Try to get user — this is optional, don't fail if unauthenticated
+        const { createRequestClient } = await import('~/features/auth/server/supabase')
+        const supabase = createRequestClient(request)
+        const { data } = await supabase.auth.getUser()
+        if (data.user) {
           const [profile] = await db
             .select()
             .from(userProfiles)
-            .where(eq(userProfiles.userId, session.user.id))
+            .where(eq(userProfiles.userId, data.user.id))
             .limit(1)
 
           if (profile) {

@@ -1,8 +1,5 @@
 import { relations } from 'drizzle-orm'
 import {
-  authUser,
-  authAccount,
-  authSession,
   users,
   userProfiles,
   userCostOfLiving,
@@ -13,25 +10,6 @@ import {
   directors,
   compensationAnalyses,
 } from './schema'
-
-export const authUserRelations = relations(authUser, ({ many }) => ({
-  accounts: many(authAccount),
-  sessions: many(authSession),
-}))
-
-export const authAccountRelations = relations(authAccount, ({ one }) => ({
-  user: one(authUser, {
-    fields: [authAccount.userId],
-    references: [authUser.id],
-  }),
-}))
-
-export const authSessionRelations = relations(authSession, ({ one }) => ({
-  user: one(authUser, {
-    fields: [authSession.userId],
-    references: [authUser.id],
-  }),
-}))
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles, {

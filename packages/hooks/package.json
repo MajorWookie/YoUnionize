@@ -17,7 +17,8 @@
     "lint:fix": "oxfmt src && oxlint --fix --fix-suggestions src"
   },
   "dependencies": {
-    "better-auth": "*"
+    "@supabase/supabase-js": "*",
+    "@supabase/ssr": "*"
   },
   "peerDependencies": {
     "react": "^19.0.0"
