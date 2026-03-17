@@ -13,7 +13,6 @@
     "sst:deploy": "bunx sst deploy",
     "sst:remove": "bunx sst remove",
     "sst:secrets": "bunx sst secret",
-
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status",
@@ -22,21 +21,20 @@
     "supabase:add-migration": "drizzle-kit generate --name",
     "supabase:migrate": "drizzle-kit migrate",
     "supabase:studio": "drizzle-kit studio",
-
+    "prebuild": "one prebuild",
+    "ios": "one dev --ios",
+    "pod-install": "cd ios && pod install",
     "dev": "supabase start && one dev",
     "build": "one build",
     "serve": "one serve",
-
     "lint": "oxlint src app packages",
     "lint:fix": "oxfmt src app packages && oxlint --fix --fix-suggestions src app packages",
     "format": "oxfmt src app packages",
     "typecheck": "tsc --noEmit",
-
     "test": "vitest",
     "test:unit": "vitest run",
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "test:all": "vitest run && playwright test --config e2e/playwright.config.ts",
-
     "check:all": "oxlint src app packages && tsc --noEmit; vitest run"
   },
   "dependencies": {
@@ -56,6 +54,7 @@
     "@vxrn/safe-area": "^1.10.6",
     "@vxrn/url-parse": "^1.10.6",
     "drizzle-orm": "^0.40.0",
+    "expo": "^55.0.6",
     "one": "^1.9.5",
     "pg": "^8.16.0",
     "phosphor-react": "^1.4.1",
