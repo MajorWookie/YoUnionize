@@ -52,7 +52,6 @@ export function createRequestClient(request: Request): SupabaseClient {
   }
 
   // Otherwise create a client that will read from cookies via the request
-  // The cookie-based auth is handled by @supabase/ssr on the client side
   const cookieHeader = request.headers.get('cookie') ?? ''
   return createClient(url, anonKey, {
     global: {

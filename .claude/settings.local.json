@@ -62,7 +62,26 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:expo.dev)",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(ls -la /Users/majorwookie/Documents/GitHub/YoUnion/bun.lock* /Users/majorwookie/Documents/GitHub/YoUnion/package-lock.json /Users/majorwookie/Documents/GitHub/YoUnion/yarn.lock)"
+      "Bash(ls -la /Users/majorwookie/Documents/GitHub/YoUnion/bun.lock* /Users/majorwookie/Documents/GitHub/YoUnion/package-lock.json /Users/majorwookie/Documents/GitHub/YoUnion/yarn.lock)",
+      "Bash(node /Users/majorwookie/Documents/GitHub/YoUnion/node_modules/.bun/react-native-reanimated@4.2.2+4bcfe187168658ad/node_modules/react-native-reanimated/scripts/validate-worklets-build.js)",
+      "Bash(node /Users/majorwookie/Documents/GitHub/YoUnion/node_modules/.bun/react-native-reanimated@4.2.2+8021a8ad97eb2392/node_modules/react-native-reanimated/scripts/validate-worklets-build.js)",
+      "Bash(node -e \"try { console.log\\(require\\(''react-native-worklets/package.json''\\).version\\) } catch\\(e\\) { console.log\\(''not found:'', e.message\\) }\")",
+      "Bash(node -e \"console.log\\(require\\(''react-native-screens/package.json''\\).version\\)\")",
+      "Bash(node -e \"console.log\\(''expo-router:'', require\\(''expo-router/package.json''\\).version\\)\")",
+      "Bash(node -e \"const p=require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\); const j=JSON.parse\\(p\\); console.log\\(''''peerDeps:'''', JSON.stringify\\(j.peerDependencies?.[''''react-native-screens'''']\\)\\); console.log\\(''''deps:'''', JSON.stringify\\(j.dependencies?.[''''react-native-screens'''']\\)\\)\")",
+      "Bash(npm view:*)",
+      "Bash(node -e \"const v=JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\)\\); v.filter\\(x=>x.startsWith\\(''''4.''''\\)\\).slice\\(-10\\).forEach\\(x=>console.log\\(x\\)\\)\")",
+      "Bash(node -e \"const v=JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\)\\); v.filter\\(x=>x.startsWith\\(''''4.''''\\) && !x.includes\\(''''nightly''''\\) && !x.includes\\(''''rc''''\\) && !x.includes\\(''''alpha''''\\) && !x.includes\\(''''beta''''\\)\\).slice\\(-10\\).forEach\\(x=>console.log\\(x\\)\\)\")",
+      "Bash(node -e \"console.log\\(JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\)\\)[''''react-native-screens'''']\\)\")",
+      "Bash(npm pack:*)",
+      "Bash(node -e \"const d=JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\)\\); console.log\\(d.dist?.tarball\\)\")",
+      "Bash(node -e \"const p = require\\(''./package.json''\\); console.log\\(''expo:'', p.dependencies?.expo || p.devDependencies?.expo\\); console.log\\(''expo-router:'', p.dependencies?.[''expo-router''] || p.devDependencies?.[''expo-router'']\\); console.log\\(''react-native-screens:'', p.dependencies?.[''react-native-screens''] || p.devDependencies?.[''react-native-screens'']\\)\")",
+      "Bash(grep -r RNSBottomTabsScreenComponentView /Users/majorwookie/Documents/GitHub/YoUnion/node_modules/.bun/react-native-screens@4.16.0*/node_modules/react-native-screens/ios/)",
+      "Bash(supabase status:*)",
+      "Bash(supabase db:*)",
+      "Bash(psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"\\\\dt public.*\")",
+      "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/\\\\\\(tabs\\\\\\)/)",
+      "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/\\\\\\(tabs\\\\\\)/discover/)"
     ]
   },
   "outputStyle": "Explanatory"
