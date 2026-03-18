@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'one'
+import { useRouter } from 'expo-router'
 import { Button, H2, H4, Paragraph, Separator, View, XStack, YStack } from 'tamagui'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { Card } from '~/interface/display/Card'

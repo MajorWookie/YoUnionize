@@ -12,10 +12,28 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": [
+        "./src/*"
+      ]
     },
-    "types": ["node", "react", "vite/client", "bun-types"]
+    "types": [
+      "node",
+      "react",
+      "vite/client",
+      "bun-types"
+    ]
   },
-  "include": ["./src", "./app", "./env.d.ts"],
-  "exclude": ["./packages", "node_modules", "dist"]
+  "include": [
+    "./src",
+    "./app",
+    "./env.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "./packages",
+    "node_modules",
+    "dist"
+  ],
+  "extends": "expo/tsconfig.base"
 }

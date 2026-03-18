@@ -113,6 +113,24 @@
       "type": "shell",
       "command": "bun run check:all",
       "problemMatcher": []
+    },
+    {
+      "label": "prebuild",
+      "type": "shell",
+      "command": "bun run prebuild",
+      "problemMatcher": []
+    },
+    {
+      "label": "ios",
+      "type": "shell",
+      "command": "bun run ios",
+      "problemMatcher": []
+    },
+    {
+      "label": "pod-install",
+      "type": "shell",
+      "command": "bun run pod-install",
+      "problemMatcher": []
     }
   ]
 }

@@ -72,7 +72,7 @@ export async function findSimilarEmbeddings({
     LIMIT ${limit}
   `)
 
-  return (results.rows as Array<Record<string, unknown>>).map((row) => ({
+  return (results as Array<Record<string, unknown>>).map((row) => ({
     id: row.id as string,
     sourceType: row.source_type as string,
     sourceId: row.source_id as string,

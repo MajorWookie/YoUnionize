@@ -2,6 +2,8 @@
  * Client-side fetch utilities with retry logic and standardized error extraction.
  */
 
+import { apiUrl } from './api-base'
+
 interface ApiErrorShape {
   error: {
     code: string
@@ -31,17 +33,20 @@ export function extractErrorMessage(data: unknown): string {
 /**
  * Fetch with automatic retry on network errors and 5xx responses.
  * Does NOT retry on 4xx (client errors).
+ *
+ * Automatically routes /api/* paths to Supabase Edge Functions.
  */
 export async function fetchWithRetry(
   url: string,
   options?: RequestInit,
   maxRetries = 2,
 ): Promise<Response> {
+  const resolvedUrl = url.startsWith('/api/') ? apiUrl(url) : url
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const res = await fetch(url, options)
+      const res = await fetch(resolvedUrl, options)
 
       // Don't retry client errors
       if (res.status >= 400 && res.status < 500) {
@@ -75,6 +80,8 @@ function sleep(ms: number) {
 /**
  * Convenience: fetch JSON with retry, parse response, extract error if needed.
  * Throws on network failure. Returns { ok, data, status } on any HTTP response.
+ *
+ * Automatically routes /api/* paths to Supabase Edge Functions.
  */
 export async function apiFetch<T = unknown>(
   url: string,

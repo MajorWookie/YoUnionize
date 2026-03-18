@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'one'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { Button, Paragraph, Separator, YStack } from 'tamagui'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { CompanyHeader } from '~/interface/layout/CompanyHeader'
@@ -21,7 +21,7 @@ import type {
 } from '~/features/company/types'
 
 export default function CompanyDetailScreen() {
-  const params = useParams<{ ticker: string }>()
+  const params = useLocalSearchParams<{ ticker: string }>()
   const router = useRouter()
   const ticker = params.ticker?.toUpperCase() ?? ''
 

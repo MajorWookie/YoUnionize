@@ -1,22 +1,18 @@
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { Pool } from 'pg'
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 
 import * as schema from '../../../src/database/schema'
 import * as relations from '../../../src/database/relations'
 
 const combinedSchema = { ...schema, ...relations }
 
-type Database = NodePgDatabase<typeof combinedSchema>
+type Database = PostgresJsDatabase<typeof combinedSchema>
 
 let db: Database | undefined
 
-export function createPool(connectionString: string): Pool {
-  return new Pool({ connectionString })
-}
-
 export function createDb(connectionString: string): Database {
-  const pool = createPool(connectionString)
-  return drizzle(pool, { schema: combinedSchema })
+  const client = postgres(connectionString)
+  return drizzle(client, { schema: combinedSchema })
 }
 
 export function getDb(): Database {

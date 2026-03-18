@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useRouter } from 'one'
+import { useRouter } from 'expo-router'
 import { Button, H2, Input, Paragraph, Spinner, XStack, YStack } from 'tamagui'
 import { useAuth } from '@union/hooks'
 

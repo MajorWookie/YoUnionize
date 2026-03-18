@@ -2,7 +2,7 @@
  * Bottom tab bar for web — fixed at bottom on mobile viewports,
  * hidden on larger screens where we use a sidebar or top nav.
  */
-import { Link, usePathname } from 'one'
+import { Link, usePathname } from 'expo-router'
 import { XStack, YStack, Paragraph, isWeb } from 'tamagui'
 import { DiscoverIcon, MyCompanyIcon, MyPayIcon, ProfileIcon } from '../icons/TabIcons'
 

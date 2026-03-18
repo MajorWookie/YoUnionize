@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'one'
+import { useRouter } from 'expo-router'
 import { H2, H4, Input, Paragraph, Separator, Spinner, XStack, YStack } from 'tamagui'
 import { useDebounce } from '@union/hooks'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
