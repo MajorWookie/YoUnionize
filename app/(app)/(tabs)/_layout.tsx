@@ -1,12 +1,12 @@
 /**
  * Tabs layout — web version.
- * Uses One's Slot for routing + a custom BottomTabBar on small screens.
+ * Uses Expo Router's Slot for routing + a custom BottomTabBar on small screens.
  */
-import { Slot } from 'one'
+import { Slot } from 'expo-router'
 import { View } from 'tamagui'
 import { BottomTabBar } from '~/interface/navigation/BottomTabBar'
 
-export function Layout() {
+export default function TabsWebLayout() {
   return (
     <>
       <View flex={1} paddingBottom={64} $gtMd={{ paddingBottom: 0 }}>

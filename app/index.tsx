@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useRouter } from 'one'
+import { useRouter } from 'expo-router'
 import { Button, H1, Paragraph, Spinner, YStack } from 'tamagui'
 import { useAuth } from '@union/hooks'
 

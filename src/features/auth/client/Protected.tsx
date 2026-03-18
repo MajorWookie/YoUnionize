@@ -1,4 +1,4 @@
-import { useRouter } from 'one'
+import { useRouter } from 'expo-router'
 import { useEffect, type ReactNode } from 'react'
 import { Spinner, YStack } from 'tamagui'
 import { useAuth } from '@union/hooks'

@@ -1,18 +1,14 @@
-import { Slot, Stack } from 'one'
+import { Stack } from 'expo-router'
 import { Protected } from '~/features/auth/client/Protected'
 
-export function Layout() {
+export default function AppLayout() {
   return (
     <Protected>
-      {process.env.VITE_NATIVE ? (
-        <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="company" />
-          <Stack.Screen name="onboarding" />
-        </Stack>
-      ) : (
-        <Slot />
-      )}
+      <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="company" />
+        <Stack.Screen name="onboarding" />
+      </Stack>
     </Protected>
   )
 }
