@@ -19,7 +19,6 @@
     "postgres": "^3.4.0"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.30.0",
     "oxfmt": "^0.16.0",
     "oxlint": "^1.31.0"
   },

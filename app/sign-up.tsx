@@ -35,7 +35,9 @@ export default function SignUpPage() {
         router.replace('/onboarding')
       }
     } catch (err) {
-      setError('An unexpected error occurred')
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred'
+      console.info('[SignUp] Error:', message)
+      setError(message)
     } finally {
       setSubmitting(false)
     }

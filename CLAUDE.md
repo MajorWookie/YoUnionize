@@ -1,7 +1,7 @@
 # CLAUDE.md — Union
 
-> Last updated: 2026-03-17
-> Last updated by: AI session (One→Expo Router + Edge Functions migration)
+> Last updated: 2026-03-18
+> Last updated by: AI session (Auth fix + migration consolidation)
 
 ## Project Overview
 
@@ -13,7 +13,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - **Framework**: Expo Router 6.x (file-based routing for React Native + Web)
 - **UI**: Tamagui 2.0.0-rc.15 (cross-platform design system — native views on mobile, web on browser)
 - **Database**: PostgreSQL via Supabase (local dev) / hosted Supabase (staging/prod)
-- **ORM**: Drizzle ORM 0.40 with drizzle-kit for migrations, postgres-js driver
+- **ORM**: Drizzle ORM 0.40 (query builder only, no drizzle-kit), postgres-js driver
 - **Vector Search**: pgvector extension (1536-dim embeddings for RAG)
 - **Auth**: Supabase Auth (email/password, managed externally)
 - **AI**: Anthropic Claude via @anthropic-ai/sdk 0.39
@@ -82,7 +82,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 | `supabase/functions/_shared/` | Shared Edge Function utilities: db, auth, cors, schema, api-utils |
 | `src/database/schema/` | Drizzle ORM table definitions (companies, filings, exec comp, embeddings, etc.) |
 | `src/database/validators/` | Valibot schemas for insert validation |
-| `src/database/migrations/` | Drizzle-generated SQL migrations |
+| `supabase/migrations/` | SQL migrations (applied via `supabase db reset`) |
 | `src/features/auth/` | Supabase client creation (server + client) and `ensureAuth()` |
 | `src/features/company/` | Company detail types and formatting utilities |
 | `src/features/onboarding/` | Constants for user profile (org levels, pay frequencies, CoL categories) |
@@ -138,7 +138,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - Use `snake_case` for table and column names.
 - Explicit types for all columns — don't rely on inference for anything touching the database.
 - Relations go in `src/database/schema/relations.ts`, not inline with table definitions.
-- Never run `drizzle-kit push` in production. Use `drizzle-kit generate` + `drizzle-kit migrate`.
+- Migrations are plain SQL in `supabase/migrations/` (timestamp-prefixed). Apply locally with `supabase db reset`. drizzle-kit has been removed.
 
 ### AI/API Patterns
 - Claude API calls centralized in `packages/ai/` — don't scatter API calls across components.
@@ -196,6 +196,13 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - **Alternatives considered**: One Framework (migrated away from), React Navigation standalone
 - **Status**: active
 
+### ADR-008: Supabase Migrations as Single Source of Truth
+- **Date**: 2026-03-18
+- **Decision**: Use Supabase migrations (`supabase/migrations/`) as the sole migration system. Remove drizzle-kit.
+- **Rationale**: Two competing migration systems (Supabase + Drizzle) caused tables to never be created in the local DB, breaking auth signup. Drizzle ORM remains as the query builder for type-safe database access; only the migration generator (drizzle-kit) is removed. Future schema changes are written as plain SQL in `supabase/migrations/` with timestamp-prefixed filenames. Apply locally with `supabase db reset`.
+- **Alternatives considered**: Keeping drizzle-kit as a SQL generation helper (rejected — adds complexity with no clear benefit for the team size)
+- **Status**: active
+
 ### ADR-007: Supabase Edge Functions for API layer
 - **Date**: 2026-03-17
 - **Decision**: Move all API endpoints from One's `+api.ts` routes to Supabase Edge Functions (Deno)
@@ -206,6 +213,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 ## Known Tech Debt
 
 - [x] **~~In-memory job queue~~** — Replaced with PostgreSQL `jobs` table + Lambda workers (2026-03-17). Old `src/server/job-queue.ts` still exists for reference but is no longer used by Edge Functions.
+- [x] **~~Dual migration systems~~** — Consolidated to Supabase migrations only. drizzle-kit removed, stale Drizzle migrations deleted (2026-03-18).
 - [ ] **Duplicate type definitions** — `FinancialLineItem`, `FinancialStatement`, `ExecCompSummary` defined in both `src/server/services/xbrl-transformer.ts` and `src/features/company/types.ts`. Should be extracted to a shared location. Priority: **medium**.
 - [ ] **No rate limiting on API endpoints** — RAG queries and compensation analysis are computationally expensive with no throttling. Priority: **high before prod**.
 - [ ] **No structured logging** — All logging via `console.info()` with no request IDs, user context, or JSON structure. Hard to search in production. Priority: **medium**.
@@ -231,8 +239,8 @@ cp .env.example .env
 # 3. Start local Supabase (requires Docker + Supabase CLI)
 supabase start
 
-# 4. Run database migrations
-bun run supabase:migrate
+# 4. Apply database migrations (resets local DB and replays all migrations)
+bun run supabase:migrate   # runs: supabase db reset
 
 # 5. Start dev server
 bun dev
@@ -328,7 +336,7 @@ In addition to Layer 1's general escalation rules, **always escalate** in this s
 | Situation | Level |
 |-----------|-------|
 | Modifying `tamagui.config.ts` or Tamagui compiler settings | Level 1 |
-| Writing or modifying Drizzle migrations | Level 1 |
+| Writing or modifying Supabase migrations | Level 1 |
 | Bun-specific APIs (`Bun.serve`, `Bun.file`, `bun:sqlite`, etc.) | Level 1 |
 | Claude API integration (RAG pipeline, embeddings, prompting) | Level 1 |
 | Cross-platform divergence (web vs. native behavior) | Level 1 |
@@ -347,8 +355,7 @@ When uncertain, point the developer here rather than guessing.
 - **Expo Docs**: https://docs.expo.dev
 - **Tamagui**: https://tamagui.dev/docs
 - **Drizzle ORM**: https://orm.drizzle.team/docs
-- **Drizzle + Bun SQL**: https://orm.drizzle.team/docs/get-started/bun-sql-new
-- **Drizzle Latest Releases**: https://orm.drizzle.team/docs/latest-releases
+- **Drizzle + postgres-js**: https://orm.drizzle.team/docs/get-started/postgresql-new
 - **Bun Docs**: https://bun.sh/docs
 - **Anthropic API**: https://docs.anthropic.com
 - **Supabase Docs**: https://supabase.com/docs

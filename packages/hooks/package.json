@@ -17,8 +17,7 @@
     "lint:fix": "oxfmt src && oxlint --fix --fix-suggestions src"
   },
   "dependencies": {
-    "@supabase/supabase-js": "*",
-    "@supabase/ssr": "*"
+    "@supabase/supabase-js": "*"
   },
   "peerDependencies": {
     "react": "^19.0.0"
