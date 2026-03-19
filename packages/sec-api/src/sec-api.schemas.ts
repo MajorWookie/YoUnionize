@@ -115,20 +115,27 @@ export const ExecutiveCompensationResponseSchema = v.union([
 
 // ─── Directors & Board Members ──────────────────────────────────────────────
 
+/** Individual director within a filing's directors array. */
 export const DirectorSchema = v.object({
-  ticker: v.optional(v.string()),
-  cik: v.optional(v.string()),
-  companyName: v.optional(v.string()),
   name: v.optional(v.string()),
   position: v.optional(v.string()),
-  age: optionalNumber,
+  age: optionalString,
   directorClass: optionalString,
   dateFirstElected: optionalString,
-  isIndependent: v.optional(v.boolean()),
+  isIndependent: v.optional(v.nullable(v.boolean())),
   committeeMemberships: v.optional(v.array(v.string())),
   qualificationsAndExperience: v.optional(v.array(v.string())),
-  accessionNo: v.optional(v.string()),
+})
+
+/** Filing-level object containing a directors array. */
+export const DirectorsFilingSchema = v.object({
+  id: v.optional(v.string()),
   filedAt: v.optional(v.string()),
+  accessionNo: v.optional(v.string()),
+  cik: v.optional(v.string()),
+  ticker: v.optional(v.string()),
+  entityName: v.optional(v.string()),
+  directors: v.optional(v.array(DirectorSchema)),
 })
 
 export const DirectorsResponseSchema = v.object({
@@ -138,7 +145,7 @@ export const DirectorsResponseSchema = v.object({
       relation: v.optional(v.string()),
     }),
   ),
-  data: v.array(DirectorSchema),
+  data: v.array(DirectorsFilingSchema),
 })
 
 // ─── Insider Trading ────────────────────────────────────────────────────────

@@ -30,6 +30,7 @@ export type {
   ExecutiveCompensation,
   ExecutiveCompensationResponse,
   Director,
+  DirectorsFiling,
   DirectorsResponse,
   InsiderTransaction,
   InsiderTrade,

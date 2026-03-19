@@ -5,21 +5,23 @@
  *   1. Resolve ticker → CIK via SEC API, upsert into companies table
  *   2. Ingest 5 10-Ks, 5 DEF 14As, 1 year of 8-Ks (no 10-Qs)
  *   3. Ingest exec compensation, insider trades, directors
- *   4. Run AI summarization (Claude) + embedding generation (Ollama)
+ *   4. Run AI summarization (Claude) + embedding generation (OpenAI)
  *
  * Usage:
  *   bun run scripts/seed-companies.ts
  *   bun run scripts/seed-companies.ts --skip-summarization
- *   bun run scripts/seed-companies.ts --tickers AAPL,MSFT,GOOGL
+ *   bun run scripts/seed-companies.ts --tickers=AAPL,MSFT,GOOGL
+ *   bun run scripts/seed-companies.ts --tickers=AAPL --years=3
+ *   bun run scripts/seed-companies.ts --years=2              # 2 10-Ks, 2 DEF 14As, 24mo 8-Ks
  *
  * Requires:
- *   - .env with SEC_API_KEY, ANTHROPIC_API_KEY, DATABASE_URL
+ *   - .env with SEC_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, DATABASE_URL
  *   - Local Supabase running (supabase start)
- *   - Ollama running with nomic-embed-text model (ollama pull nomic-embed-text)
  */
 
 import { eq } from 'drizzle-orm'
 import { getDb, filingSummaries } from '@union/postgres'
+import { pMapSettled } from '@union/helpers'
 import { getSecApiClient } from '../src/server/sec-api-client'
 import { lookupCompany } from '../src/server/services/company-lookup'
 import { ingestCompensation } from '../src/server/services/compensation-ingestion'
@@ -27,7 +29,7 @@ import { ingestInsiderTrading } from '../src/server/services/insider-trading-ing
 import { ingestDirectors } from '../src/server/services/directors-ingestion'
 import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
 import type { CompanyRecord } from '../src/server/services/company-lookup'
-import type { Filing, FilingQueryResponse } from '@union/sec-api'
+import type { Filing } from '@union/sec-api'
 import { TenKSection } from '@union/sec-api'
 
 // ─── Configuration ───────────────────────────────────────────────────────────
@@ -39,12 +41,17 @@ const DEFAULT_TICKERS = [
   'LAMR', 'ORCL', 'FFIV', 'SNX', 'CDW',
 ]
 
-const SEED_CONFIG = {
+const SEED_CONFIG: {
+  tenKCount: number
+  defCount: number
+  eightKMonths: number
+  companyConcurrency: number
+} = {
   tenKCount: 5,
   defCount: 5,
   eightKMonths: 12,
-  delayBetweenCompaniesMs: 2000,
-  delayBetweenFilingsMs: 500,
+  /** How many companies to process in parallel */
+  companyConcurrency: 2,
 }
 
 // ─── CLI args ────────────────────────────────────────────────────────────────
@@ -52,9 +59,21 @@ const SEED_CONFIG = {
 const args = process.argv.slice(2)
 const skipSummarization = args.includes('--skip-summarization')
 const tickersFlag = args.find((a) => a.startsWith('--tickers='))
+const yearsFlag = args.find((a) => a.startsWith('--years='))
 const tickers = tickersFlag
   ? tickersFlag.split('=')[1].split(',').map((t) => t.trim().toUpperCase())
   : DEFAULT_TICKERS
+
+if (yearsFlag) {
+  const years = Number(yearsFlag.split('=')[1])
+  if (Number.isNaN(years) || years < 1) {
+    console.error('[Seed] --years must be a positive integer')
+    process.exit(1)
+  }
+  SEED_CONFIG.tenKCount = years
+  SEED_CONFIG.defCount = years
+  SEED_CONFIG.eightKMonths = years * 12
+}
 
 // ─── Seed filing ingestion (uses CIK, custom counts) ────────────────────────
 
@@ -146,9 +165,6 @@ async function ingestFilingsForSeed(company: CompanyRecord): Promise<{
 
       result.ingested++
       console.info(`[Seed]   ✓ ${filingType} ${filing.periodOfReport ?? filing.filedAt} (${filing.accessionNo})`)
-
-      // Small delay to respect SEC API rate limits
-      await sleep(SEED_CONFIG.delayBetweenFilingsMs)
     } catch (err) {
       const msg = `${filingType} ${filing.accessionNo}: ${err instanceof Error ? err.message : String(err)}`
       console.info(`[Seed]   ✗ ${msg}`)
@@ -218,16 +234,105 @@ async function extractSections(
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
   if (minutes > 0) return `${minutes}m ${remainingSeconds}s`
   return `${remainingSeconds}s`
+}
+
+// ─── Per-company pipeline ─────────────────────────────────────────────────
+
+interface CompanyResult {
+  ticker: string
+  success: boolean
+  duration: number
+  filings: { ingested: number; skipped: number }
+  error?: string
+}
+
+async function seedCompany(ticker: string, index: number, total: number): Promise<CompanyResult> {
+  const companyStart = Date.now()
+
+  console.info(`[Seed] ─── ${ticker} (${index + 1}/${total}) ─────────────────────────`)
+
+  try {
+    // 1. Look up company (resolve ticker → CIK, upsert DB)
+    const company = await lookupCompany(ticker)
+    console.info(`[Seed] Company: ${company.name} (CIK: ${company.cik})`)
+
+    // 2. Run ingestion pipelines in parallel
+    const [filingResult, compResult, tradeResult, dirResult] = await Promise.allSettled([
+      ingestFilingsForSeed(company),
+      ingestCompensation(company),
+      ingestInsiderTrading(company),
+      ingestDirectors(company, { filingCount: SEED_CONFIG.defCount }),
+    ])
+
+    const filingsData = filingResult.status === 'fulfilled' ? filingResult.value : null
+    const compData = compResult.status === 'fulfilled' ? compResult.value : null
+    const tradeData = tradeResult.status === 'fulfilled' ? tradeResult.value : null
+    const dirData = dirResult.status === 'fulfilled' ? dirResult.value : null
+
+    console.info(`[Seed] [${ticker}] Filings:  ${filingsData ? `${filingsData.ingested} ingested, ${filingsData.skipped} skipped` : `FAILED: ${(filingResult as PromiseRejectedResult).reason?.message}`}`)
+    console.info(`[Seed] [${ticker}] Exec comp: ${compData ? `${compData.ingested} ingested, ${compData.skipped} skipped` : `FAILED: ${(compResult as PromiseRejectedResult).reason?.message}`}`)
+    console.info(`[Seed] [${ticker}] Trades:   ${tradeData ? `${tradeData.ingested} ingested, ${tradeData.skipped} skipped` : `FAILED: ${(tradeResult as PromiseRejectedResult).reason?.message}`}`)
+    console.info(`[Seed] [${ticker}] Directors: ${dirData ? `${dirData.ingested} ingested, ${dirData.skipped} skipped` : `FAILED: ${(dirResult as PromiseRejectedResult).reason?.message}`}`)
+
+    const allErrors = [
+      ...(filingsData?.errors ?? []),
+      ...(compData?.errors ?? []),
+      ...(tradeData?.errors ?? []),
+      ...(dirData?.errors ?? []),
+    ]
+    if (allErrors.length > 0) {
+      console.info(`[Seed] [${ticker}] Warnings: ${allErrors.length} non-fatal errors`)
+      for (const err of allErrors.slice(0, 5)) {
+        console.info(`[Seed] [${ticker}]   - ${err}`)
+      }
+      if (allErrors.length > 5) {
+        console.info(`[Seed] [${ticker}]   ... and ${allErrors.length - 5} more`)
+      }
+    }
+
+    // 3. Run AI summarization + embeddings
+    if (!skipSummarization) {
+      console.info(`[Seed] [${ticker}] Summarizing filings...`)
+      const summaryResult = await summarizeCompanyFilings(company.id, company.name)
+      console.info(
+        `[Seed] [${ticker}] Summarized: ${summaryResult.summarized}/${summaryResult.total} ` +
+        `(${summaryResult.tokenUsage.inputTokens} in / ${summaryResult.tokenUsage.outputTokens} out tokens)`,
+      )
+      if (summaryResult.errors.length > 0) {
+        console.info(`[Seed] [${ticker}] Summary errors: ${summaryResult.errors.length}`)
+      }
+    }
+
+    const duration = Date.now() - companyStart
+    console.info(`[Seed] ✓ ${ticker} complete (${formatDuration(duration)})`)
+
+    return {
+      ticker,
+      success: true,
+      duration,
+      filings: {
+        ingested: filingsData?.ingested ?? 0,
+        skipped: filingsData?.skipped ?? 0,
+      },
+    }
+  } catch (err) {
+    const duration = Date.now() - companyStart
+    const msg = err instanceof Error ? err.message : String(err)
+    console.info(`[Seed] ✗ ${ticker} FAILED: ${msg}`)
+    return {
+      ticker,
+      success: false,
+      duration,
+      filings: { ingested: 0, skipped: 0 },
+      error: msg,
+    }
+  }
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -246,109 +351,30 @@ async function main() {
   console.info(`[Seed] Starting preload for ${tickers.length} companies`)
   console.info(`[Seed] Tickers: ${tickers.join(', ')}`)
   console.info(`[Seed] Config: ${SEED_CONFIG.tenKCount} 10-Ks, ${SEED_CONFIG.defCount} DEF 14As, ${SEED_CONFIG.eightKMonths}mo 8-Ks`)
-  console.info(`[Seed] Summarization: ${skipSummarization ? 'SKIPPED' : 'enabled (Claude + Ollama)'}`)
+  console.info(`[Seed] Concurrency: ${SEED_CONFIG.companyConcurrency} companies in parallel`)
+  const embeddingProvider = process.env.OLLAMA_BASE_URL ? 'Ollama' : (process.env.OPENAI_API_KEY ? 'OpenAI' : 'Ollama')
+  console.info(`[Seed] Summarization: ${skipSummarization ? 'SKIPPED' : `enabled (Claude + ${embeddingProvider})`}`)
   console.info(`[Seed] ═══════════════════════════════════════════════════\n`)
 
   const totalStart = Date.now()
-  const results: Array<{
-    ticker: string
-    success: boolean
-    duration: number
-    filings: { ingested: number; skipped: number }
-    error?: string
-  }> = []
 
-  for (let i = 0; i < tickers.length; i++) {
-    const ticker = tickers[i]
-    const companyStart = Date.now()
+  // Process companies with bounded concurrency
+  const settled = await pMapSettled(
+    tickers,
+    (ticker, index) => seedCompany(ticker, index, tickers.length),
+    SEED_CONFIG.companyConcurrency,
+  )
 
-    console.info(`[Seed] ─── ${ticker} (${i + 1}/${tickers.length}) ─────────────────────────`)
-
-    try {
-      // 1. Look up company (resolve ticker → CIK, upsert DB)
-      const company = await lookupCompany(ticker)
-      console.info(`[Seed] Company: ${company.name} (CIK: ${company.cik})`)
-
-      // 2. Run ingestion pipelines
-      const [filingResult, compResult, tradeResult, dirResult] = await Promise.allSettled([
-        ingestFilingsForSeed(company),
-        ingestCompensation(company),
-        ingestInsiderTrading(company),
-        ingestDirectors(company),
-      ])
-
-      // Log ingestion results
-      const filingsData = filingResult.status === 'fulfilled' ? filingResult.value : null
-      const compData = compResult.status === 'fulfilled' ? compResult.value : null
-      const tradeData = tradeResult.status === 'fulfilled' ? tradeResult.value : null
-      const dirData = dirResult.status === 'fulfilled' ? dirResult.value : null
-
-      console.info(`[Seed]   Filings:  ${filingsData ? `${filingsData.ingested} ingested, ${filingsData.skipped} skipped` : `FAILED: ${(filingResult as PromiseRejectedResult).reason?.message}`}`)
-      console.info(`[Seed]   Exec comp: ${compData ? `${compData.ingested} ingested, ${compData.skipped} skipped` : `FAILED: ${(compResult as PromiseRejectedResult).reason?.message}`}`)
-      console.info(`[Seed]   Trades:   ${tradeData ? `${tradeData.ingested} ingested, ${tradeData.skipped} skipped` : `FAILED: ${(tradeResult as PromiseRejectedResult).reason?.message}`}`)
-      console.info(`[Seed]   Directors: ${dirData ? `${dirData.ingested} ingested, ${dirData.skipped} skipped` : `FAILED: ${(dirResult as PromiseRejectedResult).reason?.message}`}`)
-
-      // Log any errors from individual pipelines
-      const allErrors = [
-        ...(filingsData?.errors ?? []),
-        ...(compData?.errors ?? []),
-        ...(tradeData?.errors ?? []),
-        ...(dirData?.errors ?? []),
-      ]
-      if (allErrors.length > 0) {
-        console.info(`[Seed]   Warnings: ${allErrors.length} non-fatal errors`)
-        for (const err of allErrors.slice(0, 5)) {
-          console.info(`[Seed]     - ${err}`)
-        }
-        if (allErrors.length > 5) {
-          console.info(`[Seed]     ... and ${allErrors.length - 5} more`)
-        }
-      }
-
-      // 3. Run AI summarization + embeddings
-      if (!skipSummarization) {
-        console.info(`[Seed] Summarizing filings...`)
-        const summaryResult = await summarizeCompanyFilings(company.id, company.name)
-        console.info(
-          `[Seed]   Summarized: ${summaryResult.summarized}/${summaryResult.total} ` +
-          `(${summaryResult.tokenUsage.inputTokens} in / ${summaryResult.tokenUsage.outputTokens} out tokens)`,
-        )
-        if (summaryResult.errors.length > 0) {
-          console.info(`[Seed]   Summary errors: ${summaryResult.errors.length}`)
-        }
-      }
-
-      const duration = Date.now() - companyStart
-      results.push({
-        ticker,
-        success: true,
-        duration,
-        filings: {
-          ingested: filingsData?.ingested ?? 0,
-          skipped: filingsData?.skipped ?? 0,
-        },
-      })
-
-      console.info(`[Seed] ✓ ${ticker} complete (${formatDuration(duration)})`)
-    } catch (err) {
-      const duration = Date.now() - companyStart
-      const msg = err instanceof Error ? err.message : String(err)
-      console.info(`[Seed] ✗ ${ticker} FAILED: ${msg}`)
-      results.push({
-        ticker,
-        success: false,
-        duration,
-        filings: { ingested: 0, skipped: 0 },
-        error: msg,
-      })
+  const results: Array<CompanyResult> = settled.map((entry, i) => {
+    if (entry.status === 'fulfilled') return entry.value
+    return {
+      ticker: tickers[i],
+      success: false,
+      duration: 0,
+      filings: { ingested: 0, skipped: 0 },
+      error: entry.reason instanceof Error ? entry.reason.message : String(entry.reason),
     }
-
-    // Delay between companies to respect rate limits
-    if (i < tickers.length - 1) {
-      console.info(`[Seed] Waiting ${SEED_CONFIG.delayBetweenCompaniesMs / 1000}s before next company...\n`)
-      await sleep(SEED_CONFIG.delayBetweenCompaniesMs)
-    }
-  }
+  })
 
   // ─── Summary ─────────────────────────────────────────────────────────────
   const totalDuration = Date.now() - totalStart
@@ -371,7 +397,6 @@ async function main() {
 
   console.info(`[Seed] ═══════════════════════════════════════════════════\n`)
 
-  // Exit with error code if any failed
   if (failed.length > 0) {
     process.exit(1)
   }

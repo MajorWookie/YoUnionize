@@ -94,7 +94,9 @@
       "Bash(done)",
       "WebFetch(domain:sec-api.io)",
       "Bash(source /Users/majorwookie/Documents/GitHub/YoUnion/.env)",
-      "Bash(bun -e \":*)"
+      "Bash(bun -e \":*)",
+      "Bash(bun test:*)",
+      "Bash(grep -v \"^$\")"
     ]
   },
   "outputStyle": "Explanatory"

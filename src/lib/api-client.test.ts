@@ -38,7 +38,7 @@ describe('api-client', () => {
 
     beforeEach(() => {
       vi.clearAllMocks()
-      vi.stubGlobal('fetch', mockFetch)
+      globalThis.fetch = mockFetch
     })
 
     it('returns response on success', async () => {

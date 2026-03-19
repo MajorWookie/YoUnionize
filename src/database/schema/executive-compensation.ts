@@ -21,5 +21,6 @@ export const executiveCompensation = pgTable('executive_compensation', {
   nonEquityIncentive: bigint('non_equity_incentive', { mode: 'number' }),
   otherCompensation: bigint('other_compensation', { mode: 'number' }),
   ceoPayRatio: numeric('ceo_pay_ratio'),
+  changeInPensionValue: bigint('change_in_pension_value', { mode: 'number' }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })

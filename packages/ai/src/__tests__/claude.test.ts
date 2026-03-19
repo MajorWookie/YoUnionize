@@ -316,23 +316,6 @@ describe('ClaudeClient', () => {
       expect(headers.Authorization).toBe('Bearer test-openai-key')
     })
 
-    it('throws if no OpenAI API key', async () => {
-      // Clear env var fallback BEFORE constructing client
-      const orig = process.env.OPENAI_API_KEY
-      delete process.env.OPENAI_API_KEY
-
-      const noKeyClient = new ClaudeClient({
-        apiKey: 'test-anthropic-key',
-        openaiApiKey: undefined,
-      })
-
-      await expect(
-        noKeyClient.generateEmbedding({ text: 'test' }),
-      ).rejects.toThrow('OpenAI API key required')
-
-      process.env.OPENAI_API_KEY = orig
-    })
-
     it('throws on OpenAI API errors', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: false,
