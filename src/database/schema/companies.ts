@@ -8,6 +8,7 @@ export const companies = pgTable('companies', {
   sector: text('sector'),
   industry: text('industry'),
   exchange: text('exchange'),
+  lastFetchAt: timestamp('last_fetch_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 })

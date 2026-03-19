@@ -36,8 +36,8 @@ const OLLAMA_EMBEDDING_DIMENSIONS = 768
  * Claude API client for SEC filing analysis, compensation insights, and RAG.
  *
  * Uses Claude for text generation. Embeddings are configurable:
- * - Ollama (default): nomic-embed-text, 768 dimensions, runs locally
- * - OpenAI: text-embedding-3-small, 1536 dimensions, requires API key
+ * - OpenAI (default): text-embedding-3-small, 1536 dimensions, requires OPENAI_API_KEY
+ * - Ollama (local alternative): nomic-embed-text, 768 dimensions, activated by setting OLLAMA_BASE_URL
  */
 export class ClaudeClient {
   private readonly anthropic: Anthropic
@@ -74,28 +74,59 @@ export class ClaudeClient {
     userPrompt: string,
     maxTokens = DEFAULT_MAX_TOKENS,
   ): Promise<{ text: string; usage: TokenUsage }> {
-    const message = await this.anthropic.messages.create({
-      model: this.model,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    })
+    const maxRetries = 5
+    let lastError: unknown
 
-    const block = message.content[0]
-    if (block.type !== 'text') {
-      throw new Error(`Unexpected content block type: ${block.type}`)
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const message = await this.anthropic.messages.create({
+          model: this.model,
+          max_tokens: maxTokens,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+        })
+
+        const block = message.content[0]
+        if (block.type !== 'text') {
+          throw new Error(`Unexpected content block type: ${block.type}`)
+        }
+
+        const usage: TokenUsage = {
+          inputTokens: message.usage.input_tokens,
+          outputTokens: message.usage.output_tokens,
+        }
+
+        console.info(
+          `[ClaudeClient] ${this.model} — ${usage.inputTokens} in / ${usage.outputTokens} out`,
+        )
+
+        return { text: block.text, usage }
+      } catch (err) {
+        lastError = err
+        const status = (err as { status?: number }).status
+        const isRateLimit = status === 429
+        const isOverloaded = status === 529
+
+        if ((isRateLimit || isOverloaded) && attempt < maxRetries) {
+          // Parse retry-after header if available, otherwise use exponential backoff
+          const retryAfter = (err as { headers?: Record<string, string> }).headers?.['retry-after']
+          const baseDelay = retryAfter ? Number(retryAfter) * 1000 : 2000 * Math.pow(2, attempt)
+          // Add jitter (±25%) to avoid thundering herd
+          const jitter = baseDelay * 0.25 * (2 * Math.random() - 1)
+          const delay = Math.max(1000, Math.round(baseDelay + jitter))
+
+          console.info(
+            `[ClaudeClient] Rate limited (${status}), retrying in ${(delay / 1000).toFixed(1)}s (attempt ${attempt + 1}/${maxRetries})`,
+          )
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          continue
+        }
+
+        throw err
+      }
     }
 
-    const usage: TokenUsage = {
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
-    }
-
-    console.info(
-      `[ClaudeClient] ${this.model} — ${usage.inputTokens} in / ${usage.outputTokens} out`,
-    )
-
-    return { text: block.text, usage }
+    throw lastError
   }
 
   private parseJson<T>(text: string): T {

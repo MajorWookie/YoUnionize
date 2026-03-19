@@ -84,29 +84,34 @@ const MOCK_COMPENSATION = {
 }
 
 const MOCK_DIRECTORS = {
-  total: { value: 2, relation: 'eq' },
+  total: { value: 1, relation: 'eq' },
   data: [
     {
-      ticker: 'AAPL',
-      cik: '320193',
-      companyName: 'Apple Inc.',
-      name: 'Arthur D. Levinson',
-      position: 'Chairman of the Board',
-      age: 73,
-      directorClass: null,
-      dateFirstElected: '2000-11-01',
-      isIndependent: true,
-      committeeMemberships: ['Compensation', 'Nominating'],
-      qualificationsAndExperience: ['Technology', 'Healthcare'],
-      accessionNo: '0001193125-24-012345',
+      id: 'dir-filing-1',
       filedAt: '2024-01-15',
+      accessionNo: '0001193125-24-012345',
+      cik: '320193',
+      ticker: 'AAPL',
+      entityName: 'Apple Inc.',
+      directors: [
+        {
+          name: 'Arthur D. Levinson',
+          position: 'Chairman of the Board',
+          age: '73',
+          directorClass: null,
+          dateFirstElected: '2000-11-01',
+          isIndependent: true,
+          committeeMemberships: ['Compensation', 'Nominating'],
+          qualificationsAndExperience: ['Technology', 'Healthcare'],
+        },
+      ],
     },
   ],
 }
 
 const MOCK_INSIDER_TRADE = {
   total: { value: 1, relation: 'eq' },
-  data: [
+  transactions: [
     {
       id: 'it-1',
       accessionNo: '0001193125-24-111111',
@@ -236,7 +241,7 @@ describe('SecApiClient', () => {
 
       expect(mockFetch).toHaveBeenCalledOnce()
       const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit]
-      expect(url).toBe('https://efts.sec-api.io')
+      expect(url).toBe('https://api.sec-api.io')
       expect(options.method).toBe('POST')
       expect(options.headers).toEqual(
         expect.objectContaining({
@@ -269,7 +274,7 @@ describe('SecApiClient', () => {
       })
 
       const [url] = mockFetch.mock.calls[0] as [string]
-      expect(url).toBe('https://efts.sec-api.io/full-text-search')
+      expect(url).toBe('https://api.sec-api.io/full-text-search')
       expect(result.filings).toHaveLength(1)
       expect(result.filings[0].highlight).toContain('doubt')
     })
@@ -329,7 +334,7 @@ describe('SecApiClient', () => {
   // ─── Executive Compensation ──────────────────────────────────────
 
   describe('getCompensationByTicker', () => {
-    it('normalizes monetary values to cents', async () => {
+    it('returns compensation values in whole dollars', async () => {
       const mockFetch = createMockFetch(MOCK_COMPENSATION)
       globalThis.fetch = mockFetch
 
@@ -339,16 +344,13 @@ describe('SecApiClient', () => {
       expect(url).toContain('/compensation/AAPL?')
 
       const exec = result.data[0]
-      // $3,000,000 → 300,000,000 cents
-      expect(exec.salary).toBe(300_000_000)
-      // $56,500,000 → 5,650,000,000 cents
-      expect(exec.totalCompensation).toBe(5_650_000_000)
+      expect(exec.salary).toBe(3_000_000)
       expect(exec.ceoPayRatio).toBe('672:1')
     })
   })
 
   describe('searchCompensation', () => {
-    it('sends POST to /compensation and normalizes to cents', async () => {
+    it('sends POST to /compensation', async () => {
       const mockFetch = createMockFetch(MOCK_COMPENSATION)
       globalThis.fetch = mockFetch
 
@@ -357,9 +359,9 @@ describe('SecApiClient', () => {
       })
 
       const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit]
-      expect(url).toBe('https://efts.sec-api.io/compensation')
+      expect(url).toBe('https://api.sec-api.io/compensation')
       expect(options.method).toBe('POST')
-      expect(result.data[0].salary).toBe(300_000_000)
+      expect(result.data[0].salary).toBe(3_000_000)
     })
   })
 
@@ -376,11 +378,13 @@ describe('SecApiClient', () => {
 
       const [url] = mockFetch.mock.calls[0] as [string]
       expect(url).toBe(
-        'https://efts.sec-api.io/directors-and-board-members',
+        'https://api.sec-api.io/directors-and-board-members',
       )
       expect(result.data).toHaveLength(1)
-      expect(result.data[0].name).toBe('Arthur D. Levinson')
-      expect(result.data[0].isIndependent).toBe(true)
+      expect(result.data[0].entityName).toBe('Apple Inc.')
+      expect(result.data[0].directors).toHaveLength(1)
+      expect(result.data[0].directors![0].name).toBe('Arthur D. Levinson')
+      expect(result.data[0].directors![0].isIndependent).toBe(true)
     })
   })
 
@@ -396,11 +400,11 @@ describe('SecApiClient', () => {
       })
 
       const [url] = mockFetch.mock.calls[0] as [string]
-      expect(url).toBe('https://efts.sec-api.io/insider-trading')
-      expect(result.data).toHaveLength(1)
-      expect(result.data[0].reportingOwner?.name).toBe('Elon Musk')
+      expect(url).toBe('https://api.sec-api.io/insider-trading')
+      expect(result.transactions).toHaveLength(1)
+      expect(result.transactions[0].reportingOwner?.name).toBe('Elon Musk')
       expect(
-        result.data[0].nonDerivativeTable?.transactions?.[0].sharesTraded,
+        result.transactions[0].nonDerivativeTable?.transactions?.[0].sharesTraded,
       ).toBe(50000)
     })
   })
@@ -417,7 +421,7 @@ describe('SecApiClient', () => {
       })
 
       const [url] = mockFetch.mock.calls[0] as [string]
-      expect(url).toBe('https://efts.sec-api.io/form-8k')
+      expect(url).toBe('https://api.sec-api.io/form-8k')
       expect(result.data).toHaveLength(1)
       expect(result.data[0].items?.item502?.personnelChanges?.[0].personName).toBe(
         'John Doe',
@@ -568,9 +572,9 @@ describe('SecApiClient', () => {
         pages.push(page)
       }
 
+      const mockFn = globalThis.fetch as ReturnType<typeof vi.fn>
       const body = JSON.parse(
-        (vi.mocked(globalThis.fetch).mock.calls[0][1] as RequestInit)
-          .body as string,
+        (mockFn.mock.calls[0][1] as RequestInit).body as string,
       )
       expect(body.size).toBe('10')
     })

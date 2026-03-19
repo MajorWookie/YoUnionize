@@ -1,4 +1,4 @@
-import { date, jsonb, pgTable, text, timestamp, uuid, boolean } from 'drizzle-orm/pg-core'
+import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { companies } from './companies'
 
 export const directors = pgTable('directors', {
@@ -10,6 +10,9 @@ export const directors = pgTable('directors', {
   title: text('title').notNull(),
   isIndependent: boolean('is_independent'),
   committees: jsonb('committees'),
-  tenureStart: date('tenure_start', { mode: 'string' }),
+  tenureStart: text('tenure_start'),
+  age: integer('age'),
+  directorClass: text('director_class'),
+  qualifications: jsonb('qualifications'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })

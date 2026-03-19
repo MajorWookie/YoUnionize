@@ -131,25 +131,32 @@ export interface ExecutiveCompensationResponse {
 
 // ─── Directors & Board Members ──────────────────────────────────────────────
 
+/** Individual director within a filing's directors array. */
 export interface Director {
-  ticker: string
-  cik: string
-  companyName: string
-  name: string
-  position: string
-  age: number | null
-  directorClass: string | null
-  dateFirstElected: string | null
-  isIndependent: boolean
-  committeeMemberships: Array<string>
-  qualificationsAndExperience: Array<string>
-  accessionNo: string
-  filedAt: string
+  name?: string
+  position?: string
+  age?: string | null
+  directorClass?: string | null
+  dateFirstElected?: string | null
+  isIndependent?: boolean | null
+  committeeMemberships?: Array<string>
+  qualificationsAndExperience?: Array<string>
+}
+
+/** Filing-level object containing a directors array. */
+export interface DirectorsFiling {
+  id?: string
+  filedAt?: string
+  accessionNo?: string
+  cik?: string
+  ticker?: string
+  entityName?: string
+  directors?: Array<Director>
 }
 
 export interface DirectorsResponse {
-  total: { value: number; relation: string }
-  data: Array<Director>
+  total?: { value: number; relation?: string }
+  data: Array<DirectorsFiling>
 }
 
 // ─── Insider Trading (Form 3/4/5) ──────────────────────────────────────────

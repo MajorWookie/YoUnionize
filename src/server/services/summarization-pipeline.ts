@@ -9,9 +9,19 @@ import {
 } from '@union/postgres'
 import { CURRENT_SUMMARY_VERSION } from '@union/ai'
 import type { ClaudeClient } from '@union/ai'
+import { pMap, pMapSettled } from '@union/helpers'
 import { getAiClient } from '../ai-client'
 import { transformXbrlToStatements } from './xbrl-transformer'
 import type { FinancialStatement } from './xbrl-transformer'
+
+// ─── Concurrency limits ──────────────────────────────────────────────────────
+
+/** Max filings summarized in parallel per company */
+const FILING_CONCURRENCY = 1
+/** Max Claude section calls in parallel per filing */
+const SECTION_CONCURRENCY = 2
+/** Max embedding API calls in parallel per filing */
+const EMBEDDING_CONCURRENCY = 6
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -126,13 +136,23 @@ export async function summarizeCompanyFilings(
     `[Summarize] Processing ${filings.length} filings for ${companyName}`,
   )
 
-  // Process sequentially to respect rate limits
-  for (const filing of filings as Array<FilingRow>) {
-    try {
-      await summarizeSingleFiling(filing, companyId, companyName, ai, result)
+  // Process filings with bounded concurrency
+  const settled = await pMapSettled(
+    filings as Array<FilingRow>,
+    async (filing) => {
+      const usage = await summarizeSingleFiling(filing, companyId, companyName, ai)
+      return { filing, usage }
+    },
+    FILING_CONCURRENCY,
+  )
+
+  for (const entry of settled) {
+    if (entry.status === 'fulfilled') {
       result.summarized++
-    } catch (err) {
-      const msg = `${filing.filingType} ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`
+      result.tokenUsage.inputTokens += entry.value.usage.inputTokens
+      result.tokenUsage.outputTokens += entry.value.usage.outputTokens
+    } else {
+      const msg = `${(entry.reason as Error)?.message ?? String(entry.reason)}`
       console.info(`[Summarize] Failed — ${msg}`)
       result.errors.push(msg)
     }
@@ -153,77 +173,50 @@ async function summarizeSingleFiling(
   companyId: string,
   companyName: string,
   ai: ClaudeClient,
-  result: SummarizationResult,
-): Promise<void> {
+): Promise<{ inputTokens: number; outputTokens: number }> {
   const db = getDb()
   const rawData = filing.rawData as Record<string, unknown>
   const sections = FILING_SECTIONS[filing.filingType] ?? ['executive_summary']
   const aiSummary: Record<string, unknown> = {}
+  let inputTokens = 0
+  let outputTokens = 0
 
   console.info(
     `[Summarize] ${filing.filingType} ${filing.accessionNumber} — ${sections.length} sections`,
   )
 
+  // Separate sync (XBRL) sections from async (AI) sections
+  const aiSections: Array<string> = []
   for (const section of sections) {
-    try {
-      if (STRUCTURED_SECTIONS.has(section)) {
-        // Financial statements: transform XBRL data, no AI needed
-        const xbrlData = rawData.xbrlData as Record<string, unknown> | undefined
-        if (xbrlData) {
-          const statements = transformXbrlToStatements(xbrlData)
-          if (statements[section]) {
-            aiSummary[section] = statements[section]
-          }
-        }
-      } else if (section === 'executive_compensation') {
-        // DEF 14A: combine structured comp data with AI analysis
-        aiSummary[section] = await summarizeExecutiveCompensation(
-          companyId,
-          companyName,
-          rawData,
-          ai,
-          result,
-        )
-      } else if (section === 'executive_summary') {
-        // Generate overall filing summary via AI
-        const response = await ai.generateFilingSummary({
-          rawData,
-          filingType: filing.filingType,
-          companyName,
-        })
-        aiSummary[section] = response.data
-        result.tokenUsage.inputTokens += response.usage.inputTokens
-        result.tokenUsage.outputTokens += response.usage.outputTokens
-      } else if (section === 'event_summary') {
-        // 8-K: summarize the event based on item types
-        const sectionText = buildEightKContext(rawData)
-        if (sectionText) {
-          const response = await ai.summarizeSection({
-            section: sectionText,
-            sectionType: 'event_summary',
-            companyName,
-            filingType: '8-K',
-          })
-          aiSummary[section] = response.data
-          result.tokenUsage.inputTokens += response.usage.inputTokens
-          result.tokenUsage.outputTokens += response.usage.outputTokens
-        }
-      } else {
-        // Unstructured sections: send extracted text to Claude
-        const sectionSummary = await summarizeUnstructuredSection(
-          section,
-          rawData,
-          companyName,
-          filing.filingType,
-          ai,
-          result,
-        )
-        if (sectionSummary) {
-          aiSummary[section] = sectionSummary
+    if (STRUCTURED_SECTIONS.has(section)) {
+      const xbrlData = rawData.xbrlData as Record<string, unknown> | undefined
+      if (xbrlData) {
+        const statements = transformXbrlToStatements(xbrlData)
+        if (statements[section]) {
+          aiSummary[section] = statements[section]
         }
       }
-    } catch (err) {
-      const msg = `Section "${section}": ${err instanceof Error ? err.message : String(err)}`
+    } else {
+      aiSections.push(section)
+    }
+  }
+
+  // Process AI sections with bounded concurrency
+  const sectionResults = await pMapSettled(
+    aiSections,
+    async (section) => summarizeSectionDispatch(section, companyId, companyName, rawData, filing.filingType, ai),
+    SECTION_CONCURRENCY,
+  )
+
+  for (let i = 0; i < aiSections.length; i++) {
+    const section = aiSections[i]
+    const entry = sectionResults[i]
+    if (entry.status === 'fulfilled' && entry.value) {
+      aiSummary[section] = entry.value.data
+      inputTokens += entry.value.usage.inputTokens
+      outputTokens += entry.value.usage.outputTokens
+    } else if (entry.status === 'rejected') {
+      const msg = `Section "${section}": ${entry.reason instanceof Error ? entry.reason.message : String(entry.reason)}`
       console.info(`[Summarize] Skipping — ${msg}`)
       aiSummary[section] = { error: msg }
     }
@@ -239,13 +232,56 @@ async function summarizeSingleFiling(
     })
     .where(eq(filingSummaries.id, filing.id))
 
-  // Generate embeddings for text-based summary sections (async, non-blocking)
+  // Generate embeddings concurrently (awaited, not fire-and-forget)
   const embeddingCtx = await getEmbeddingContext(companyId, filing)
-  generateSectionEmbeddings(filing.id, aiSummary, ai, embeddingCtx).catch((err) => {
+  await generateSectionEmbeddings(filing.id, aiSummary, ai, embeddingCtx).catch((err) => {
     console.info(
       `[Summarize] Embedding generation failed for ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`,
     )
   })
+
+  return { inputTokens, outputTokens }
+}
+
+// ─── Section dispatch (routes to the right summarizer) ────────────────────
+
+interface SectionResult {
+  data: unknown
+  usage: { inputTokens: number; outputTokens: number }
+}
+
+async function summarizeSectionDispatch(
+  section: string,
+  companyId: string,
+  companyName: string,
+  rawData: Record<string, unknown>,
+  filingType: string,
+  ai: ClaudeClient,
+): Promise<SectionResult | null> {
+  if (section === 'executive_compensation') {
+    const data = await summarizeExecutiveCompensation(companyId, companyName, rawData, ai)
+    return { data: data.result, usage: data.usage }
+  }
+
+  if (section === 'executive_summary') {
+    const response = await ai.generateFilingSummary({ rawData, filingType, companyName })
+    return { data: response.data, usage: response.usage }
+  }
+
+  if (section === 'event_summary') {
+    const sectionText = buildEightKContext(rawData)
+    if (!sectionText) return null
+    const response = await ai.summarizeSection({
+      section: sectionText,
+      sectionType: 'event_summary',
+      companyName,
+      filingType: '8-K',
+    })
+    return { data: response.data, usage: response.usage }
+  }
+
+  // Unstructured sections
+  return summarizeUnstructuredSection(section, rawData, companyName, filingType, ai)
 }
 
 // ─── Unstructured section summarization ─────────────────────────────────────
@@ -256,8 +292,7 @@ async function summarizeUnstructuredSection(
   companyName: string,
   filingType: string,
   ai: ClaudeClient,
-  result: SummarizationResult,
-): Promise<string | null> {
+): Promise<SectionResult | null> {
   const extractedSections = rawData.extractedSections as
     | Record<string, string>
     | undefined
@@ -288,10 +323,7 @@ async function summarizeUnstructuredSection(
     filingType,
   })
 
-  result.tokenUsage.inputTokens += response.usage.inputTokens
-  result.tokenUsage.outputTokens += response.usage.outputTokens
-
-  return response.data
+  return { data: response.data, usage: response.usage }
 }
 
 // ─── Executive compensation analysis ────────────────────────────────────────
@@ -314,9 +346,9 @@ async function summarizeExecutiveCompensation(
   companyName: string,
   rawData: Record<string, unknown>,
   ai: ClaudeClient,
-  result: SummarizationResult,
-): Promise<ExecCompSummary> {
+): Promise<{ result: ExecCompSummary; usage: { inputTokens: number; outputTokens: number } }> {
   const db = getDb()
+  const usage = { inputTokens: 0, outputTokens: 0 }
 
   // Get structured comp data from the database
   const compData = await db
@@ -369,8 +401,8 @@ async function summarizeExecutiveCompensation(
         filingType: 'DEF 14A',
       })
       analysis = response.data
-      result.tokenUsage.inputTokens += response.usage.inputTokens
-      result.tokenUsage.outputTokens += response.usage.outputTokens
+      usage.inputTokens += response.usage.inputTokens
+      usage.outputTokens += response.usage.outputTokens
     } catch (err) {
       console.info(
         `[Summarize] Exec comp AI analysis failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -378,7 +410,7 @@ async function summarizeExecutiveCompensation(
     }
   }
 
-  return { top5, ceoPayRatio, employeeCompAsRiskFactor, analysis }
+  return { result: { top5, ceoPayRatio, employeeCompAsRiskFactor, analysis }, usage }
 }
 
 // ─── 8-K context builder ───────────────────────────────────────────────────
@@ -513,12 +545,21 @@ async function generateSectionEmbeddings(
 ): Promise<void> {
   const db = getDb()
 
+  // Collect all chunks to embed across all sections
+  interface ChunkJob {
+    section: string
+    chunk: string
+    contentHash: string
+    chunkIndex: number
+    totalChunks: number
+  }
+
+  const jobs: Array<ChunkJob> = []
+
   for (const [section, content] of Object.entries(aiSummary)) {
-    // Skip structured data and error entries
     if (content == null) continue
     if (typeof content === 'object' && 'error' in (content as Record<string, unknown>)) continue
 
-    // Get the text to embed
     let text: string
     if (typeof content === 'string') {
       text = content
@@ -560,13 +601,19 @@ async function generateSectionEmbeddings(
 
     if (!text || text.trim().length < 50) continue
 
-    // Chunk the text for better retrieval granularity
     const chunks = chunkText(text)
-
     for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
-      const chunk = chunks[chunkIdx]
-      const contentHash = createHash('sha256').update(chunk).digest('hex')
+      const contentHash = createHash('sha256').update(chunks[chunkIdx]).digest('hex')
+      jobs.push({ section, chunk: chunks[chunkIdx], contentHash, chunkIndex: chunkIdx, totalChunks: chunks.length })
+    }
+  }
 
+  if (jobs.length === 0) return
+
+  // Process all embedding jobs with bounded concurrency
+  await pMapSettled(
+    jobs,
+    async (job) => {
       // Check if embedding already exists
       const existing = await db
         .select({ id: embeddings.id })
@@ -574,43 +621,38 @@ async function generateSectionEmbeddings(
         .where(
           and(
             eq(embeddings.sourceId, filingId),
-            eq(embeddings.contentHash, contentHash),
+            eq(embeddings.contentHash, job.contentHash),
           ),
         )
         .limit(1)
 
-      if (existing.length > 0) continue
+      if (existing.length > 0) return
 
-      try {
-        const vector = await ai.generateEmbedding({ text: chunk })
+      const vector = await ai.generateEmbedding({ text: job.chunk })
 
-        await db.insert(embeddings).values({
-          sourceType: 'filing_summary',
-          sourceId: filingId,
-          contentHash,
-          embedding: vector,
-          metadata: {
-            section,
-            filingId,
-            chunkIndex: chunkIdx,
-            totalChunks: chunks.length,
-            ...(ctx
-              ? {
-                  companyId: ctx.companyId,
-                  companyTicker: ctx.companyTicker,
-                  filingType: ctx.filingType,
-                  periodEnd: ctx.periodEnd,
-                }
-              : {}),
-          },
-        })
-      } catch (err) {
-        console.info(
-          `[Summarize] Embedding failed for ${section} chunk ${chunkIdx}: ${err instanceof Error ? err.message : String(err)}`,
-        )
-      }
-    }
-  }
+      await db.insert(embeddings).values({
+        sourceType: 'filing_summary',
+        sourceId: filingId,
+        contentHash: job.contentHash,
+        embedding: vector,
+        metadata: {
+          section: job.section,
+          filingId,
+          chunkIndex: job.chunkIndex,
+          totalChunks: job.totalChunks,
+          ...(ctx
+            ? {
+                companyId: ctx.companyId,
+                companyTicker: ctx.companyTicker,
+                filingType: ctx.filingType,
+                periodEnd: ctx.periodEnd,
+              }
+            : {}),
+        },
+      })
+    },
+    EMBEDDING_CONCURRENCY,
+  )
 }
 
 function formatNumber(value: number | null): string {

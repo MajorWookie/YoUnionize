@@ -75,6 +75,7 @@ export const companies = pgTable('companies', {
   sector: text('sector'),
   industry: text('industry'),
   exchange: text('exchange'),
+  lastFetchAt: timestamp('last_fetch_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
 })
@@ -128,6 +129,7 @@ export const executiveCompensation = pgTable('executive_compensation', {
   nonEquityIncentive: bigint('non_equity_incentive', { mode: 'number' }),
   otherCompensation: bigint('other_compensation', { mode: 'number' }),
   ceoPayRatio: numeric('ceo_pay_ratio'),
+  changeInPensionValue: bigint('change_in_pension_value', { mode: 'number' }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })
 
@@ -144,8 +146,12 @@ export const insiderTrades = pgTable('insider_trades', {
   transactionType: text('transaction_type').notNull(),
   shares: numeric('shares').notNull(),
   pricePerShare: numeric('price_per_share'),
-  totalValue: integer('total_value'),
+  totalValue: bigint('total_value', { mode: 'number' }),
   filingUrl: text('filing_url'),
+  isDerivative: boolean('is_derivative').notNull().default(false),
+  accessionNumber: text('accession_number'),
+  securityTitle: text('security_title'),
+  sharesOwnedAfter: numeric('shares_owned_after'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })
 
@@ -160,7 +166,10 @@ export const directors = pgTable('directors', {
   title: text('title').notNull(),
   isIndependent: boolean('is_independent'),
   committees: jsonb('committees'),
-  tenureStart: date('tenure_start', { mode: 'string' }),
+  tenureStart: text('tenure_start'),
+  age: integer('age'),
+  directorClass: text('director_class'),
+  qualifications: jsonb('qualifications'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })
 
@@ -211,7 +220,42 @@ export const jobs = pgTable('jobs', {
   status: text('status').notNull().default('pending'),
   result: jsonb('result'),
   error: text('error'),
+  parentJobId: uuid('parent_job_id'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   startedAt: timestamp('started_at', { mode: 'string' }),
   completedAt: timestamp('completed_at', { mode: 'string' }),
+})
+
+// ── Raw SEC Responses ──────────────────────────────────────────────────
+
+export const rawSecResponses = pgTable('raw_sec_responses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull(),
+  subKey: text('sub_key'),
+  rawResponse: jsonb('raw_response').notNull(),
+  fetchStatus: text('fetch_status').notNull().default('complete'),
+  fetchError: text('fetch_error'),
+  processStatus: text('process_status').notNull().default('pending'),
+  processedAt: timestamp('processed_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+})
+
+// ── Form 8-K Events ────────────────────────────────────────────────────
+
+export const form8kEvents = pgTable('form_8k_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id')
+    .notNull()
+    .references(() => companies.id, { onDelete: 'cascade' }),
+  filingSummaryId: uuid('filing_summary_id').references(() => filingSummaries.id, {
+    onDelete: 'set null',
+  }),
+  accessionNumber: text('accession_number').notNull(),
+  filedAt: timestamp('filed_at', { mode: 'string' }).notNull(),
+  itemType: text('item_type').notNull(),
+  eventData: jsonb('event_data').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })
