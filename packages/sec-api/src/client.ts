@@ -177,60 +177,35 @@ export class SecApiClient {
 
   // ─── Executive Compensation ───────────────────────────────────────────
 
-  /** Get executive compensation by ticker symbol. Returns values normalized to cents. */
+  /** Get executive compensation by ticker symbol. Values are in whole dollars. */
   async getCompensationByTicker(
     ticker: string,
   ): Promise<ExecutiveCompensationResponse> {
     const raw = await this.get<unknown>(`/compensation/${encodeURIComponent(ticker)}`)
-    const parsed = v.parse(ExecutiveCompensationResponseSchema, raw)
-    return this.normalizeCompensationToCents(parsed)
+    return this.parseCompensation(raw)
   }
 
-  /** Get executive compensation by CIK number. Returns values normalized to cents. */
+  /** Get executive compensation by CIK number. Values are in whole dollars. */
   async getCompensationByCik(
     cik: string,
   ): Promise<ExecutiveCompensationResponse> {
     const raw = await this.get<unknown>(`/compensation/${encodeURIComponent(cik)}`)
-    const parsed = v.parse(ExecutiveCompensationResponseSchema, raw)
-    return this.normalizeCompensationToCents(parsed)
+    return this.parseCompensation(raw)
   }
 
-  /** Search executive compensation with custom queries. Returns values normalized to cents. */
+  /** Search executive compensation with custom queries. Values are in whole dollars. */
   async searchCompensation(
     query: ElasticsearchQuery,
   ): Promise<ExecutiveCompensationResponse> {
     const raw = await this.post<unknown>('/compensation', query)
-    const parsed = v.parse(ExecutiveCompensationResponseSchema, raw)
-    return this.normalizeCompensationToCents(parsed)
+    return this.parseCompensation(raw)
   }
 
-  private normalizeCompensationToCents(
-    response: ExecutiveCompensationResponse,
-  ): ExecutiveCompensationResponse {
-    const MONETARY_FIELDS = [
-      'salary',
-      'bonus',
-      'stockAwards',
-      'optionAwards',
-      'incentiveCompensation',
-      'pensionChanges',
-      'otherCompensation',
-      'totalCompensation',
-    ] as const
-
-    return {
-      ...response,
-      data: response.data.map((exec) => {
-        const normalized = { ...exec }
-        for (const field of MONETARY_FIELDS) {
-          const val = normalized[field]
-          if (typeof val === 'number') {
-            normalized[field] = Math.round(val * 100)
-          }
-        }
-        return normalized
-      }),
-    }
+  private parseCompensation(raw: unknown): ExecutiveCompensationResponse {
+    const parsed = v.parse(ExecutiveCompensationResponseSchema, raw)
+    // API returns a plain array for GET, or { data: [...] } for POST
+    const data = Array.isArray(parsed) ? parsed : parsed.data
+    return { data }
   }
 
   // ─── Directors & Board Members ────────────────────────────────────────
@@ -344,7 +319,7 @@ export class SecApiClient {
 
       yield response
 
-      if (response.data.length < size || from + size >= MAX_OFFSET) {
+      if (response.transactions.length < size || from + size >= MAX_OFFSET) {
         break
       }
 

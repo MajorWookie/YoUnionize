@@ -25,8 +25,8 @@ export async function ingestCompensation(
 
     for (const exec of response.data) {
       try {
-        const fiscalYear = exec.reportingYear ?? 0
-        const execName = exec.executiveName ?? 'Unknown'
+        const fiscalYear = exec.year ?? 0
+        const execName = exec.name ?? 'Unknown'
 
         // Check for existing record (idempotency)
         const existing = await db
@@ -51,19 +51,19 @@ export async function ingestCompensation(
           fiscalYear,
           executiveName: execName,
           title: exec.position ?? 'Unknown',
-          totalCompensation: exec.totalCompensation ?? 0,
+          totalCompensation: exec.total ?? 0,
           salary: exec.salary ?? null,
           bonus: exec.bonus ?? null,
           stockAwards: exec.stockAwards ?? null,
           optionAwards: exec.optionAwards ?? null,
-          nonEquityIncentive: exec.incentiveCompensation ?? null,
+          nonEquityIncentive: exec.nonEquityIncentiveCompensation ?? null,
           otherCompensation: exec.otherCompensation ?? null,
           ceoPayRatio: exec.ceoPayRatio ?? null,
         })
 
         result.ingested++
       } catch (err) {
-        const msg = `Failed to ingest comp for ${exec.executiveName}: ${err instanceof Error ? err.message : String(err)}`
+        const msg = `Failed to ingest comp for ${exec.name}: ${err instanceof Error ? err.message : String(err)}`
         result.errors.push(msg)
       }
     }

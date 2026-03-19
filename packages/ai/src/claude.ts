@@ -20,26 +20,51 @@ import type {
   TokenUsage,
 } from './types'
 
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 const DEFAULT_MAX_TOKENS = 4096
-const EMBEDDING_MODEL = 'text-embedding-3-small'
-const EMBEDDING_DIMENSIONS = 1536
+
+// OpenAI embedding config
+const OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small'
+const OPENAI_EMBEDDING_DIMENSIONS = 1536
+
+// Ollama embedding config
+const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434'
+const DEFAULT_OLLAMA_EMBEDDING_MODEL = 'nomic-embed-text'
+const OLLAMA_EMBEDDING_DIMENSIONS = 768
 
 /**
  * Claude API client for SEC filing analysis, compensation insights, and RAG.
  *
- * Uses Claude for text generation and OpenAI for embeddings (text-embedding-3-small,
- * 1536 dimensions to match pgvector schema).
+ * Uses Claude for text generation. Embeddings are configurable:
+ * - Ollama (default): nomic-embed-text, 768 dimensions, runs locally
+ * - OpenAI: text-embedding-3-small, 1536 dimensions, requires API key
  */
 export class ClaudeClient {
   private readonly anthropic: Anthropic
   private readonly model: string
   private readonly openaiApiKey: string | undefined
+  private readonly embeddingProvider: 'openai' | 'ollama'
+  private readonly ollamaBaseUrl: string
+  private readonly ollamaEmbeddingModel: string
 
   constructor(config: ClaudeClientConfig) {
     this.anthropic = new Anthropic({ apiKey: config.apiKey })
     this.model = config.model ?? DEFAULT_MODEL
     this.openaiApiKey = config.openaiApiKey ?? process.env.OPENAI_API_KEY
+    this.ollamaBaseUrl =
+      config.ollamaBaseUrl ?? process.env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_BASE_URL
+    this.ollamaEmbeddingModel =
+      config.ollamaEmbeddingModel ?? process.env.OLLAMA_EMBEDDING_MODEL ?? DEFAULT_OLLAMA_EMBEDDING_MODEL
+    this.embeddingProvider =
+      config.embeddingProvider ??
+      (process.env.OLLAMA_BASE_URL ? 'ollama' : (this.openaiApiKey ? 'openai' : 'ollama'))
+  }
+
+  /** Returns the embedding dimensions for the active provider. */
+  get embeddingDimensions(): number {
+    return this.embeddingProvider === 'ollama'
+      ? OLLAMA_EMBEDDING_DIMENSIONS
+      : OPENAI_EMBEDDING_DIMENSIONS
   }
 
   // ─── Core Claude call ───────────────────────────────────────────────
@@ -149,9 +174,42 @@ export class ClaudeClient {
     return { data, usage, cached: false }
   }
 
-  // ─── Embeddings (OpenAI text-embedding-3-small) ─────────────────────
+  // ─── Embeddings (Ollama or OpenAI) ──────────────────────────────────
 
   async generateEmbedding(params: { text: string }): Promise<Array<number>> {
+    if (this.embeddingProvider === 'ollama') {
+      return this.generateOllamaEmbedding(params.text)
+    }
+    return this.generateOpenAiEmbedding(params.text)
+  }
+
+  private async generateOllamaEmbedding(text: string): Promise<Array<number>> {
+    const url = `${this.ollamaBaseUrl}/api/embeddings`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: this.ollamaEmbeddingModel,
+        prompt: text,
+      }),
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(`Ollama embeddings error ${response.status}: ${body}`)
+    }
+
+    const result = (await response.json()) as { embedding: Array<number> }
+
+    console.info(
+      `[ClaudeClient] embedding (ollama/${this.ollamaEmbeddingModel}) — ${text.length} chars`,
+    )
+
+    return result.embedding
+  }
+
+  private async generateOpenAiEmbedding(text: string): Promise<Array<number>> {
     if (!this.openaiApiKey) {
       throw new Error(
         'OpenAI API key required for embeddings. Set OPENAI_API_KEY or pass openaiApiKey in config.',
@@ -165,9 +223,9 @@ export class ClaudeClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: EMBEDDING_MODEL,
-        input: params.text,
-        dimensions: EMBEDDING_DIMENSIONS,
+        model: OPENAI_EMBEDDING_MODEL,
+        input: text,
+        dimensions: OPENAI_EMBEDDING_DIMENSIONS,
       }),
     })
 
@@ -182,7 +240,7 @@ export class ClaudeClient {
     }
 
     console.info(
-      `[ClaudeClient] embedding — ${result.usage.total_tokens} tokens`,
+      `[ClaudeClient] embedding (openai) — ${result.usage.total_tokens} tokens`,
     )
 
     return result.data[0].embedding

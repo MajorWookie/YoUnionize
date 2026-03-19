@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
 
     const client = new Anthropic({ apiKey: anthropicKey })
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: `You are an SEC filings analyst. Answer questions about companies using ONLY the provided filing context. Cite your sources. If the context doesn't contain the answer, say so.`,
       messages: [{

@@ -11,7 +11,7 @@ const optionalBoolean = v.optional(v.nullable(v.boolean()))
 export const FilingEntitySchema = v.object({
   companyName: v.pipe(v.string(), v.minLength(0)),
   cik: v.string(),
-  ticker: v.string(),
+  ticker: v.optional(v.string()),
   irsNo: v.optional(v.string()),
   stateOfIncorporation: v.optional(v.string()),
   fiscalYearEnd: v.optional(v.string()),
@@ -30,7 +30,7 @@ export const FilingSchema = v.object({
   id: v.string(),
   accessionNo: v.string(),
   cik: v.string(),
-  ticker: v.string(),
+  ticker: v.optional(v.string()),
   companyName: v.string(),
   companyNameLong: v.optional(v.string()),
   formType: v.string(),
@@ -80,34 +80,38 @@ export const FullTextSearchResponseSchema = v.object({
 // ─── Executive Compensation ─────────────────────────────────────────────────
 
 export const ExecutiveCompensationSchema = v.object({
+  id: v.optional(v.string()),
   ticker: v.optional(v.string()),
   cik: v.optional(v.string()),
-  companyName: v.optional(v.string()),
-  executiveName: v.optional(v.string()),
+  name: v.optional(v.string()),
   position: v.optional(v.string()),
-  reportingYear: v.optional(v.number()),
+  year: v.optional(v.number()),
   salary: v.optional(v.number()),
   bonus: v.optional(v.number()),
   stockAwards: v.optional(v.number()),
   optionAwards: v.optional(v.number()),
-  incentiveCompensation: v.optional(v.number()),
-  pensionChanges: v.optional(v.number()),
+  nonEquityIncentiveCompensation: v.optional(v.number()),
+  changeInPensionValueAndDeferredEarnings: v.optional(v.number()),
   otherCompensation: v.optional(v.number()),
-  totalCompensation: v.optional(v.number()),
+  total: v.optional(v.number()),
   ceoPayRatio: optionalString,
   accessionNo: v.optional(v.string()),
   filedAt: v.optional(v.string()),
 })
 
-export const ExecutiveCompensationResponseSchema = v.object({
-  total: v.optional(
-    v.object({
-      value: v.number(),
-      relation: v.optional(v.string()),
-    }),
-  ),
-  data: v.array(ExecutiveCompensationSchema),
-})
+/** Compensation API returns a plain array (GET /compensation/{id}) or { total, data } (POST /compensation). */
+export const ExecutiveCompensationResponseSchema = v.union([
+  v.array(ExecutiveCompensationSchema),
+  v.object({
+    total: v.optional(
+      v.object({
+        value: v.number(),
+        relation: v.optional(v.string()),
+      }),
+    ),
+    data: v.array(ExecutiveCompensationSchema),
+  }),
+])
 
 // ─── Directors & Board Members ──────────────────────────────────────────────
 
@@ -196,7 +200,7 @@ export const InsiderTradingResponseSchema = v.object({
       relation: v.optional(v.string()),
     }),
   ),
-  data: v.array(InsiderTradeSchema),
+  transactions: v.array(InsiderTradeSchema),
 })
 
 // ─── Form 8-K Structured Data ───────────────────────────────────────────────

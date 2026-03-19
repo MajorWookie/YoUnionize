@@ -1,17 +1,19 @@
 /**
  * Financial number formatting utilities.
- * Monetary values in the database are stored in cents.
+ * Monetary values in the database are stored in whole dollars.
  */
 
-/** Format cents to readable dollar string */
-export function formatCents(cents: number | null | undefined): string {
-  if (cents == null) return '-'
-  const dollars = cents / 100
-  if (Math.abs(dollars) >= 1e9) return `$${(dollars / 1e9).toFixed(1)}B`
-  if (Math.abs(dollars) >= 1e6) return `$${(dollars / 1e6).toFixed(1)}M`
-  if (Math.abs(dollars) >= 1e3) return `$${(dollars / 1e3).toFixed(0)}K`
-  return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+/** Format dollar value to readable string */
+export function formatDollars(value: number | null | undefined): string {
+  if (value == null) return '-'
+  if (Math.abs(value) >= 1e9) return `$${(value / 1e9).toFixed(1)}B`
+  if (Math.abs(value) >= 1e6) return `$${(value / 1e6).toFixed(1)}M`
+  if (Math.abs(value) >= 1e3) return `$${(value / 1e3).toFixed(0)}K`
+  return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
+
+/** @deprecated Use formatDollars instead. Values are now stored in whole dollars, not cents. */
+export const formatCents = formatDollars
 
 /** Format a raw number (not cents) for financial statements */
 export function formatFinancial(value: number | null | undefined): string {

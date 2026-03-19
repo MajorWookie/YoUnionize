@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  formatCents,
+  formatDollars,
   formatFinancial,
   formatPercent,
   formatShares,
@@ -9,29 +9,29 @@ import {
 } from './format'
 
 describe('format utilities', () => {
-  describe('formatCents', () => {
+  describe('formatDollars', () => {
     it('formats thousands with K suffix', () => {
-      expect(formatCents(850000)).toBe('$9K') // 8500 dollars → 9K
+      expect(formatDollars(8500)).toBe('$9K')
     })
 
     it('handles zero', () => {
-      expect(formatCents(0)).toBe('$0')
+      expect(formatDollars(0)).toBe('$0')
     })
 
     it('returns dash for null', () => {
-      expect(formatCents(null)).toBe('-')
+      expect(formatDollars(null)).toBe('-')
     })
 
     it('formats large values with M suffix', () => {
-      expect(formatCents(2500000000)).toBe('$25.0M')
+      expect(formatDollars(25_000_000)).toBe('$25.0M')
     })
 
     it('formats billions', () => {
-      expect(formatCents(100_000_000_000)).toBe('$1.0B')
+      expect(formatDollars(1_000_000_000)).toBe('$1.0B')
     })
 
     it('formats small values without suffix', () => {
-      expect(formatCents(500)).toBe('$5')
+      expect(formatDollars(500)).toBe('$500')
     })
   })
 
