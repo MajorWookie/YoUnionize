@@ -8,7 +8,7 @@ const optionalBoolean = v.optional(v.nullable(v.boolean()))
 
 // ─── Filing Query API ───────────────────────────────────────────────────────
 
-export const FilingEntitySchema = v.object({
+export const FilingEntitySchema = v.looseObject({
   companyName: v.pipe(v.string(), v.minLength(0)),
   cik: v.string(),
   ticker: v.optional(v.string()),
@@ -18,7 +18,7 @@ export const FilingEntitySchema = v.object({
   type: v.optional(v.string()),
 })
 
-export const DocumentFileSchema = v.object({
+export const DocumentFileSchema = v.looseObject({
   sequence: v.optional(v.string()),
   description: v.optional(v.string()),
   documentUrl: v.optional(v.string()),
@@ -26,7 +26,7 @@ export const DocumentFileSchema = v.object({
   size: v.optional(v.string()),
 })
 
-export const FilingSchema = v.object({
+export const FilingSchema = v.looseObject({
   id: v.string(),
   accessionNo: v.string(),
   cik: v.string(),
@@ -46,8 +46,8 @@ export const FilingSchema = v.object({
   periodOfReport: v.optional(v.string()),
 })
 
-export const FilingQueryResponseSchema = v.object({
-  total: v.object({
+export const FilingQueryResponseSchema = v.looseObject({
+  total: v.looseObject({
     value: v.number(),
     relation: v.optional(v.string()),
   }),
@@ -56,7 +56,7 @@ export const FilingQueryResponseSchema = v.object({
 
 // ─── Full-Text Search ───────────────────────────────────────────────────────
 
-export const FullTextSearchResultSchema = v.object({
+export const FullTextSearchResultSchema = v.looseObject({
   id: v.optional(v.string()),
   accessionNo: v.optional(v.string()),
   cik: v.optional(v.string()),
@@ -69,8 +69,8 @@ export const FullTextSearchResultSchema = v.object({
   highlight: v.optional(v.string()),
 })
 
-export const FullTextSearchResponseSchema = v.object({
-  total: v.object({
+export const FullTextSearchResponseSchema = v.looseObject({
+  total: v.looseObject({
     value: v.number(),
     relation: v.optional(v.string()),
   }),
@@ -79,7 +79,7 @@ export const FullTextSearchResponseSchema = v.object({
 
 // ─── Executive Compensation ─────────────────────────────────────────────────
 
-export const ExecutiveCompensationSchema = v.object({
+export const ExecutiveCompensationSchema = v.looseObject({
   id: v.optional(v.string()),
   ticker: v.optional(v.string()),
   cik: v.optional(v.string()),
@@ -102,9 +102,9 @@ export const ExecutiveCompensationSchema = v.object({
 /** Compensation API returns a plain array (GET /compensation/{id}) or { total, data } (POST /compensation). */
 export const ExecutiveCompensationResponseSchema = v.union([
   v.array(ExecutiveCompensationSchema),
-  v.object({
+  v.looseObject({
     total: v.optional(
-      v.object({
+      v.looseObject({
         value: v.number(),
         relation: v.optional(v.string()),
       }),
@@ -116,7 +116,7 @@ export const ExecutiveCompensationResponseSchema = v.union([
 // ─── Directors & Board Members ──────────────────────────────────────────────
 
 /** Individual director within a filing's directors array. */
-export const DirectorSchema = v.object({
+export const DirectorSchema = v.looseObject({
   name: v.optional(v.string()),
   position: v.optional(v.string()),
   age: optionalString,
@@ -128,7 +128,7 @@ export const DirectorSchema = v.object({
 })
 
 /** Filing-level object containing a directors array. */
-export const DirectorsFilingSchema = v.object({
+export const DirectorsFilingSchema = v.looseObject({
   id: v.optional(v.string()),
   filedAt: v.optional(v.string()),
   accessionNo: v.optional(v.string()),
@@ -138,9 +138,9 @@ export const DirectorsFilingSchema = v.object({
   directors: v.optional(v.array(DirectorSchema)),
 })
 
-export const DirectorsResponseSchema = v.object({
+export const DirectorsResponseSchema = v.looseObject({
   total: v.optional(
-    v.object({
+    v.looseObject({
       value: v.number(),
       relation: v.optional(v.string()),
     }),
@@ -150,31 +150,45 @@ export const DirectorsResponseSchema = v.object({
 
 // ─── Insider Trading ────────────────────────────────────────────────────────
 
-export const InsiderTransactionSchema = v.object({
+export const InsiderTransactionSchema = v.looseObject({
   transactionDate: v.optional(v.string()),
   transactionCode: v.optional(v.string()),
   transactionDescription: v.optional(v.string()),
   sharesTraded: v.optional(v.number()),
   pricePerShare: optionalNumber,
+  pricePerShareFootnoteId: v.optional(v.array(v.string())),
   sharesOwnedAfter: v.optional(v.number()),
   directOrIndirect: v.optional(v.string()),
   securityTitle: v.optional(v.string()),
+  conversionOrExercisePrice: optionalNumber,
+  conversionOrExercisePriceFootnoteId: v.optional(v.array(v.string())),
+  exerciseDate: v.optional(v.string()),
+  exerciseDateFootnoteId: v.optional(v.array(v.string())),
+  expirationDate: v.optional(v.string()),
+  expirationDateFootnoteId: v.optional(v.array(v.string())),
+  underlyingSecurity: v.optional(
+    v.looseObject({
+      title: v.optional(v.string()),
+      shares: v.optional(v.number()),
+    }),
+  ),
 })
 
-export const InsiderTradeSchema = v.object({
+export const InsiderTradeSchema = v.looseObject({
   id: v.optional(v.string()),
   accessionNo: v.optional(v.string()),
   formType: v.optional(v.string()),
   filedAt: v.optional(v.string()),
+  documentType: v.optional(v.string()),
   issuer: v.optional(
-    v.object({
+    v.looseObject({
       cik: v.optional(v.string()),
       name: v.optional(v.string()),
       tradingSymbol: v.optional(v.string()),
     }),
   ),
   reportingOwner: v.optional(
-    v.object({
+    v.looseObject({
       cik: v.optional(v.string()),
       name: v.optional(v.string()),
       isDirector: v.optional(v.boolean()),
@@ -185,24 +199,27 @@ export const InsiderTradeSchema = v.object({
   ),
   nonDerivativeTable: v.optional(
     v.nullable(
-      v.object({
+      v.looseObject({
         transactions: v.optional(v.array(InsiderTransactionSchema)),
+        holdings: v.optional(v.array(InsiderTransactionSchema)),
       }),
     ),
   ),
   derivativeTable: v.optional(
     v.nullable(
-      v.object({
+      v.looseObject({
         transactions: v.optional(v.array(InsiderTransactionSchema)),
+        holdings: v.optional(v.array(InsiderTransactionSchema)),
       }),
     ),
   ),
+  footnotes: v.optional(v.array(v.unknown())),
   periodOfReport: v.optional(v.string()),
 })
 
-export const InsiderTradingResponseSchema = v.object({
+export const InsiderTradingResponseSchema = v.looseObject({
   total: v.optional(
-    v.object({
+    v.looseObject({
       value: v.number(),
       relation: v.optional(v.string()),
     }),
@@ -212,7 +229,7 @@ export const InsiderTradingResponseSchema = v.object({
 
 // ─── Form 8-K Structured Data ───────────────────────────────────────────────
 
-export const Form8KItem401Schema = v.object({
+export const Form8KItem401Schema = v.looseObject({
   newAccountantName: optionalString,
   formerAccountantName: optionalString,
   engagementEndReason: optionalString,
@@ -221,7 +238,7 @@ export const Form8KItem401Schema = v.object({
   opinionType: optionalString,
 })
 
-export const Form8KItem402Schema = v.object({
+export const Form8KItem402Schema = v.looseObject({
   restatementIsNecessary: optionalBoolean,
   reasonsForRestatement: optionalString,
   impactIsMaterial: optionalBoolean,
@@ -231,10 +248,10 @@ export const Form8KItem402Schema = v.object({
   identifiedIssues: v.optional(v.array(v.string())),
 })
 
-export const Form8KItem502Schema = v.object({
+export const Form8KItem502Schema = v.looseObject({
   personnelChanges: v.optional(
     v.array(
-      v.object({
+      v.looseObject({
         personName: v.optional(v.string()),
         changeType: v.optional(v.string()),
         position: v.optional(v.string()),
@@ -246,7 +263,7 @@ export const Form8KItem502Schema = v.object({
   organizationChanges: v.optional(v.array(v.unknown())),
 })
 
-export const Form8KFilingSchema = v.object({
+export const Form8KFilingSchema = v.looseObject({
   id: v.optional(v.string()),
   accessionNo: v.optional(v.string()),
   cik: v.optional(v.string()),
@@ -255,7 +272,7 @@ export const Form8KFilingSchema = v.object({
   formType: v.optional(v.string()),
   filedAt: v.optional(v.string()),
   items: v.optional(
-    v.object({
+    v.looseObject({
       item401: v.optional(Form8KItem401Schema),
       item402: v.optional(Form8KItem402Schema),
       item502: v.optional(Form8KItem502Schema),
@@ -263,9 +280,9 @@ export const Form8KFilingSchema = v.object({
   ),
 })
 
-export const Form8KResponseSchema = v.object({
+export const Form8KResponseSchema = v.looseObject({
   total: v.optional(
-    v.object({
+    v.looseObject({
       value: v.number(),
       relation: v.optional(v.string()),
     }),
@@ -275,7 +292,7 @@ export const Form8KResponseSchema = v.object({
 
 // ─── Data Mapping ───────────────────────────────────────────────────────────
 
-export const CompanyMappingSchema = v.object({
+export const CompanyMappingSchema = v.looseObject({
   name: v.string(),
   ticker: v.optional(v.string()),
   cik: v.optional(v.string()),

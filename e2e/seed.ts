@@ -7,7 +7,7 @@
  *
  * Creates:
  *   - A test company (AAPL / Apple Inc) with known data
- *   - A test user (test@union.app / testpassword)
+ *   - A test user (test@younion.app / testpassword)
  *   - Sample filings, executive compensation, and insider trades
  */
 

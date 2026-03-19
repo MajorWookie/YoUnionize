@@ -140,7 +140,7 @@ export class SecApiClient {
     query: ElasticsearchQuery,
   ): Promise<FilingQueryResponse> {
     const raw = await this.post<unknown>('', query)
-    return v.parse(FilingQueryResponseSchema, raw)
+    return v.parse(FilingQueryResponseSchema, raw) as FilingQueryResponse
   }
 
   // ─── Full-Text Search API ─────────────────────────────────────────────
@@ -150,7 +150,7 @@ export class SecApiClient {
     request: FullTextSearchRequest,
   ): Promise<FullTextSearchResponse> {
     const raw = await this.post<unknown>('/full-text-search', request)
-    return v.parse(FullTextSearchResponseSchema, raw)
+    return v.parse(FullTextSearchResponseSchema, raw) as FullTextSearchResponse
   }
 
   // ─── Section Extractor ────────────────────────────────────────────────
@@ -215,7 +215,7 @@ export class SecApiClient {
     query: ElasticsearchQuery,
   ): Promise<DirectorsResponse> {
     const raw = await this.post<unknown>('/directors-and-board-members', query)
-    return v.parse(DirectorsResponseSchema, raw)
+    return v.parse(DirectorsResponseSchema, raw) as DirectorsResponse
   }
 
   // ─── Insider Trading (Form 3/4/5) ────────────────────────────────────
@@ -225,7 +225,7 @@ export class SecApiClient {
     query: ElasticsearchQuery,
   ): Promise<InsiderTradingResponse> {
     const raw = await this.post<unknown>('/insider-trading', query)
-    return v.parse(InsiderTradingResponseSchema, raw)
+    return v.parse(InsiderTradingResponseSchema, raw) as InsiderTradingResponse
   }
 
   // ─── Form 8-K Structured Data ────────────────────────────────────────
@@ -233,7 +233,7 @@ export class SecApiClient {
   /** Search Form 8-K structured data (auditor changes, restatements, officer changes). */
   async searchForm8K(query: ElasticsearchQuery): Promise<Form8KResponse> {
     const raw = await this.post<unknown>('/form-8k', query)
-    return v.parse(Form8KResponseSchema, raw)
+    return v.parse(Form8KResponseSchema, raw) as Form8KResponse
   }
 
   // ─── Data Mapping ────────────────────────────────────────────────────
@@ -241,25 +241,25 @@ export class SecApiClient {
   /** Resolve a CIK to company details. */
   async mappingByCik(cik: string): Promise<Array<CompanyMapping>> {
     const raw = await this.get<unknown>(`/mapping/cik/${encodeURIComponent(cik)}`)
-    return v.parse(CompanyMappingArraySchema, raw)
+    return v.parse(CompanyMappingArraySchema, raw) as Array<CompanyMapping>
   }
 
   /** Resolve a ticker to company details. */
   async mappingByTicker(ticker: string): Promise<Array<CompanyMapping>> {
     const raw = await this.get<unknown>(`/mapping/ticker/${encodeURIComponent(ticker)}`)
-    return v.parse(CompanyMappingArraySchema, raw)
+    return v.parse(CompanyMappingArraySchema, raw) as Array<CompanyMapping>
   }
 
   /** Resolve a CUSIP to company details. */
   async mappingByCusip(cusip: string): Promise<Array<CompanyMapping>> {
     const raw = await this.get<unknown>(`/mapping/cusip/${encodeURIComponent(cusip)}`)
-    return v.parse(CompanyMappingArraySchema, raw)
+    return v.parse(CompanyMappingArraySchema, raw) as Array<CompanyMapping>
   }
 
   /** Search companies by name. */
   async mappingByName(name: string): Promise<Array<CompanyMapping>> {
     const raw = await this.get<unknown>(`/mapping/name/${encodeURIComponent(name)}`)
-    return v.parse(CompanyMappingArraySchema, raw)
+    return v.parse(CompanyMappingArraySchema, raw) as Array<CompanyMapping>
   }
 
   // ─── Pagination Helper ───────────────────────────────────────────────

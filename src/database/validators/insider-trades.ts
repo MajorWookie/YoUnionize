@@ -1,6 +1,6 @@
 import * as v from 'valibot'
 
-const transactionTypes = ['purchase', 'sale', 'grant', 'exercise', 'gift', 'other'] as const
+const transactionTypes = ['purchase', 'sale', 'grant', 'exercise', 'gift', 'holding', 'other'] as const
 
 export const InsertInsiderTradeSchema = v.object({
   companyId: v.pipe(v.string(), v.uuid()),
@@ -12,6 +12,10 @@ export const InsertInsiderTradeSchema = v.object({
   pricePerShare: v.optional(v.nullable(v.string())),
   totalValue: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
   filingUrl: v.optional(v.nullable(v.string())),
+  isDerivative: v.optional(v.boolean()),
+  accessionNumber: v.optional(v.nullable(v.string())),
+  securityTitle: v.optional(v.nullable(v.string())),
+  sharesOwnedAfter: v.optional(v.nullable(v.string())),
 })
 
 export type InsertInsiderTrade = v.InferOutput<typeof InsertInsiderTradeSchema>

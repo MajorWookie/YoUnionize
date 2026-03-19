@@ -20,8 +20,10 @@ export interface FinancialStatement {
 
 // Common XBRL concept name patterns → human-readable labels
 const INCOME_STATEMENT_CONCEPTS: Record<string, string> = {
+  // Standard corporate
   Revenues: 'Revenue',
   RevenueFromContractWithCustomerExcludingAssessedTax: 'Net Revenue',
+  RevenueFromContractWithCustomerIncludingAssessedTax: 'Net Revenue',
   SalesRevenueNet: 'Net Sales',
   CostOfRevenue: 'Cost of Revenue',
   CostOfGoodsAndServicesSold: 'Cost of Goods Sold',
@@ -36,6 +38,18 @@ const INCOME_STATEMENT_CONCEPTS: Record<string, string> = {
   EarningsPerShareBasic: 'Earnings Per Share (Basic)',
   EarningsPerShareDiluted: 'Earnings Per Share (Diluted)',
   WeightedAverageNumberOfShareOutstandingBasicAndDiluted: 'Shares Outstanding',
+  // Bank / financial institution
+  InterestIncome: 'Interest Income',
+  InterestIncomeExpenseNet: 'Net Interest Income',
+  NoninterestRevenue: 'Non-Interest Revenue',
+  NoninterestExpense: 'Non-Interest Expense',
+  InvestmentBankingRevenue: 'Investment Banking Revenue',
+  PrincipalTransactionsRevenue: 'Principal Transactions Revenue',
+  LendingAndDepositRelatedFees: 'Lending & Deposit Fees',
+  ProvisionForCreditLosses: 'Provision for Credit Losses',
+  ProvisionForLoanLeaseAndCreditLosses: 'Provision for Loan Losses',
+  // REIT / real estate
+  CorporateExpensesExcludingDepreciationAndAmortization: 'Corporate Expenses (ex D&A)',
 }
 
 const BALANCE_SHEET_CONCEPTS: Record<string, string> = {
@@ -56,6 +70,13 @@ const BALANCE_SHEET_CONCEPTS: Record<string, string> = {
   StockholdersEquity: "Stockholders' Equity",
   RetainedEarningsAccumulatedDeficit: 'Retained Earnings',
   LiabilitiesAndStockholdersEquity: "Total Liabilities & Equity",
+  // Bank / financial institution
+  Deposits: 'Deposits',
+  FinanceReceivablesNet: 'Finance Receivables (Net)',
+  LoansAndLeasesReceivableNetReportedAmount: 'Loans & Leases (Net)',
+  AllowanceForCreditLosses: 'Allowance for Credit Losses',
+  TradingSecurities: 'Trading Securities',
+  AvailableForSaleSecurities: 'Available-for-Sale Securities',
 }
 
 const CASH_FLOW_CONCEPTS: Record<string, string> = {
@@ -89,12 +110,11 @@ export function transformXbrlToStatements(
 ): Record<string, FinancialStatement> {
   const result: Record<string, FinancialStatement> = {}
 
-  const incomeStatement = extractStatement(
-    xbrlData,
-    'StatementsOfIncome',
-    'Income Statement',
-    INCOME_STATEMENT_CONCEPTS,
-  )
+  // Try StatementsOfIncome first, fall back to StatementsOfComprehensiveIncome
+  // (some companies like DIN put the full P&L in comprehensive income)
+  const incomeStatement =
+    extractStatement(xbrlData, 'StatementsOfIncome', 'Income Statement', INCOME_STATEMENT_CONCEPTS) ??
+    extractStatement(xbrlData, 'StatementsOfComprehensiveIncome', 'Income Statement', INCOME_STATEMENT_CONCEPTS)
   if (incomeStatement) result.income_statement = incomeStatement
 
   const balanceSheet = extractStatement(
@@ -179,21 +199,21 @@ function findStatementData(
     return xbrlData[key] as Record<string, unknown>
   }
 
-  // Try common XBRL variations
+  // Try common XBRL variations (exact match, case-insensitive)
+  const keyLower = key.toLowerCase()
   const variations = [
-    key,
-    `${key}Parenthetical`,
-    key.replace('Statements', 'Statement'),
-    `Consolidated${key}`,
+    keyLower,
+    `consolidated${keyLower}`,
+    keyLower.replace('statements', 'statement'),
+    `consolidated${keyLower.replace('statements', 'statement')}`,
   ]
 
-  for (const variant of variations) {
-    for (const k of Object.keys(xbrlData)) {
-      if (k.toLowerCase().includes(variant.toLowerCase())) {
-        const val = xbrlData[k]
-        if (val && typeof val === 'object') {
-          return val as Record<string, unknown>
-        }
+  for (const k of Object.keys(xbrlData)) {
+    const kLower = k.toLowerCase()
+    if (variations.includes(kLower)) {
+      const val = xbrlData[k]
+      if (val && typeof val === 'object') {
+        return val as Record<string, unknown>
       }
     }
   }

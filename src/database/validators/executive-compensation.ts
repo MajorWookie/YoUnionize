@@ -14,6 +14,8 @@ export const InsertExecutiveCompensationSchema = v.object({
   nonEquityIncentive: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
   otherCompensation: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
   ceoPayRatio: v.optional(v.nullable(v.string())),
+  changeInPensionValue: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
+  canonicalName: v.optional(v.nullable(v.string())),
 })
 
 export type InsertExecutiveCompensation = v.InferOutput<typeof InsertExecutiveCompensationSchema>
