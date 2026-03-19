@@ -86,12 +86,12 @@ Deno.serve(async (req) => {
 
     const costOfLivingData: Record<string, number | null> = col
       ? {
-          rentMortgage: col.rentMortgage, internet: col.internet, mobilePhone: col.mobilePhone,
-          utilities: col.utilities, studentLoans: col.studentLoans, consumerDebt: col.consumerDebt,
-          carLoan: col.carLoan, groceries: col.groceries, gym: col.gym,
-          entertainment: col.entertainment, clothing: col.clothing, savingsTarget: col.savingsTarget,
-          other: col.other,
-        }
+        rentMortgage: col.rentMortgage, internet: col.internet, mobilePhone: col.mobilePhone,
+        utilities: col.utilities, studentLoans: col.studentLoans, consumerDebt: col.consumerDebt,
+        carLoan: col.carLoan, groceries: col.groceries, gym: col.gym,
+        entertainment: col.entertainment, clothing: col.clothing, savingsTarget: col.savingsTarget,
+        other: col.other,
+      }
       : {}
 
     const execCompForAi = execCompData.map((e) => ({
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
 
       const client = new Anthropic({ apiKey })
       const message = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         system: `You are a compensation fairness analyst. Analyze the employee's pay relative to executive compensation at their company. Provide a JSON response with: fairness_score (1-10), summary, detailed_analysis, recommendations, and key_findings.`,
         messages: [{

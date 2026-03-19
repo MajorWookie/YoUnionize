@@ -4,6 +4,7 @@
  */
 
 import {
+  bigint,
   boolean,
   customType,
   date,
@@ -119,13 +120,13 @@ export const executiveCompensation = pgTable('executive_compensation', {
   fiscalYear: integer('fiscal_year').notNull(),
   executiveName: text('executive_name').notNull(),
   title: text('title').notNull(),
-  totalCompensation: integer('total_compensation').notNull(),
-  salary: integer('salary'),
-  bonus: integer('bonus'),
-  stockAwards: integer('stock_awards'),
-  optionAwards: integer('option_awards'),
-  nonEquityIncentive: integer('non_equity_incentive'),
-  otherCompensation: integer('other_compensation'),
+  totalCompensation: bigint('total_compensation', { mode: 'number' }).notNull(),
+  salary: bigint('salary', { mode: 'number' }),
+  bonus: bigint('bonus', { mode: 'number' }),
+  stockAwards: bigint('stock_awards', { mode: 'number' }),
+  optionAwards: bigint('option_awards', { mode: 'number' }),
+  nonEquityIncentive: bigint('non_equity_incentive', { mode: 'number' }),
+  otherCompensation: bigint('other_compensation', { mode: 'number' }),
   ceoPayRatio: numeric('ceo_pay_ratio'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })

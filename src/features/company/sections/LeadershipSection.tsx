@@ -1,7 +1,7 @@
 import { Paragraph, XStack, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
 import type { ExecutiveData } from '../types'
-import { formatCents, getInitials } from '../format'
+import { formatDollars, getInitials } from '../format'
 
 interface Props {
   executives: Array<ExecutiveData>
@@ -54,7 +54,7 @@ export function LeadershipSection({ executives }: Props) {
 
             <YStack alignItems="flex-end" gap={2}>
               <Paragraph fontWeight="700" fontSize={15} color="$color12">
-                {formatCents(exec.totalCompensation)}
+                {formatDollars(exec.totalCompensation)}
               </Paragraph>
               <Paragraph color="$color8" fontSize={11}>
                 FY {exec.fiscalYear}
@@ -67,25 +67,25 @@ export function LeadershipSection({ executives }: Props) {
               {exec.salary != null && (
                 <YStack>
                   <Paragraph color="$color8" fontSize={11}>Salary</Paragraph>
-                  <Paragraph fontSize={13} fontWeight="500">{formatCents(exec.salary)}</Paragraph>
+                  <Paragraph fontSize={13} fontWeight="500">{formatDollars(exec.salary)}</Paragraph>
                 </YStack>
               )}
               {exec.bonus != null && exec.bonus > 0 && (
                 <YStack>
                   <Paragraph color="$color8" fontSize={11}>Bonus</Paragraph>
-                  <Paragraph fontSize={13} fontWeight="500">{formatCents(exec.bonus)}</Paragraph>
+                  <Paragraph fontSize={13} fontWeight="500">{formatDollars(exec.bonus)}</Paragraph>
                 </YStack>
               )}
               {exec.stockAwards != null && (
                 <YStack>
                   <Paragraph color="$color8" fontSize={11}>Stock Awards</Paragraph>
-                  <Paragraph fontSize={13} fontWeight="500">{formatCents(exec.stockAwards)}</Paragraph>
+                  <Paragraph fontSize={13} fontWeight="500">{formatDollars(exec.stockAwards)}</Paragraph>
                 </YStack>
               )}
               {exec.optionAwards != null && exec.optionAwards > 0 && (
                 <YStack>
                   <Paragraph color="$color8" fontSize={11}>Options</Paragraph>
-                  <Paragraph fontSize={13} fontWeight="500">{formatCents(exec.optionAwards)}</Paragraph>
+                  <Paragraph fontSize={13} fontWeight="500">{formatDollars(exec.optionAwards)}</Paragraph>
                 </YStack>
               )}
             </XStack>

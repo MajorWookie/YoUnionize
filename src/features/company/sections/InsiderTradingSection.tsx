@@ -1,7 +1,7 @@
 import { Paragraph, XStack, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
 import type { InsiderTradeData } from '../types'
-import { formatCents, formatShares, formatDate } from '../format'
+import { formatDollars, formatShares, formatDate } from '../format'
 
 interface Props {
   trades: Array<InsiderTradeData>
@@ -87,7 +87,7 @@ export function InsiderTradingSection({ trades }: Props) {
                 {formatShares(trade.shares)}
               </Paragraph>
               <Paragraph fontSize={12} width={80} textAlign="right" color="$color11">
-                {trade.totalValue != null ? formatCents(trade.totalValue) : '-'}
+                {trade.totalValue != null ? formatDollars(trade.totalValue) : '-'}
               </Paragraph>
               <Paragraph fontSize={11} width={80} textAlign="right" color="$color8">
                 {formatDate(trade.transactionDate)}

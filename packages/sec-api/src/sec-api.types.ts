@@ -15,20 +15,20 @@ export interface Filing {
   id: string
   accessionNo: string
   cik: string
-  ticker: string
+  ticker?: string
   companyName: string
-  companyNameLong: string
+  companyNameLong?: string
   formType: string
-  description: string
+  description?: string
   filedAt: string
-  linkToTxt: string
-  linkToHtml: string
-  linkToXbrl: string
-  linkToFilingDetails: string
-  entities: Array<FilingEntity>
-  documentFormatFiles: Array<DocumentFile>
-  dataFiles: Array<DocumentFile>
-  periodOfReport: string
+  linkToTxt?: string
+  linkToHtml?: string
+  linkToXbrl?: string
+  linkToFilingDetails?: string
+  entities?: Array<FilingEntity>
+  documentFormatFiles?: Array<DocumentFile>
+  dataFiles?: Array<DocumentFile>
+  periodOfReport?: string
 }
 
 export interface FilingEntity {
@@ -105,28 +105,27 @@ export interface XbrlResponse {
 // ─── Executive Compensation ─────────────────────────────────────────────────
 
 export interface ExecutiveCompensation {
-  ticker: string
-  cik: string
-  companyName: string
-  executiveName: string
-  position: string
-  reportingYear: number
+  id?: string
+  ticker?: string
+  cik?: string
+  name?: string
+  position?: string
+  year?: number
   /** In dollars (API returns dollars; client normalizes to cents) */
-  salary: number
-  bonus: number
-  stockAwards: number
-  optionAwards: number
-  incentiveCompensation: number
-  pensionChanges: number
-  otherCompensation: number
-  totalCompensation: number
-  ceoPayRatio: string | null
-  accessionNo: string
-  filedAt: string
+  salary?: number
+  bonus?: number
+  stockAwards?: number
+  optionAwards?: number
+  nonEquityIncentiveCompensation?: number
+  changeInPensionValueAndDeferredEarnings?: number
+  otherCompensation?: number
+  total?: number
+  ceoPayRatio?: string | null
+  accessionNo?: string
+  filedAt?: string
 }
 
 export interface ExecutiveCompensationResponse {
-  total: { value: number; relation: string }
   data: Array<ExecutiveCompensation>
 }
 
@@ -195,7 +194,7 @@ export interface InsiderTrade {
 
 export interface InsiderTradingResponse {
   total: { value: number; relation: string }
-  data: Array<InsiderTrade>
+  transactions: Array<InsiderTrade>
 }
 
 // ─── Form 8-K Structured Data ───────────────────────────────────────────────

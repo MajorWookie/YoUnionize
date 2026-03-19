@@ -93,7 +93,7 @@ export type EightKSection = (typeof EightKSection)[keyof typeof EightKSection]
 export type SectionItem = TenKSection | TenQSection | EightKSection
 
 /** SEC API base URLs */
-export const SEC_API_BASE_URL = 'https://efts.sec-api.io'
+export const SEC_API_BASE_URL = 'https://api.sec-api.io'
 
 /** Default page size */
 export const DEFAULT_PAGE_SIZE = 50

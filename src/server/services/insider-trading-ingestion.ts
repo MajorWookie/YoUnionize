@@ -38,7 +38,7 @@ export async function ingestInsiderTrading(
       query: `issuer.tradingSymbol:${company.ticker} AND filedAt:[${oneYearAgoStr} TO *]`,
       sort: [{ filedAt: { order: 'desc' } }],
     })) {
-      for (const trade of page.data) {
+      for (const trade of page.transactions) {
         try {
           const ownerName = trade.reportingOwner?.name ?? 'Unknown'
           const ownerTitle = trade.reportingOwner?.officerTitle ?? null

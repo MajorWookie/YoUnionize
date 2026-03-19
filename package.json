@@ -35,7 +35,9 @@
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "test:all": "vitest run && playwright test --config e2e/playwright.config.ts",
     "check:all": "oxlint src app packages && tsc --noEmit; vitest run",
-    "android": "npx expo run:android"
+    "android": "npx expo run:android",
+    "seed": "bun run scripts/seed-companies.ts",
+    "seed:no-ai": "bun run scripts/seed-companies.ts --skip-summarization"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

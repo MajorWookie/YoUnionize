@@ -81,7 +81,20 @@
       "Bash(supabase db:*)",
       "Bash(psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"\\\\dt public.*\")",
       "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/\\\\\\(tabs\\\\\\)/)",
-      "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/\\\\\\(tabs\\\\\\)/discover/)"
+      "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/\\\\\\(tabs\\\\\\)/discover/)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion -name *bulk* -o -name *seed* -o -name *loader*)",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://efts.sec-api.io\")",
+      "Bash(curl -v \"https://efts.sec-api.io\")",
+      "Bash(bun -e \"try { const r = await fetch\\(''https://efts.sec-api.io''\\); console.info\\(''status:'', r.status\\) } catch\\(e\\) { console.error\\(''error:'', e.message\\) }\")",
+      "Bash(bun -e \"try { const r = await fetch\\(''https://api.sec-api.io''\\); console.info\\(''status:'', r.status\\) } catch\\(e\\) { console.error\\(''error:'', e.message\\) }\")",
+      "Bash(for domain:*)",
+      "Bash(do echo:*)",
+      "Bash(bun -e \"try { const r = await fetch\\(''https://$domain''\\); console.log\\(r.status\\) } catch\\(e\\) { console.log\\(e.message\\) }\")",
+      "Bash(done)",
+      "WebFetch(domain:sec-api.io)",
+      "Bash(source /Users/majorwookie/Documents/GitHub/YoUnion/.env)",
+      "Bash(bun -e \":*)"
     ]
   },
   "outputStyle": "Explanatory"
