@@ -50,7 +50,7 @@ export interface DocumentFile {
 }
 
 export interface FilingQueryResponse {
-  total: { value: number; relation: string }
+  total: { value: number; relation?: string }
   filings: Array<Filing>
 }
 
@@ -79,7 +79,7 @@ export interface FullTextSearchResult {
 }
 
 export interface FullTextSearchResponse {
-  total: { value: number; relation: string }
+  total: { value: number; relation?: string }
   filings: Array<FullTextSearchResult>
 }
 
@@ -162,14 +162,22 @@ export interface DirectorsResponse {
 // ─── Insider Trading (Form 3/4/5) ──────────────────────────────────────────
 
 export interface InsiderTransaction {
-  transactionDate: string
-  transactionCode: string
-  transactionDescription: string
-  sharesTraded: number
-  pricePerShare: number | null
-  sharesOwnedAfter: number
-  directOrIndirect: string
-  securityTitle: string
+  transactionDate?: string
+  transactionCode?: string
+  transactionDescription?: string
+  sharesTraded?: number
+  pricePerShare?: number | null
+  pricePerShareFootnoteId?: Array<string>
+  sharesOwnedAfter?: number
+  directOrIndirect?: string
+  securityTitle?: string
+  conversionOrExercisePrice?: number | null
+  conversionOrExercisePriceFootnoteId?: Array<string>
+  exerciseDate?: string
+  exerciseDateFootnoteId?: Array<string>
+  expirationDate?: string
+  expirationDateFootnoteId?: Array<string>
+  underlyingSecurity?: { title?: string; shares?: number }
 }
 
 export interface InsiderTrade {
@@ -177,6 +185,7 @@ export interface InsiderTrade {
   accessionNo: string
   formType: string
   filedAt: string
+  documentType?: string
   issuer: {
     cik: string
     name: string
@@ -192,15 +201,18 @@ export interface InsiderTrade {
   }
   nonDerivativeTable: {
     transactions: Array<InsiderTransaction>
+    holdings?: Array<InsiderTransaction>
   } | null
   derivativeTable: {
     transactions: Array<InsiderTransaction>
+    holdings?: Array<InsiderTransaction>
   } | null
+  footnotes?: Array<unknown>
   periodOfReport: string
 }
 
 export interface InsiderTradingResponse {
-  total: { value: number; relation: string }
+  total?: { value: number; relation?: string }
   transactions: Array<InsiderTrade>
 }
 
@@ -254,7 +266,7 @@ export interface Form8KFiling {
 }
 
 export interface Form8KResponse {
-  total: { value: number; relation: string }
+  total?: { value: number; relation?: string }
   data: Array<Form8KFiling>
 }
 
@@ -262,17 +274,17 @@ export interface Form8KResponse {
 
 export interface CompanyMapping {
   name: string
-  ticker: string
-  cik: string
-  cusip: string
-  exchange: string
-  isDelisted: boolean
-  category: string
-  sector: string
-  industry: string
-  sic: string
-  currency: string
-  location: string
+  ticker?: string
+  cik?: string
+  cusip?: string
+  exchange?: string
+  isDelisted?: boolean
+  category?: string
+  sector?: string
+  industry?: string
+  sic?: string
+  currency?: string
+  location?: string
 }
 
 // ─── Pagination Helper ──────────────────────────────────────────────────────

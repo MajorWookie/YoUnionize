@@ -51,7 +51,7 @@ export async function fetchAllSecData(company: CompanyRecord): Promise<FetchResu
       fetchCompensation(client, company),
       fetchInsiderTrading(client, company, oneYearAgoStr),
       fetchDirectors(client, company),
-      fetchForm8K(client, company),
+      fetchForm8K(client, company, oneYearAgoStr),
     ])
 
   // Store filing search responses
@@ -252,7 +252,7 @@ async function fetchDirectors(
   return client.searchDirectors({
     query: `ticker:${company.ticker}`,
     from: '0',
-    size: '50',
+    size: '1',
     sort: [{ filedAt: { order: 'desc' } }],
   })
 }
@@ -260,9 +260,10 @@ async function fetchDirectors(
 async function fetchForm8K(
   client: ReturnType<typeof getSecApiClient>,
   company: CompanyRecord,
+  oneYearAgoStr: string,
 ) {
   return client.searchForm8K({
-    query: `ticker:${company.ticker}`,
+    query: `ticker:${company.ticker} AND filedAt:[${oneYearAgoStr} TO *]`,
     from: '0',
     size: '50',
     sort: [{ filedAt: { order: 'desc' } }],

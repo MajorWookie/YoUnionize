@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Union",
-    "slug": "union",
-    "scheme": "union",
+    "name": "YoUnion",
+    "slug": "younion",
+    "scheme": "younion",
     "version": "0.1.0",
     "platforms": ["ios", "android", "web"],
     "ios": {
-      "bundleIdentifier": "com.majorwookie.union",
+      "bundleIdentifier": "com.majorwookie.younion",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.majorwookie.union"
+      "package": "com.majorwookie.younion"
     },
     "web": {
       "bundler": "metro",

@@ -1,7 +1,7 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
 /**
- * SST v3 Infrastructure-as-Code for Union
+ * SST v3 Infrastructure-as-Code for YoUnion
  *
  * Resources:
  *   - ECS Fargate service (One web app)
@@ -20,7 +20,7 @@
 export default $config({
   app(input) {
     return {
-      name: 'union',
+      name: 'younion',
       removal: input?.stage === 'production' ? 'retain' : 'remove',
       home: 'aws',
       providers: {
@@ -111,8 +111,8 @@ export default $config({
       environment: {
         ...commonEnv,
         ONE_SERVER_URL: isProd
-          ? 'https://union.app'
-          : `https://${stage}.union.app`,
+          ? 'https://younion.app'
+          : `https://${stage}.younion.app`,
         NODE_OPTIONS: isProd ? '--max-old-space-size=3072' : '--max-old-space-size=512',
       },
       scaling: {

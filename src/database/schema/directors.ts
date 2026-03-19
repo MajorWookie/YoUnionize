@@ -14,5 +14,6 @@ export const directors = pgTable('directors', {
   age: integer('age'),
   directorClass: text('director_class'),
   qualifications: jsonb('qualifications'),
+  role: text('role'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })

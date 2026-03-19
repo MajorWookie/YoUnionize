@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Union</string>
+    <string>YoUnion</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -27,8 +27,8 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>union</string>
-          <string>com.majorwookie.union</string>
+          <string>younion</string>
+          <string>com.majorwookie.younion</string>
         </array>
       </dict>
     </array>

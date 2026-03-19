@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import {
   getDb,
   rawSecResponses,
@@ -9,6 +9,7 @@ import {
   form8kEvents,
 } from '@union/postgres'
 import type { CompanyRecord } from './company-lookup'
+import { enrichCompensationNames, enrichDirectorRoles } from './enrichment'
 import { summarizeCompanyFilings } from './summarization-pipeline'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ const TRANSACTION_CODE_MAP: Record<string, string> = {
   A: 'grant',
   M: 'exercise',
   G: 'gift',
+  H: 'holding',
 }
 
 /**
@@ -87,6 +89,18 @@ export async function processRawSecData(
         .set({ processStatus: 'failed' })
         .where(eq(rawSecResponses.id, row.id))
     }
+  }
+
+  // Run enrichment (non-blocking — failures don't affect ingestion)
+  try {
+    await enrichCompensationNames(company.id)
+  } catch (err) {
+    console.info(`[RawDataProcessor] Compensation enrichment failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  try {
+    await enrichDirectorRoles(company.id)
+  } catch (err) {
+    console.info(`[RawDataProcessor] Director enrichment failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 
   // Run summarization on filings that don't have aiSummary yet
@@ -179,24 +193,13 @@ async function processCompensation(
   data: Record<string, unknown>,
 ): Promise<void> {
   const execs = (data.data ?? []) as Array<Record<string, unknown>>
+  const minYear = new Date().getFullYear() - 2 // 3 years of history
 
   for (const exec of execs) {
     const fiscalYear = (exec.year as number) ?? 0
+    if (fiscalYear < minYear) continue
+
     const execName = (exec.name as string) ?? 'Unknown'
-
-    const existing = await db
-      .select({ id: executiveCompensation.id })
-      .from(executiveCompensation)
-      .where(
-        and(
-          eq(executiveCompensation.companyId, company.id),
-          eq(executiveCompensation.executiveName, execName),
-          eq(executiveCompensation.fiscalYear, fiscalYear),
-        ),
-      )
-      .limit(1)
-
-    if (existing.length > 0) continue
 
     await db.insert(executiveCompensation).values({
       companyId: company.id,
@@ -212,7 +215,7 @@ async function processCompensation(
       otherCompensation: (exec.otherCompensation as number) ?? null,
       changeInPensionValue: (exec.changeInPensionValueAndDeferredEarnings as number) ?? null,
       ceoPayRatio: (exec.ceoPayRatio as string) ?? null,
-    })
+    }).onConflictDoNothing()
   }
 }
 
@@ -238,11 +241,23 @@ async function processInsiderTrading(
       await insertTrade(db, company, trade, tx, ownerName, ownerTitle, filingUrl, false)
     }
 
+    // Process non-derivative holdings (Form 3 initial ownership)
+    const nonDerivHoldings = (nonDeriv?.holdings ?? []) as Array<Record<string, unknown>>
+    for (const holding of nonDerivHoldings) {
+      await insertTrade(db, company, trade, holding, ownerName, ownerTitle, filingUrl, false)
+    }
+
     // Process derivative transactions
     const deriv = trade.derivativeTable as Record<string, unknown> | null
     const derivTxs = (deriv?.transactions ?? []) as Array<Record<string, unknown>>
     for (const tx of derivTxs) {
       await insertTrade(db, company, trade, tx, ownerName, ownerTitle, filingUrl, true)
+    }
+
+    // Process derivative holdings (Form 3 initial derivative positions)
+    const derivHoldings = (deriv?.holdings ?? []) as Array<Record<string, unknown>>
+    for (const holding of derivHoldings) {
+      await insertTrade(db, company, trade, holding, ownerName, ownerTitle, filingUrl, true)
     }
   }
 }
@@ -261,7 +276,8 @@ async function insertTrade(
   if (!txDate) return
 
   const txCode = (tx.transactionCode as string) ?? ''
-  const transactionType = TRANSACTION_CODE_MAP[txCode] ?? 'other'
+  const isHolding = !txCode && !tx.transactionDate
+  const transactionType = isHolding ? 'holding' : (TRANSACTION_CODE_MAP[txCode] ?? 'other')
   const shares = String((tx.sharesTraded as number) ?? 0)
   const pricePerShare = tx.pricePerShare != null ? String(tx.pricePerShare) : null
   const totalValue =
@@ -269,21 +285,7 @@ async function insertTrade(
       ? Math.round((tx.sharesTraded as number) * (tx.pricePerShare as number))
       : null
 
-  // Dedup check
-  const dupeCheck = await db
-    .select({ id: insiderTrades.id })
-    .from(insiderTrades)
-    .where(
-      and(
-        eq(insiderTrades.companyId, company.id),
-        eq(insiderTrades.filerName, ownerName),
-        eq(insiderTrades.transactionDate, txDate),
-        eq(insiderTrades.shares, shares),
-      ),
-    )
-    .limit(1)
-
-  if (dupeCheck.length > 0) return
+  const accessionNo = (trade.accessionNo as string) ?? null
 
   await db.insert(insiderTrades).values({
     companyId: company.id,
@@ -296,10 +298,10 @@ async function insertTrade(
     totalValue,
     filingUrl,
     isDerivative,
-    accessionNumber: (trade.accessionNo as string) ?? null,
+    accessionNumber: accessionNo,
     securityTitle: (tx.securityTitle as string) ?? null,
     sharesOwnedAfter: tx.sharesOwnedAfter != null ? String(tx.sharesOwnedAfter) : null,
-  })
+  }).onConflictDoNothing()
 }
 
 async function processDirectors(
@@ -319,14 +321,6 @@ async function processDirectors(
       if (seenNames.has(name)) continue
       seenNames.add(name)
 
-      const existing = await db
-        .select({ id: directors.id })
-        .from(directors)
-        .where(and(eq(directors.companyId, company.id), eq(directors.name, name)))
-        .limit(1)
-
-      if (existing.length > 0) continue
-
       const ageStr = director.age as string | null
       const age = ageStr ? parseInt(ageStr, 10) : null
 
@@ -340,7 +334,7 @@ async function processDirectors(
         age: age && !isNaN(age) ? age : null,
         directorClass: emptyToNull(director.directorClass as string),
         qualifications: (director.qualificationsAndExperience as Array<string>) ?? null,
-      })
+      }).onConflictDoNothing()
     }
   }
 }
@@ -359,18 +353,39 @@ async function processForm8K(
 
     if (!accessionNo || !filedAt || !items) continue
 
-    const itemTypes = ['item401', 'item402', 'item502'] as const
-    const itemTypeMap: Record<string, string> = {
+    const KNOWN_ITEM_MAP: Record<string, string> = {
+      item101: '1.01',
+      item102: '1.02',
+      item201: '2.01',
+      item202: '2.02',
+      item203: '2.03',
+      item204: '2.04',
+      item205: '2.05',
+      item206: '2.06',
+      item301: '3.01',
+      item302: '3.02',
+      item303: '3.03',
       item401: '4.01',
       item402: '4.02',
+      item501: '5.01',
       item502: '5.02',
+      item503: '5.03',
+      item504: '5.04',
+      item505: '5.05',
+      item506: '5.06',
+      item507: '5.07',
+      item508: '5.08',
+      item601: '6.01',
+      item701: '7.01',
+      item801: '8.01',
+      item901: '9.01',
     }
 
-    for (const itemKey of itemTypes) {
-      const itemData = items[itemKey]
-      if (!itemData) continue
+    for (const [itemKey, itemData] of Object.entries(items)) {
+      if (!itemData || typeof itemData !== 'object') continue
 
-      const itemType = itemTypeMap[itemKey]
+      // Map known keys like "item401" → "4.01", or pass through unknown keys as-is
+      const itemType = KNOWN_ITEM_MAP[itemKey] ?? itemKey
 
       // Dedup check
       const existing = await db
