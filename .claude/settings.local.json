@@ -109,7 +109,10 @@
       "Bash(grep -rn \"Understand your company\\\\|Know your worth\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.tsx --include=*.ts)",
       "Bash(grep -rn com.majorwookie.union /Users/majorwookie/Documents/GitHub/YoUnion --include=*.json --include=*.plist --include=*.xml --include=*.ts)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion -type f \\\\\\(-name tsconfig.json -o -name .env* -o -name vitest.config.ts -o -name eslint* -o -name .gitignore \\\\\\))",
-      "Bash(bun dev:*)"
+      "Bash(bun dev:*)",
+      "Bash(watchman version:*)",
+      "Bash(watchman watch-list:*)",
+      "Bash(watchman shutdown-server:*)"
     ]
   },
   "outputStyle": "Explanatory"
