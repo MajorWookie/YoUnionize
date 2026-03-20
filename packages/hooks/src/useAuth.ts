@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback } from 'react'
 import { type User, type Session, type AuthError } from '@supabase/supabase-js'
 import { getSupabaseBrowserClient } from '~/features/auth/client/authClient'
 
+// TODO: Set to false (or remove) to restore real auth before production
+const DEV_SKIP_AUTH = true
+
+const DEV_TEST_USER = {
+  id: '00000000-0000-0000-0000-000000000000',
+  email: 'testuser@younion.dev',
+  name: 'Test User',
+} as const
+
 interface SignInResult {
   data: { user: User | null; session: Session | null } | null
   error: AuthError | null
@@ -15,9 +24,11 @@ interface SignUpResult {
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(!DEV_SKIP_AUTH)
 
   useEffect(() => {
+    if (DEV_SKIP_AUTH) return
+
     const supabase = getSupabaseBrowserClient()
 
     // Get the initial session
@@ -75,13 +86,15 @@ export function useAuth() {
   }, [])
 
   return {
-    user: user
-      ? {
-          id: user.id,
-          email: user.email ?? '',
-          name: (user.user_metadata?.name as string) ?? '',
-        }
-      : null,
+    user: DEV_SKIP_AUTH
+      ? DEV_TEST_USER
+      : user
+        ? {
+            id: user.id,
+            email: user.email ?? '',
+            name: (user.user_metadata?.name as string) ?? '',
+          }
+        : null,
     session,
     isLoading,
     signIn,

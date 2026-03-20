@@ -8,6 +8,7 @@ import {
   directors,
   form8kEvents,
 } from '@union/postgres'
+import { normalizeName } from '@union/helpers'
 import type { CompanyRecord } from './company-lookup'
 import { enrichCompensationNames, enrichDirectorRoles } from './enrichment'
 import { summarizeCompanyFilings } from './summarization-pipeline'
@@ -200,11 +201,13 @@ async function processCompensation(
     if (fiscalYear < minYear) continue
 
     const execName = (exec.name as string) ?? 'Unknown'
+    const normalized = normalizeName(execName)
 
     await db.insert(executiveCompensation).values({
       companyId: company.id,
       fiscalYear,
       executiveName: execName,
+      normalizedName: normalized,
       title: (exec.position as string) ?? 'Unknown',
       totalCompensation: (exec.total as number) ?? 0,
       salary: (exec.salary as number) ?? null,
@@ -215,7 +218,17 @@ async function processCompensation(
       otherCompensation: (exec.otherCompensation as number) ?? null,
       changeInPensionValue: (exec.changeInPensionValueAndDeferredEarnings as number) ?? null,
       ceoPayRatio: (exec.ceoPayRatio as string) ?? null,
-    }).onConflictDoNothing()
+    }).onConflictDoUpdate({
+      target: [executiveCompensation.companyId, executiveCompensation.normalizedName, executiveCompensation.fiscalYear],
+      set: {
+        title: sql`EXCLUDED.title`,
+        totalCompensation: sql`EXCLUDED.total_compensation`,
+        salary: sql`EXCLUDED.salary`,
+        bonus: sql`EXCLUDED.bonus`,
+        stockAwards: sql`EXCLUDED.stock_awards`,
+        optionAwards: sql`EXCLUDED.option_awards`,
+      },
+    })
   }
 }
 
@@ -318,8 +331,9 @@ async function processDirectors(
 
     for (const director of directorsList) {
       const name = (director.name as string) ?? 'Unknown'
-      if (seenNames.has(name)) continue
-      seenNames.add(name)
+      const normalized = normalizeName(name)
+      if (seenNames.has(normalized)) continue
+      seenNames.add(normalized)
 
       const ageStr = director.age as string | null
       const age = ageStr ? parseInt(ageStr, 10) : null
@@ -327,6 +341,7 @@ async function processDirectors(
       await db.insert(directors).values({
         companyId: company.id,
         name,
+        normalizedName: normalized,
         title: emptyToNull(director.position as string) ?? 'Director',
         isIndependent: (director.isIndependent as boolean) ?? null,
         committees: (director.committeeMemberships as Array<string>) ?? null,
@@ -334,7 +349,16 @@ async function processDirectors(
         age: age && !isNaN(age) ? age : null,
         directorClass: emptyToNull(director.directorClass as string),
         qualifications: (director.qualificationsAndExperience as Array<string>) ?? null,
-      }).onConflictDoNothing()
+      }).onConflictDoUpdate({
+        target: [directors.companyId, directors.normalizedName],
+        set: {
+          title: sql`EXCLUDED.title`,
+          isIndependent: sql`EXCLUDED.is_independent`,
+          committees: sql`EXCLUDED.committees`,
+          tenureStart: sql`EXCLUDED.tenure_start`,
+          age: sql`EXCLUDED.age`,
+        },
+      })
     }
   }
 }

@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { Paragraph, XStack, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
 import type { ExecutiveData, DirectorData } from '../types'
@@ -6,9 +7,11 @@ import { formatDollars, getInitials } from '../format'
 interface Props {
   executives: Array<ExecutiveData>
   directors: Array<DirectorData>
+  companyTicker: string
 }
 
-export function LeadershipSection({ executives, directors }: Props) {
+export function LeadershipSection({ executives, directors, companyTicker }: Props) {
+  const router = useRouter()
   if (executives.length === 0 && directors.length === 0) return null
 
   // Dedupe executives by name (keep highest comp), take top 5
@@ -36,7 +39,11 @@ export function LeadershipSection({ executives, directors }: Props) {
             Top Executives
           </Paragraph>
           {top5.map((exec) => (
-            <Card key={exec.id}>
+            <Card
+              key={exec.id}
+              pressable
+              onPress={() => router.push(`/company/${companyTicker}/executive/${exec.id}`)}
+            >
               <XStack gap="$3" alignItems="center">
                 <YStack
                   width={44}
@@ -121,7 +128,11 @@ export function LeadershipSection({ executives, directors }: Props) {
             const tenureYear = rawYear != null && !Number.isNaN(rawYear) ? rawYear : null
 
             return (
-              <Card key={dir.id}>
+              <Card
+                key={dir.id}
+                pressable
+                onPress={() => router.push(`/company/${companyTicker}/executive/${dir.id}`)}
+              >
                 <XStack gap="$3" alignItems="center">
                   <YStack
                     width={44}

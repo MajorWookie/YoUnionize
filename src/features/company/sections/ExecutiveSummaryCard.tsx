@@ -54,7 +54,7 @@ export function ExecutiveSummaryCard({ summary, periodEnd, filingType }: Props) 
       {summary.employee_relevance && (
         <Card>
           <Paragraph fontWeight="600" marginBottom="$2">
-            What it means for employees
+            What this may mean for employees
           </Paragraph>
           <Paragraph color="$color11" lineHeight={22}>
             {summary.employee_relevance}

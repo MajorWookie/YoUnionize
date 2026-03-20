@@ -1,5 +1,6 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { getDb, directors } from '@union/postgres'
+import { normalizeName } from '@union/helpers'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 
@@ -50,30 +51,15 @@ export async function ingestDirectors(
 
       for (const director of filingDirectors) {
         const name = director.name ?? 'Unknown'
-        if (seenNames.has(name)) continue
-        seenNames.add(name)
+        const normalized = normalizeName(name)
+        if (seenNames.has(normalized)) continue
+        seenNames.add(normalized)
 
         try {
-          // Check for existing record
-          const existing = await db
-            .select({ id: directors.id })
-            .from(directors)
-            .where(
-              and(
-                eq(directors.companyId, company.id),
-                eq(directors.name, name),
-              ),
-            )
-            .limit(1)
-
-          if (existing.length > 0) {
-            result.skipped++
-            continue
-          }
-
           await db.insert(directors).values({
             companyId: company.id,
             name,
+            normalizedName: normalized,
             title: emptyToNull(director.position) ?? 'Director',
             isIndependent: director.isIndependent ?? null,
             committees: director.committeeMemberships ?? null,
@@ -81,6 +67,17 @@ export async function ingestDirectors(
             age: director.age ? Number(director.age) : null,
             directorClass: emptyToNull(director.directorClass),
             qualifications: director.qualificationsAndExperience ?? null,
+          }).onConflictDoUpdate({
+            target: [directors.companyId, directors.normalizedName],
+            set: {
+              title: sql`EXCLUDED.title`,
+              isIndependent: sql`EXCLUDED.is_independent`,
+              committees: sql`EXCLUDED.committees`,
+              tenureStart: sql`EXCLUDED.tenure_start`,
+              age: sql`EXCLUDED.age`,
+              directorClass: sql`EXCLUDED.director_class`,
+              qualifications: sql`EXCLUDED.qualifications`,
+            },
           })
 
           result.ingested++

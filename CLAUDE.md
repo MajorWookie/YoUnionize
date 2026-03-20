@@ -1,11 +1,11 @@
-# CLAUDE.md — Union
+# CLAUDE.md — YoUnion
 
 > Last updated: 2026-03-20
-> Last updated by: AI session (CLAUDE.md sync — relations.ts, 2-phase ingestion, test suites, helpers/concurrency)
+> Last updated by: AI session (CLAUDE.md sync — nested company routes, SVG charts, markdown rendering, name normalization, income data extractor)
 
 ## Project Overview
 
-Union is a cross-platform application (iOS-first, then Android, then Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. It ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
+YoUnion is a cross-platform application (iOS-first, then Android, then Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. It ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
 
 ## Tech Stack
 
@@ -25,6 +25,8 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - **Testing**: Vitest (unit), Playwright (E2E — scaffolded, not active)
 - **Deployment**: SST v3 on AWS (static SPA + Lambda) + Supabase Edge Functions
 - **Env Management**: dotenvx, `.env` / `.env.example`
+- **Charts**: react-native-svg (custom SVG-based PieChart, SunburstChart — no external charting library)
+- **Markdown**: react-native-markdown-display 7.x (cross-platform markdown rendering in filing summaries)
 - **Icons**: Phosphor (phosphor-react for web, phosphor-react-native for mobile)
 
 ### Stack Confidence Notes
@@ -49,8 +51,10 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 │  │  - _layout.tsx   │  │  - database/schema+validators│  │
 │  │  - index.tsx     │  │  - features/auth, company,   │  │
 │  │  - sign-in.tsx   │  │    onboarding                │  │
-│  │  - sign-up.tsx   │  │  - interface/ (UI components)│  │
-│  │  - (app)/*.tsx   │  │  - lib/ (api-client)         │  │
+│  │  - sign-up.tsx   │  │  - interface/ (UI, charts,   │  │
+│  │  - (app)/        │  │    display)                  │  │
+│  │    company/      │  │  - lib/ (api-client)         │  │
+│  │      [ticker]/   │  │                              │  │
 │  └─────────────────┘  └──────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────┤
 │     supabase/functions/ (Edge Functions — Deno)          │
@@ -63,7 +67,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 │  @union/postgres  — Drizzle DB client (postgres-js)       │
 │  @union/sec-api   — SEC EDGAR API client + schemas        │
 │  @union/helpers   — Shared utilities (ensureEnv, types,   │
-│                     concurrency)                          │
+│                     concurrency, normalizeName)           │
 │  @union/hooks     — React hooks (useAuth, useDebounce)    │
 ├─────────────────────────────────────────────────────────┤
 │  src/server/lambda/ — AWS Lambda workers (SST v3)         │
@@ -88,9 +92,12 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 | `supabase/migrations/` | SQL migrations (applied via `supabase db reset`) |
 | `src/features/auth/` | Supabase client creation (server + client) and `ensureAuth()` |
 | `src/features/ask/` | RAG Q&A UI (AskBar component) |
-| `src/features/company/` | Company detail types, formatting utilities, and section components (LeadershipSection, IngestionPrompt) |
+| `src/features/company/` | Company detail types, formatting utilities, section components (LeadershipSection, CeoSpotlightCard, ExecutiveSummaryCard, TextSummaryCard, IncomeStatementSunburst, IncomeBreakdownChart, IngestionPrompt), and data extraction utilities |
+| `src/features/company/lib/` | Data extraction utilities — `income-data-extractor.ts` (XBRL income statement parser → sunburst chart data) |
 | `src/features/onboarding/` | Constants for user profile (org levels, pay frequencies, CoL categories) |
 | `src/interface/` | Shared UI components (ScreenContainer, ErrorBoundary, ToastProvider) |
+| `src/interface/charts/` | SVG-based chart components — `PieChart.tsx` (donut chart), `SunburstChart.tsx` (multi-ring concentric chart with tap interaction) |
+| `src/interface/display/` | Display components — `MarkdownContent.tsx` (cross-platform markdown renderer using Tamagui theme tokens) |
 | `src/server/` | Server-side utilities (api-utils, job-queue, job-queue-db, ai-client, sec-api-client) |
 | `src/server/services/` | Business logic: ingestion pipelines (filing, compensation, directors, insider trading), XBRL transform, summarization, sec-fetcher (Phase 1 raw fetch), raw-data-processor (Phase 2 domain processing) |
 | `src/server/services/enrichment/` | Compensation and director enrichment functions (post-fetch processing) |
@@ -101,7 +108,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 | `packages/ai/` | Anthropic SDK wrapper, prompt templates (filing summary, comp analysis, RAG) |
 | `packages/postgres/` | Database connection, vector search functions |
 | `packages/sec-api/` | SEC API client with Valibot-validated responses |
-| `packages/helpers/` | `ensureEnv()`, shared TypeScript types, concurrency utilities (`concurrency.ts`) |
+| `packages/helpers/` | `ensureEnv()`, `normalizeName()`, shared TypeScript types, concurrency utilities (`concurrency.ts`) |
 | `packages/hooks/` | `useAuth()` (Supabase), `useDebounce()` |
 | `supabase/` | Local Supabase config + migrations |
 | `e2e/` | Playwright E2E test scaffold |
@@ -109,7 +116,8 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 ### Data Flow
 
 1. **User searches** for a company → Discover screen fires TWO parallel calls: `GET /api/companies/search` (local DB, fast) and, if local results < 3, `GET /api/companies/search-sec` (SEC API search + upsert). Local results display immediately; SEC results are appended asynchronously.
-2. **User navigates to company detail** → `GET /api/companies/{ticker}/detail` → if directors or executives are missing from DB, auto-fetches from SEC API (`_shared/sec-ingest.ts`) and stores them before returning.
+2. **User navigates to company detail** → `GET /api/companies/{ticker}/detail` → if directors or executives are missing from DB, auto-fetches from SEC API (`_shared/sec-ingest.ts`) and stores them before returning. Company detail page renders dashboard sections: income statement sunburst, CEO spotlight, executive summary, leadership (tappable), financials, MD&A, risk factors, 8-K events, etc.
+2a. **User taps an executive/director** → navigates to `/company/[ticker]/executive/[id]` → shows full profile with compensation breakdown, committee memberships, qualifications, and dual-role handling.
 3. **Phase 1 — SEC fetch** → `POST /api/companies/[ticker]/fetch` → fetches raw SEC API responses (filings, exec comp, insider trades, directors) → stores verbatim JSON in `raw_sec_responses` table
 4. **Phase 2 — Processing** → `POST /api/companies/[ticker]/process` → reads from `raw_sec_responses` → transforms and inserts into domain tables (filings, executive_compensation, directors, insider_trades) with enrichment (canonical names, roles)
 5. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates embeddings → stores in `embeddings` table
@@ -134,6 +142,17 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - **Exports**: Named exports only. Index files are re-export barrels — no logic.
 - **Logging**: `console.info()` only (never `console.log()`).
 - **Type safety**: No `any` — use `unknown` with type guards. Explicit return types on exported functions.
+
+### Visualization & Display
+- **SVG charts**: Built with `react-native-svg` — no external charting libraries. Custom geometry helpers (`polarToCartesian`, `arcPath`, `annularSectorPath`) in chart components. Minimum arc width enforcement (7.2°) prevents tiny slices from disappearing.
+- **Markdown rendering**: `MarkdownContent` component wraps `react-native-markdown-display`, styled with Tamagui theme tokens. Used for AI-generated content (MD&A, risk factors, legal proceedings, 8-K summaries). Enable via `markdown` prop on `TextSummaryCard`.
+- **Income data extraction**: `src/features/company/lib/income-data-extractor.ts` classifies XBRL line items into 17 categories via regex, then builds multi-ring sunburst datasets. Handles edge cases: operating loss, net loss, negative non-operating items, bank vs. manufacturing income structures.
+
+### Name Normalization & Deduplication
+- **`normalizeName()`** in `@union/helpers` — lowercase, trim, strip honorific suffixes (Jr., Sr., II–V, Esq., Ph.D., M.D., CPA). Used for deduplication of people across filings.
+- **Database columns**: `normalized_name` on both `directors` and `executive_compensation` tables (added in `20260320000000_normalized_name.sql`).
+- **Dedup indexes**: `directors_dedup_idx` (company_id, normalized_name) and `exec_comp_dedup_idx` (company_id, normalized_name, fiscal_year) prevent duplicate inserts from overlapping proxy filings.
+- **Sync requirement**: The SQL migration and `normalizeName()` helper use the same regex pattern — keep them in sync.
 
 ### Styling (Tamagui)
 - Use `styled()` for component variants. Don't mix with inline `style` props unless overriding for a one-off case.
@@ -236,7 +255,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - [ ] **Lambda migrate handler is stale** — `src/server/lambda/migrate.ts` imports from `drizzle-orm/node-postgres/migrator` and references `./src/database/migrations` (non-existent). Per ADR-008, migrations are now in `supabase/migrations/`. This handler will fail at deploy. Needs rewrite or removal. Priority: **high**.
 - [ ] **Legacy `app/api/` routes not deleted** — 14 One Framework `+api.ts` files remain in `app/api/`. Per ADR-007, all API logic moved to Edge Functions. These are dead code but confusing. Priority: **medium**.
 - [ ] **SST config references One Framework** — `sst.config.ts` still sets `ONE_SERVER_URL` env var. Should be removed or renamed post-migration. Priority: **low**.
-- [ ] **Duplicate type definitions** — `FinancialLineItem`, `FinancialStatement`, `ExecCompSummary` defined in both `src/server/services/xbrl-transformer.ts` and `src/features/company/types.ts`. Should be extracted to a shared location. Priority: **medium**.
+- [ ] **Duplicate type definitions** — `FinancialLineItem`, `FinancialStatement` defined in both `src/server/services/xbrl-transformer.ts` and `src/features/company/types.ts`. `ExecCompSummary` now also in `src/features/company/types.ts`. Should be extracted to a shared location. Priority: **medium**.
 - [ ] **No rate limiting on API endpoints** — RAG queries and compensation analysis are computationally expensive with no throttling. Priority: **high before prod**.
 - [ ] **No structured logging** — All logging via `console.info()` with no request IDs, user context, or JSON structure. Hard to search in production. Priority: **medium**.
 - [ ] **Tamagui v2.0.0-rc.15 is pre-release** — API may change. Monitor for stable release. Priority: **low** (works currently).
@@ -327,7 +346,7 @@ bun run android
 - **Do NOT mix Supabase Auth with other auth systems.** The project previously used Better Auth — that migration is complete. All auth now goes through Supabase Auth exclusively.
 
 ### Expo Router
-- **File-system routing in `app/`**: Layouts use `_layout.tsx`, pages are `index.tsx` or `[param].tsx`. Platform-specific layouts use `.native.tsx` suffix.
+- **File-system routing in `app/`**: Layouts use `_layout.tsx`, pages are `index.tsx` or `[param].tsx`. Platform-specific layouts use `.native.tsx` suffix. Nested directory routes (e.g., `app/(app)/company/[ticker]/`) use their own `_layout.tsx` for stack navigation within that section.
 - **Entry point**: `package.json` must have `"main": "expo-router/entry"` for the app to load correctly.
 - **`useLocalSearchParams` not `useParams`**: Expo Router uses `useLocalSearchParams<T>()` for route params, not `useParams<T>()`.
 - **Web SPA mode**: App renders as a single-page application on web. No SSR.
@@ -337,7 +356,7 @@ bun run android
 - **CORS required**: Every Edge Function must handle `OPTIONS` preflight and include CORS headers. Use `_shared/cors.ts`.
 - **150s timeout (free) / 400s (Pro)**: Long-running operations (summarization) must use Lambda workers, not Edge Functions.
 - **Schema duplication**: `supabase/functions/_shared/schema.ts` mirrors `src/database/schema/`. Keep them in sync when modifying tables.
-- **Ingestion logic duplication**: `supabase/functions/_shared/sec-ingest.ts` mirrors column mappings from `src/server/services/directors-ingestion.ts` and `compensation-ingestion.ts`. Keep both in sync when changing director or compensation fields. The `_shared` version skips enrichment (roles, canonical names) — that runs during full pipeline ingestion.
+- **Ingestion logic duplication**: `supabase/functions/_shared/sec-ingest.ts` mirrors column mappings from `src/server/services/directors-ingestion.ts` and `compensation-ingestion.ts`. Keep both in sync when changing director or compensation fields. The `_shared` version skips enrichment (roles, canonical names) — that runs during full pipeline ingestion. Both now include `normalizedName` via `@union/helpers`.
 
 ## Version Verification Protocol
 
@@ -406,6 +425,13 @@ When uncertain, point the developer here rather than guessing.
 - `fetchWithRetry` API client utility with configurable retry/backoff (2026-03-20)
 - Concurrency utilities added to `@union/helpers` (`packages/helpers/src/concurrency.ts`)
 - Drizzle relations file created at `src/database/relations.ts`
+- Nested company routing: `app/(app)/company/[ticker]/` with `_layout.tsx`, `index.tsx`, and `executive/[id].tsx` for executive/director detail pages (2026-03-20)
+- SVG chart components: `PieChart` (donut) and `SunburstChart` (multi-ring concentric) in `src/interface/charts/` (2026-03-20)
+- Income data extraction: `src/features/company/lib/income-data-extractor.ts` — XBRL income statement → sunburst visualization data (2026-03-20)
+- Company detail dashboard sections: CeoSpotlightCard, IncomeStatementSunburst, IncomeBreakdownChart (fallback), ExecutiveSummaryCard (with markdown), TextSummaryCard (with markdown support) (2026-03-20)
+- Markdown rendering: `MarkdownContent` component using `react-native-markdown-display` with Tamagui theme tokens (2026-03-20)
+- Name normalization and dedup: `normalizeName()` helper, `normalized_name` DB columns + dedup indexes on directors and executive_compensation tables (2026-03-20)
+- Expo modules support and privacy information (2026-03-20)
 
 ### In Progress / Remaining
 - Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)

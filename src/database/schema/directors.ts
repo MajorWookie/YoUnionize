@@ -15,5 +15,6 @@ export const directors = pgTable('directors', {
   directorClass: text('director_class'),
   qualifications: jsonb('qualifications'),
   role: text('role'),
+  normalizedName: text('normalized_name'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })

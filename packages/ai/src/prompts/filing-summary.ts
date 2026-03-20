@@ -28,10 +28,10 @@ You MUST respond with valid JSON matching this exact structure:
       "context": "why this number matters in plain language"
     }
   ],
-  "plain_language_explanation": "A detailed but readable explanation of the filing (3-5 paragraphs)",
+  "plain_language_explanation": "2-3 sentences maximum: what happened and why it matters to a non-expert",
   "red_flags": ["list of concerning items employees should know about"],
   "opportunities": ["list of positive signals"],
-  "employee_relevance": "A paragraph explaining what this filing specifically means for employees of this company"
+  "employee_relevance": "2-3 sentences maximum: what this filing specifically means for employees of this company"
 }
 
 Respond with ONLY the JSON object, no markdown code fences or other text.`

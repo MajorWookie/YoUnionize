@@ -1,5 +1,5 @@
 /**
- * Union color palette — trustworthy, financial, clean.
+ * YoUnion color palette — trustworthy, financial, clean.
  *
  * Navy  = primary brand
  * Green = positive / gains

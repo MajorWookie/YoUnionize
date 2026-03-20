@@ -38,6 +38,9 @@ export interface ExecutiveData {
   bonus: number | null
   stockAwards: number | null
   optionAwards: number | null
+  nonEquityIncentive: number | null
+  otherCompensation: number | null
+  changeInPensionValue: number | null
   ceoPayRatio: string | null
 }
 
@@ -59,6 +62,10 @@ export interface DirectorData {
   isIndependent: boolean | null
   committees: unknown
   tenureStart: string | null
+  age: number | null
+  directorClass: string | null
+  qualifications: unknown
+  role: string | null
 }
 
 export interface CompanyDetailResponse {
@@ -78,9 +85,11 @@ export interface CompanyDetailResponse {
 export interface FilingSummaryResult {
   executive_summary: string
   key_numbers: Array<{ label: string; value: string; context: string }>
+  /** Short-form: 2-3 sentences explaining what happened and why it matters */
   plain_language_explanation: string
   red_flags: string[]
   opportunities: string[]
+  /** Short-form: 2-3 sentences on what this means for employees */
   employee_relevance: string
 }
 
