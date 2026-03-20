@@ -117,7 +117,8 @@ export function LeadershipSection({ executives, directors }: Props) {
           </Paragraph>
           {directors.map((dir) => {
             const committees = Array.isArray(dir.committees) ? dir.committees as Array<string> : []
-            const tenureYear = dir.tenureStart ? new Date(dir.tenureStart).getFullYear() : null
+            const rawYear = dir.tenureStart ? new Date(dir.tenureStart).getFullYear() : null
+            const tenureYear = rawYear != null && !Number.isNaN(rawYear) ? rawYear : null
 
             return (
               <Card key={dir.id}>
