@@ -112,7 +112,21 @@
       "Bash(bun dev:*)",
       "Bash(watchman version:*)",
       "Bash(watchman watch-list:*)",
-      "Bash(watchman shutdown-server:*)"
+      "Bash(watchman shutdown-server:*)",
+      "Bash(ls -la /Users/majorwookie/Documents/GitHub/YoUnion/.env*)",
+      "Bash(head -50 /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/\\\\\\(tabs\\\\\\)/discover/index.tsx)",
+      "Bash(ls -la /Users/majorwookie/Documents/GitHub/YoUnion/*.config.ts)",
+      "Bash(grep -r \"VXRN\\\\|EXPO_ROUTER\\\\|one\\\\.config\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.ts --include=*.tsx --include=*.json --exclude-dir=node_modules)",
+      "Bash(grep -r \"new URL\\\\|import\\\\.meta\\\\.url\" /Users/majorwookie/Documents/GitHub/YoUnion/supabase/functions --include=*.ts)",
+      "Bash(grep -r from.*['']pg[''] /Users/majorwookie/Documents/GitHub/YoUnion/src /Users/majorwookie/Documents/GitHub/YoUnion/app /Users/majorwookie/Documents/GitHub/YoUnion/packages /Users/majorwookie/Documents/GitHub/YoUnion/e2e)",
+      "Bash(/tmp/edge_functions.txt:*)",
+      "Read(//api/**)",
+      "Bash(grep -r \"drizzle-kit\\\\|drizzle:migrate\\\\|drizzle:generate\" /Users/majorwookie/Documents/GitHub/YoUnion/*.json /Users/majorwookie/Documents/GitHub/YoUnion/package.json)",
+      "Bash(supabase functions:*)",
+      "Bash(psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"SELECT ticker, name FROM companies LIMIT 10;\")",
+      "Bash(npx supabase:*)",
+      "Bash(curl -s \"http://127.0.0.1:54321/rest/v1/companies?select=ticker,name&limit=10\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\")",
+      "Bash(curl -s \"http://127.0.0.1:54321/functions/v1/companies-search?q=AAPL\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\")"
     ]
   },
   "outputStyle": "Explanatory"

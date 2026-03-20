@@ -2,7 +2,7 @@
  * Client-side fetch utilities with retry logic and standardized error extraction.
  */
 
-import { apiUrl } from './api-base'
+import { apiUrl, getDefaultHeaders } from './api-base'
 
 interface ApiErrorShape {
   error: {
@@ -41,12 +41,25 @@ export async function fetchWithRetry(
   options?: RequestInit,
   maxRetries = 2,
 ): Promise<Response> {
-  const resolvedUrl = url.startsWith('/api/') ? apiUrl(url) : url
+  const isApiRoute = url.startsWith('/api/')
+  const resolvedUrl = isApiRoute ? apiUrl(url) : url
+
+  // Merge Supabase gateway headers for /api/* routes
+  const mergedOptions = isApiRoute
+    ? {
+        ...options,
+        headers: {
+          ...getDefaultHeaders(),
+          ...options?.headers,
+        },
+      }
+    : options
+
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const res = await fetch(resolvedUrl, options)
+      const res = await fetch(resolvedUrl, mergedOptions)
 
       // Don't retry client errors
       if (res.status >= 400 && res.status < 500) {

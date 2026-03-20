@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Button, Input, Paragraph, Spinner, XStack, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
-import { extractErrorMessage } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
 
 interface Source {
   filingType: string
@@ -40,7 +40,7 @@ export function AskBar({
         body.company_ticker = companyTicker
       }
 
-      const res = await fetch('/api/ask', {
+      const res = await fetchWithRetry('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

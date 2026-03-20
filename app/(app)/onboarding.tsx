@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'expo-router'
 import { Button, H2, Paragraph, Spinner, View, XStack, YStack } from 'tamagui'
+import { fetchWithRetry } from '~/lib/api-client'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { TextField } from '~/interface/form/TextField'
 import { SelectField } from '~/interface/form/SelectField'
@@ -58,7 +59,7 @@ export default function OnboardingScreen() {
     if (companyTicker) body.companyTicker = companyTicker
     if (grossAnnualPay != null) body.grossAnnualPay = grossAnnualPay
 
-    await fetch('/api/user/profile', {
+    await fetchWithRetry('/api/user/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -69,7 +70,7 @@ export default function OnboardingScreen() {
     const hasValues = Object.values(costOfLiving).some((v) => v != null)
     if (!hasValues) return
 
-    await fetch('/api/user/cost-of-living', {
+    await fetchWithRetry('/api/user/cost-of-living', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(costOfLiving),

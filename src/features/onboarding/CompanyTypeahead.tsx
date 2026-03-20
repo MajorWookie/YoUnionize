@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Input, Paragraph, XStack, YStack } from 'tamagui'
 import { useDebounce } from '@union/hooks'
+import { fetchWithRetry } from '~/lib/api-client'
 import { Card } from '~/interface/display/Card'
 
 interface CompanyResult {
@@ -29,7 +30,7 @@ export function CompanyTypeahead({ value, onSelect, disabled }: CompanyTypeahead
       return
     }
     try {
-      const res = await fetch(`/api/companies/search?q=${encodeURIComponent(q.trim())}`)
+      const res = await fetchWithRetry(`/api/companies/search?q=${encodeURIComponent(q.trim())}`)
       const data = await res.json()
       setResults(data.results ?? [])
       setShowResults(true)

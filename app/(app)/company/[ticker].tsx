@@ -5,7 +5,7 @@ import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { CompanyHeader } from '~/interface/layout/CompanyHeader'
 import { LoadingState } from '~/interface/display/LoadingState'
 import { ErrorState } from '~/interface/display/ErrorState'
-import { extractErrorMessage } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
 import { ExecutiveSummaryCard } from '~/features/company/sections/ExecutiveSummaryCard'
 import { LeadershipSection } from '~/features/company/sections/LeadershipSection'
 import { FinancialsSection } from '~/features/company/sections/FinancialsSection'
@@ -36,7 +36,7 @@ export default function CompanyDetailScreen() {
 
     try {
       // First ensure the company exists in our database
-      const lookupRes = await fetch('/api/companies/lookup', {
+      const lookupRes = await fetchWithRetry('/api/companies/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticker }),
@@ -50,7 +50,7 @@ export default function CompanyDetailScreen() {
       }
 
       // Now fetch the full detail
-      const res = await fetch(`/api/companies/${ticker}/detail`)
+      const res = await fetchWithRetry(`/api/companies/${ticker}/detail`)
       if (!res.ok) {
         const errData = await res.json()
         setError(extractErrorMessage(errData))

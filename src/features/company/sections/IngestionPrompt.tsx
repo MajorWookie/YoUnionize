@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Paragraph, Spinner, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
 import { useToast } from '~/interface/feedback/ToastProvider'
-import { extractErrorMessage } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
 
 interface Props {
   ticker: string
@@ -31,7 +31,7 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
     async (jobId: string, nextStage: Stage, nextAction?: () => Promise<void>) => {
       pollRef.current = setInterval(async () => {
         try {
-          const res = await fetch(`/api/jobs/${jobId}`)
+          const res = await fetchWithRetry(`/api/jobs/${jobId}`)
           const job = await res.json()
 
           if (job.status === 'completed') {
@@ -60,7 +60,7 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
   const pollSummaryStatus = useCallback(() => {
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/companies/${ticker}/summary-status`)
+        const res = await fetchWithRetry(`/api/companies/${ticker}/summary-status`)
         const data = await res.json()
         setProgress({ total: data.total, done: data.summarized })
 
@@ -81,7 +81,7 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
     setMessage('Fetching SEC filings, compensation data, and insider trades...')
 
     try {
-      const res = await fetch(`/api/companies/${ticker}/ingest`, { method: 'POST' })
+      const res = await fetchWithRetry(`/api/companies/${ticker}/ingest`, { method: 'POST' })
       const data = await res.json()
 
       if (!res.ok) {
@@ -97,7 +97,7 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
         setStage('summarizing')
         setMessage('Analyzing filings with AI...')
 
-        const sumRes = await fetch(`/api/companies/${ticker}/summarize`, { method: 'POST' })
+        const sumRes = await fetchWithRetry(`/api/companies/${ticker}/summarize`, { method: 'POST' })
         const sumData = await sumRes.json()
 
         if (!sumRes.ok) {
