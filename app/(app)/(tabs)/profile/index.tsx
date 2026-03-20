@@ -9,7 +9,7 @@ import { TextField } from '~/interface/form/TextField'
 import { SelectField } from '~/interface/form/SelectField'
 import { CurrencyInput } from '~/interface/form/CurrencyInput'
 import { useToast } from '~/interface/feedback/ToastProvider'
-import { extractErrorMessage } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
 import { CompanyTypeahead } from '~/features/onboarding/CompanyTypeahead'
 import {
   ORG_LEVELS,
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/user/me')
+      const res = await fetchWithRetry('/api/user/me')
       if (!res.ok) throw new Error('Failed to load profile')
       const data = await res.json()
 
@@ -128,7 +128,7 @@ export default function ProfileScreen() {
         companyTicker: companyTicker || null,
         grossAnnualPay: grossAnnualPay,
       }
-      const res = await fetch('/api/user/profile', {
+      const res = await fetchWithRetry('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -151,7 +151,7 @@ export default function ProfileScreen() {
   const saveCOL = async () => {
     setSavingCOL(true)
     try {
-      const res = await fetch('/api/user/cost-of-living', {
+      const res = await fetchWithRetry('/api/user/cost-of-living', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(costOfLiving),

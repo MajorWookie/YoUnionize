@@ -1,6 +1,7 @@
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
-
-const SEC_API_BASE = 'https://api.sec-api.io'
+import { getDb } from '../_shared/db.ts'
+import { companies } from '../_shared/schema.ts'
+import { or, ilike } from 'drizzle-orm'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -13,47 +14,31 @@ Deno.serve(async (req) => {
       return jsonResponse({ results: [] })
     }
 
-    const apiKey = Deno.env.get('SEC_API_KEY')
-    if (!apiKey) throw new Error('SEC_API_KEY is not set')
-
     const trimmed = query.trim()
+    const db = getDb()
 
-    // Try ticker mapping first, then name
-    let mappings = await fetchMappings(apiKey, 'ticker', trimmed.toUpperCase())
-    if (mappings.length === 0) {
-      mappings = await fetchMappings(apiKey, 'name', trimmed)
-    }
+    // Search local companies by ticker (exact-ish) or name (fuzzy)
+    const rows = await db
+      .select({
+        name: companies.name,
+        ticker: companies.ticker,
+        exchange: companies.exchange,
+        sector: companies.sector,
+        industry: companies.industry,
+      })
+      .from(companies)
+      .where(
+        or(
+          ilike(companies.ticker, `${trimmed}%`),
+          ilike(companies.name, `%${trimmed}%`),
+        ),
+      )
+      .limit(10)
 
-    const results = mappings.slice(0, 10).map((m: Record<string, unknown>) => ({
-      name: m.name,
-      ticker: m.ticker,
-      exchange: m.exchange,
-      sector: m.sector,
-      industry: m.industry,
-    }))
-
-    return jsonResponse({ results })
+    return jsonResponse({ results: rows })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[companies-search] Degraded:', message)
+    console.error('[companies-search] Error:', message)
     return jsonResponse({ results: [] })
   }
 })
-
-async function fetchMappings(
-  apiKey: string,
-  field: string,
-  value: string,
-): Promise<Array<Record<string, unknown>>> {
-  const res = await fetch(`${SEC_API_BASE}/mapping/company/${field}/${encodeURIComponent(value)}`, {
-    headers: { Authorization: apiKey },
-  })
-
-  if (!res.ok) {
-    if (res.status === 429) throw new Error('SEC API rate limit (429)')
-    return []
-  }
-
-  const data = await res.json()
-  return Array.isArray(data) ? data : []
-}

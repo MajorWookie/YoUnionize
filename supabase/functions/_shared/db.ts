@@ -5,9 +5,11 @@ let db: PostgresJsDatabase | undefined
 
 export function getDb(): PostgresJsDatabase {
   if (!db) {
-    const url = Deno.env.get('DATABASE_URL')
+    // Prefer SUPABASE_DB_URL (auto-injected, uses Docker-internal hostname)
+    // over DATABASE_URL (from .env, uses host-side 127.0.0.1 — unreachable from Docker)
+    const url = Deno.env.get('SUPABASE_DB_URL') ?? Deno.env.get('DATABASE_URL')
     if (!url) {
-      throw new Error('DATABASE_URL environment variable is not set')
+      throw new Error('SUPABASE_DB_URL or DATABASE_URL environment variable must be set')
     }
     const client = postgres(url)
     db = drizzle(client)

@@ -10,7 +10,7 @@ import { FairnessGauge } from '~/interface/charts/FairnessGauge'
 import { WaterfallChart } from '~/interface/charts/WaterfallChart'
 import { MyPayIcon } from '~/interface/icons/TabIcons'
 import { useToast } from '~/interface/feedback/ToastProvider'
-import { extractErrorMessage } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
 import { formatDate } from '~/features/company/format'
 import { COST_OF_LIVING_FIELDS, type CostOfLivingKey } from '~/features/onboarding/constants'
 
@@ -96,8 +96,8 @@ export default function MyPayScreen() {
     setError(null)
     try {
       const [meRes, analysisRes] = await Promise.all([
-        fetch('/api/user/me'),
-        fetch('/api/analysis/compensation-fairness?limit=5'),
+        fetchWithRetry('/api/user/me'),
+        fetchWithRetry('/api/analysis/compensation-fairness?limit=5'),
       ])
 
       if (meRes.ok) {
@@ -126,7 +126,7 @@ export default function MyPayScreen() {
     setAnalyzing(true)
     setError(null)
     try {
-      const res = await fetch('/api/analysis/compensation-fairness', {
+      const res = await fetchWithRetry('/api/analysis/compensation-fairness', {
         method: 'POST',
       })
       if (!res.ok) {

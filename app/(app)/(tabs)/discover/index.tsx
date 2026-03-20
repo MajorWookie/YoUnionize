@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'expo-router'
 import { H2, H4, Input, Paragraph, Separator, Spinner, XStack, YStack } from 'tamagui'
 import { useDebounce } from '@union/hooks'
+import { fetchWithRetry } from '~/lib/api-client'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { Card } from '~/interface/display/Card'
 import { EmptyState } from '~/interface/display/EmptyState'
@@ -34,7 +35,7 @@ export default function DiscoverScreen() {
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/companies/search?q=${encodeURIComponent(q.trim())}`)
+      const res = await fetchWithRetry(`/api/companies/search?q=${encodeURIComponent(q.trim())}`)
       const data = await res.json()
       setResults(data.results ?? [])
       setHasSearched(true)

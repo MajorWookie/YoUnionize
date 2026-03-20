@@ -21,6 +21,31 @@ function getSupabaseUrl(): string {
   return 'http://127.0.0.1:54321'
 }
 
+function getSupabaseAnonKey(): string {
+  if (typeof process !== 'undefined' && process.env) {
+    return (
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.VITE_SUPABASE_ANON_KEY ??
+      ''
+    )
+  }
+  return ''
+}
+
+/**
+ * Returns default headers required by the Supabase API gateway.
+ * The gateway requires the `apikey` header on every request,
+ * even for Edge Functions that don't perform auth checks internally.
+ */
+export function getDefaultHeaders(): Record<string, string> {
+  const anonKey = getSupabaseAnonKey()
+  if (!anonKey) return {}
+  return {
+    apikey: anonKey,
+    Authorization: `Bearer ${anonKey}`,
+  }
+}
+
 /**
  * Route mapping from old One API paths to Edge Function names.
  * The Edge Function URL pattern is: {SUPABASE_URL}/functions/v1/{function-name}

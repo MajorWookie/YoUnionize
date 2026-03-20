@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'expo-router'
 import { Button, H2, H4, Paragraph, Separator, View, XStack, YStack } from 'tamagui'
+import { fetchWithRetry } from '~/lib/api-client'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { Card } from '~/interface/display/Card'
 import { Stat } from '~/interface/display/Stat'
@@ -63,7 +64,7 @@ export default function MyCompanyScreen() {
 
     try {
       // Fetch user profile first
-      const meRes = await fetch('/api/user/me')
+      const meRes = await fetchWithRetry('/api/user/me')
       if (!meRes.ok) throw new Error('Failed to load profile')
       const meData = await meRes.json()
 
@@ -77,14 +78,14 @@ export default function MyCompanyScreen() {
       }
 
       // Ensure company exists in DB
-      await fetch('/api/companies/lookup', {
+      await fetchWithRetry('/api/companies/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticker: p.companyTicker }),
       })
 
       // Fetch company detail
-      const detailRes = await fetch(`/api/companies/${p.companyTicker}/detail`)
+      const detailRes = await fetchWithRetry(`/api/companies/${p.companyTicker}/detail`)
       if (!detailRes.ok) throw new Error('Failed to load company data')
       const detail: CompanyDetailResponse = await detailRes.json()
       setCompanyData(detail)
