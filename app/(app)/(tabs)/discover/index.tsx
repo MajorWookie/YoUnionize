@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'expo-router'
 import { H2, H4, Input, Paragraph, Separator, Spinner, XStack, YStack } from 'tamagui'
 import { useDebounce } from '@union/hooks'
@@ -17,39 +17,92 @@ interface SearchResult {
   industry: string
 }
 
+/** Merge two result arrays, deduplicating by ticker. Local results take priority. */
+function mergeResults(local: Array<SearchResult>, sec: Array<SearchResult>): Array<SearchResult> {
+  const seen = new Set(local.map((r) => r.ticker))
+  return [...local, ...sec.filter((r) => !seen.has(r.ticker))].slice(0, 15)
+}
+
 export default function DiscoverScreen() {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Array<SearchResult>>([])
   const [loading, setLoading] = useState(false)
+  const [secLoading, setSecLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [secSearched, setSecSearched] = useState(false)
+
+  // Track the latest search query to avoid stale SEC results overwriting newer local results
+  const latestQueryRef = useRef('')
 
   const debouncedQuery = useDebounce(query, 300)
 
   const search = useCallback(async (q: string) => {
-    if (q.trim().length < 1) {
+    const trimmed = q.trim()
+    if (trimmed.length < 1) {
       setResults([])
       setHasSearched(false)
+      setSecSearched(false)
+      setSecLoading(false)
       return
     }
 
+    latestQueryRef.current = trimmed
     setLoading(true)
+    setSecSearched(false)
+
     try {
-      const res = await fetchWithRetry(`/api/companies/search?q=${encodeURIComponent(q.trim())}`)
+      // 1. Local DB search (fast)
+      const res = await fetchWithRetry(`/api/companies/search?q=${encodeURIComponent(trimmed)}`)
       const data = await res.json()
-      setResults(data.results ?? [])
+      const localResults: Array<SearchResult> = data.results ?? []
+
+      // Only update if this is still the latest query
+      if (latestQueryRef.current !== trimmed) return
+
+      setResults(localResults)
       setHasSearched(true)
-    } catch {
-      setResults([])
-      setHasSearched(true)
-    } finally {
       setLoading(false)
+
+      // 2. SEC API search (slower) — only if local results are sparse
+      if (localResults.length < 3) {
+        setSecLoading(true)
+        try {
+          const secRes = await fetchWithRetry(`/api/companies/search-sec?q=${encodeURIComponent(trimmed)}`)
+          const secData = await secRes.json()
+          const secResults: Array<SearchResult> = secData.results ?? []
+
+          // Only merge if this is still the latest query
+          if (latestQueryRef.current === trimmed && secResults.length > 0) {
+            setResults((prev) => mergeResults(prev, secResults))
+          }
+        } catch {
+          // SEC search failure is non-fatal — local results are already shown
+        } finally {
+          if (latestQueryRef.current === trimmed) {
+            setSecLoading(false)
+            setSecSearched(true)
+          }
+        }
+      } else {
+        setSecSearched(true)
+      }
+    } catch {
+      if (latestQueryRef.current === trimmed) {
+        setResults([])
+        setHasSearched(true)
+        setSecSearched(true)
+        setLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
     search(debouncedQuery)
   }, [debouncedQuery, search])
+
+  // Show "no results" only after both sources have been checked
+  const showNoResults = hasSearched && secSearched && results.length === 0 && !loading && !secLoading
 
   return (
     <ScreenContainer>
@@ -98,7 +151,7 @@ export default function DiscoverScreen() {
           title="Search for a company"
           description="Look up any public company by name or ticker to see their financial filings, executive compensation, and more."
         />
-      ) : results.length === 0 && hasSearched && !loading ? (
+      ) : showNoResults ? (
         <EmptyState
           title="No results found"
           description={`No companies match "${query}". Try a different name or ticker symbol.`}
@@ -139,6 +192,15 @@ export default function DiscoverScreen() {
               </XStack>
             </Card>
           ))}
+
+          {secLoading && (
+            <XStack gap="$2" alignItems="center" justifyContent="center" paddingVertical="$2">
+              <Spinner size="small" color="$color7" />
+              <Paragraph color="$color7" fontSize={13}>
+                Searching more companies...
+              </Paragraph>
+            </XStack>
+          )}
         </YStack>
       )}
     </ScreenContainer>

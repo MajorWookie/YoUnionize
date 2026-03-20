@@ -1,10 +1,8 @@
-import { eq } from 'drizzle-orm'
+import { eq, ilike } from 'drizzle-orm'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
 import { getDb } from '../_shared/db.ts'
 import { companies } from '../_shared/schema.ts'
-import { badRequest, classifyError } from '../_shared/api-utils.ts'
-
-const SEC_API_BASE = 'https://api.sec-api.io'
+import { badRequest, notFound, classifyError } from '../_shared/api-utils.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -18,76 +16,29 @@ Deno.serve(async (req) => {
       return badRequest('Provide a "ticker" or "name" field')
     }
 
-    const company = await lookupCompany(query)
-    return jsonResponse({ company })
+    const db = getDb()
+    const input = query.trim().toUpperCase()
+
+    // Look up by ticker in local DB
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.ticker, input))
+      .limit(1)
+
+    if (company) return jsonResponse({ company })
+
+    // Fall back to name search in local DB
+    const [byName] = await db
+      .select()
+      .from(companies)
+      .where(ilike(companies.name, `%${query.trim()}%`))
+      .limit(1)
+
+    if (byName) return jsonResponse({ company: byName })
+
+    return notFound(`No company found for "${query}"`)
   } catch (err) {
     return classifyError(err)
   }
 })
-
-async function lookupCompany(tickerOrName: string) {
-  const apiKey = Deno.env.get('SEC_API_KEY')
-  if (!apiKey) throw new Error('SEC_API_KEY is not set')
-
-  const input = tickerOrName.trim().toUpperCase()
-
-  // Try ticker first, fall back to name
-  let mappings = await fetchMappings(apiKey, 'ticker', input)
-  if (mappings.length === 0) {
-    mappings = await fetchMappings(apiKey, 'name', tickerOrName.trim())
-  }
-
-  if (mappings.length === 0) {
-    throw new Error(`No company found for "${tickerOrName}"`)
-  }
-
-  const match = mappings[0]
-  if (!match.ticker || !match.cik) {
-    throw new Error(`Incomplete data for "${tickerOrName}": missing ticker or CIK`)
-  }
-
-  const db = getDb()
-
-  const [record] = await db
-    .insert(companies)
-    .values({
-      ticker: match.ticker as string,
-      name: match.name as string,
-      cik: match.cik as string,
-      sector: (match.sector as string) ?? null,
-      industry: (match.industry as string) ?? null,
-      exchange: (match.exchange as string) ?? null,
-    })
-    .onConflictDoUpdate({
-      target: companies.ticker,
-      set: {
-        name: match.name as string,
-        cik: match.cik as string,
-        sector: (match.sector as string) ?? null,
-        industry: (match.industry as string) ?? null,
-        exchange: (match.exchange as string) ?? null,
-        updatedAt: new Date().toISOString(),
-      },
-    })
-    .returning()
-
-  return record
-}
-
-async function fetchMappings(
-  apiKey: string,
-  field: string,
-  value: string,
-): Promise<Array<Record<string, unknown>>> {
-  const res = await fetch(`${SEC_API_BASE}/mapping/company/${field}/${encodeURIComponent(value)}`, {
-    headers: { Authorization: apiKey },
-  })
-
-  if (!res.ok) {
-    if (res.status === 429) throw new Error('SEC API rate limit (429)')
-    return []
-  }
-
-  const data = await res.json()
-  return Array.isArray(data) ? data : []
-}

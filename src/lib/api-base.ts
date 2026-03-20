@@ -59,6 +59,7 @@ const ROUTE_MAP: Record<string, string> = {
   '/api/user/profile': 'user-profile',
   '/api/user/cost-of-living': 'user-cost-of-living',
   '/api/companies/search': 'companies-search',
+  '/api/companies/search-sec': 'companies-search-sec',
   '/api/companies/lookup': 'companies-lookup',
   '/api/analysis/compensation-fairness': 'compensation-fairness',
   '/api/ask': 'ask',

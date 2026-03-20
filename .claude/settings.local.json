@@ -126,7 +126,15 @@
       "Bash(psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"SELECT ticker, name FROM companies LIMIT 10;\")",
       "Bash(npx supabase:*)",
       "Bash(curl -s \"http://127.0.0.1:54321/rest/v1/companies?select=ticker,name&limit=10\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\")",
-      "Bash(curl -s \"http://127.0.0.1:54321/functions/v1/companies-search?q=AAPL\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\")"
+      "Bash(curl -s \"http://127.0.0.1:54321/functions/v1/companies-search?q=AAPL\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0\")",
+      "Bash(ls -1d /Users/majorwookie/Documents/GitHub/YoUnion/src/*)",
+      "Bash(ls -1d /Users/majorwookie/Documents/GitHub/YoUnion/app/*)",
+      "Bash(ls -1d /Users/majorwookie/Documents/GitHub/YoUnion/packages/*/)",
+      "Bash(ls -1 /Users/majorwookie/Documents/GitHub/YoUnion/sst*)",
+      "Bash(ls -la /Users/majorwookie/Documents/GitHub/YoUnion/src/server/job-queue*)",
+      "Bash(ls -1d /Users/majorwookie/Documents/GitHub/YoUnion/*)",
+      "Bash(grep -r job-queue.ts /Users/majorwookie/Documents/GitHub/YoUnion/src /Users/majorwookie/Documents/GitHub/YoUnion/app /Users/majorwookie/Documents/GitHub/YoUnion/supabase/functions --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"postgres-js\\\\|sql-postgres\\\\|createConnection.*postgres\" /Users/majorwookie/Documents/GitHub/YoUnion/packages/postgres/src --include=*.ts)"
     ]
   },
   "outputStyle": "Explanatory"

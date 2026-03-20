@@ -1,7 +1,7 @@
 # CLAUDE.md — Union
 
-> Last updated: 2026-03-18
-> Last updated by: AI session (Auth fix + migration consolidation)
+> Last updated: 2026-03-20
+> Last updated by: AI session (DB-first search implementation)
 
 ## Project Overview
 
@@ -18,7 +18,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - **Auth**: Supabase Auth (email/password, managed externally)
 - **AI**: Anthropic Claude via @anthropic-ai/sdk 0.39
 - **SEC Data**: sec-api.io (filings, XBRL, company search)
-- **API Layer**: Supabase Edge Functions (Deno runtime, 13 endpoints)
+- **API Layer**: Supabase Edge Functions (Deno runtime, 17 endpoints)
 - **Background Jobs**: PostgreSQL-backed job queue + AWS Lambda workers (SST v3)
 - **Validation**: Valibot 1.0 (NOT Zod)
 - **Linting**: oxlint + oxfmt (NOT ESLint/Prettier)
@@ -54,8 +54,9 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 │  └─────────────────┘  └──────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────┤
 │     supabase/functions/ (Edge Functions — Deno)          │
-│  13 API endpoints: health, user, companies, ask, etc.    │
-│  _shared/: db, auth, cors, schema, api-utils             │
+│  17 API endpoints: health, user, companies, ask, etc.    │
+│  _shared/: db, auth, cors, schema, api-utils,            │
+│            sec-fetch, sec-ingest                          │
 ├─────────────────────────────────────────────────────────┤
 │                   packages/ (workspace)                   │
 │  @union/ai       — Claude API wrapper + prompts           │
@@ -66,7 +67,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 ├─────────────────────────────────────────────────────────┤
 │  src/server/lambda/ — AWS Lambda workers (SST v3)         │
 │  - ingestion.handler  (long-running SEC + AI jobs)        │
-│  - migrate.handler    (Drizzle migrations at deploy)      │
+│  - migrate.handler    (⚠️ STALE — refs removed Drizzle migrations) │
 └─────────────────────────────────────────────────────────┘
          │                    │                  │
     Supabase Auth      PostgreSQL + pgvector    SEC API
@@ -77,9 +78,10 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 
 | Directory | Responsibility |
 |-----------|---------------|
-| `app/` | File-based routing (Expo Router). Pages and layouts only — no API routes. |
-| `supabase/functions/` | 13 Supabase Edge Functions (Deno) — health, user, companies, jobs, ask, analysis |
-| `supabase/functions/_shared/` | Shared Edge Function utilities: db, auth, cors, schema, api-utils |
+| `app/` | File-based routing (Expo Router). Pages and layouts. **Note:** Legacy `app/api/` routes from One Framework still exist and use the old in-memory job queue — these should be removed (see tech debt). |
+| `app/api/` | ⚠️ **Legacy** — 14 One Framework `+api.ts` routes still present. Superseded by Edge Functions but not yet deleted. Still reference old in-memory job queue. |
+| `supabase/functions/` | 17 Supabase Edge Functions (Deno) — health, user-me, user-profile, user-cost-of-living, companies-lookup, companies-search, companies-search-sec, company-detail, company-fetch, company-ingest, company-process, company-summarize, company-summary-status, compensation-fairness, ask, batch-fetch, job-status |
+| `supabase/functions/_shared/` | Shared Edge Function utilities: db, auth, cors, schema, api-utils, sec-fetch (SEC API call helpers), sec-ingest (lightweight DB insert for directors/compensation) |
 | `src/database/schema/` | Drizzle ORM table definitions (companies, filings, exec comp, embeddings, etc.) |
 | `src/database/validators/` | Valibot schemas for insert validation |
 | `supabase/migrations/` | SQL migrations (applied via `supabase db reset`) |
@@ -89,6 +91,8 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 | `src/interface/` | Shared UI components (ScreenContainer, ErrorBoundary, ToastProvider) |
 | `src/server/` | Server-side utilities (api-utils, job-queue, client wrappers) |
 | `src/server/services/` | Business logic: ingestion pipelines, XBRL transform, summarization |
+| `src/server/services/enrichment/` | Compensation and director enrichment functions (post-fetch processing) |
+| `scripts/` | Utility scripts: `seed-companies.ts` (run via `bun run seed` / `bun run seed:no-ai`) |
 | `src/lib/` | Client-side utilities (fetchWithRetry API client) |
 | `src/tamagui/` | Tamagui config, themes, semantic tokens |
 | `src/test/` | Vitest setup and test data factories |
@@ -102,11 +106,12 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 
 ### Data Flow
 
-1. **User searches** for a company → `POST /api/companies/lookup` → SEC API search → upsert into `companies` table
-2. **Ingestion triggered** → `POST /api/companies/[ticker]/ingest` → background job fetches filings, exec comp, insider trades, directors from SEC API → bulk inserts into respective tables
-3. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates embeddings → stores in `embeddings` table
-4. **User asks a question** → `POST /api/ask` → vector search on embeddings → retrieves relevant filing context → Claude generates RAG answer with citations
-5. **Compensation analysis** → `POST /api/analysis/compensation-fairness` → combines user profile (salary, CoL, org level) with company exec comp data → Claude generates fairness analysis
+1. **User searches** for a company → Discover screen fires TWO parallel calls: `GET /api/companies/search` (local DB, fast) and, if local results < 3, `GET /api/companies/search-sec` (SEC API search + upsert). Local results display immediately; SEC results are appended asynchronously.
+2. **User navigates to company detail** → `GET /api/companies/{ticker}/detail` → if directors or executives are missing from DB, auto-fetches from SEC API (`_shared/sec-ingest.ts`) and stores them before returning.
+3. **Ingestion triggered** → `POST /api/companies/[ticker]/ingest` → background job fetches filings, exec comp, insider trades, directors from SEC API → bulk inserts into respective tables
+4. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates embeddings → stores in `embeddings` table
+5. **User asks a question** → `POST /api/ask` → vector search on embeddings → retrieves relevant filing context → Claude generates RAG answer with citations
+6. **Compensation analysis** → `POST /api/analysis/compensation-fairness` → combines user profile (salary, CoL, org level) with company exec comp data → Claude generates fairness analysis
 
 ## Conventions
 
@@ -137,7 +142,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - Schema files: one file per domain/table group in `src/database/schema/`.
 - Use `snake_case` for table and column names.
 - Explicit types for all columns — don't rely on inference for anything touching the database.
-- Relations go in `src/database/schema/relations.ts`, not inline with table definitions.
+- Relations should go in `src/database/schema/relations.ts`, not inline with table definitions. (Note: this file does not yet exist — create it when relations are needed.)
 - Migrations are plain SQL in `supabase/migrations/` (timestamp-prefixed). Apply locally with `supabase db reset`. drizzle-kit has been removed.
 
 ### AI/API Patterns
@@ -187,7 +192,8 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - **Decision**: Replace in-memory job queue with PostgreSQL `jobs` table + Lambda workers
 - **Rationale**: Edge Functions are stateless (no in-memory state). Jobs are now persisted in PostgreSQL with atomic claiming. Long-running operations (ingestion, summarization) are processed by Lambda workers with 900s timeout.
 - **Previous**: In-memory Map (ADR-005 original, 2026-03-13) — replaced due to job loss on restart.
-- **Status**: active
+- **Migration status**: ⚠️ **Partial** — Edge Functions use DB-backed queue (`src/server/job-queue-db.ts`), but legacy `app/api/` routes still import the old in-memory queue (`src/server/job-queue.ts`). Full migration blocked on deleting legacy API routes.
+- **Status**: active (partially implemented)
 
 ### ADR-006: Expo Router over One Framework
 - **Date**: 2026-03-17
@@ -222,8 +228,11 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 
 ## Known Tech Debt
 
-- [x] **~~In-memory job queue~~** — Replaced with PostgreSQL `jobs` table + Lambda workers (2026-03-17). Old `src/server/job-queue.ts` still exists for reference but is no longer used by Edge Functions.
+- [ ] **In-memory job queue partially replaced** — Edge Functions use PostgreSQL `jobs` table (ADR-005), but legacy `app/api/` routes still import the old in-memory `src/server/job-queue.ts`. DB-backed replacement exists at `src/server/job-queue-db.ts`. Full cleanup requires deleting `app/api/` routes. Priority: **high**.
 - [x] **~~Dual migration systems~~** — Consolidated to Supabase migrations only. drizzle-kit removed, stale Drizzle migrations deleted (2026-03-18).
+- [ ] **Lambda migrate handler is stale** — `src/server/lambda/migrate.ts` imports from `drizzle-orm/node-postgres/migrator` and references `./src/database/migrations` (non-existent). Per ADR-008, migrations are now in `supabase/migrations/`. This handler will fail at deploy. Needs rewrite or removal. Priority: **high**.
+- [ ] **Legacy `app/api/` routes not deleted** — 14 One Framework `+api.ts` files remain in `app/api/`. Per ADR-007, all API logic moved to Edge Functions. These are dead code but confusing. Priority: **medium**.
+- [ ] **SST config references One Framework** — `sst.config.ts` still sets `ONE_SERVER_URL` env var. Should be removed or renamed post-migration. Priority: **low**.
 - [ ] **Duplicate type definitions** — `FinancialLineItem`, `FinancialStatement`, `ExecCompSummary` defined in both `src/server/services/xbrl-transformer.ts` and `src/features/company/types.ts`. Should be extracted to a shared location. Priority: **medium**.
 - [ ] **No rate limiting on API endpoints** — RAG queries and compensation analysis are computationally expensive with no throttling. Priority: **high before prod**.
 - [ ] **No structured logging** — All logging via `console.info()` with no request IDs, user context, or JSON structure. Hard to search in production. Priority: **medium**.
@@ -277,7 +286,7 @@ bun run android
 - **Unit tests**: Vitest, run with `bun test` or `bun run test:unit`
 - **Test location**: Co-located `.test.ts` files or `__tests__/` directories
 - **Test setup**: `src/test/setup.ts` (env defaults), `src/test/factories.ts` (data factories)
-- **Current coverage**: 7 test suites — api-utils, job-queue, xbrl-transformer, compensation-math, api-client, ensureAuth, AI prompts
+- **Current coverage**: ~13 test suites — api-utils, job-queue, xbrl-transformer, compensation-math, api-client, ensureAuth, AI prompts, sec-api, helpers, enrichment (compensation + directors), company types
 - **Not tested**: Ingestion services, summarization pipeline, database operations, React components
 - **E2E**: Playwright config exists at `e2e/playwright.config.ts` but no test files written yet
 - **CI**: Lint → type-check → unit tests on every PR (`.github/workflows/ci.yml`)
@@ -323,6 +332,7 @@ bun run android
 - **CORS required**: Every Edge Function must handle `OPTIONS` preflight and include CORS headers. Use `_shared/cors.ts`.
 - **150s timeout (free) / 400s (Pro)**: Long-running operations (summarization) must use Lambda workers, not Edge Functions.
 - **Schema duplication**: `supabase/functions/_shared/schema.ts` mirrors `src/database/schema/`. Keep them in sync when modifying tables.
+- **Ingestion logic duplication**: `supabase/functions/_shared/sec-ingest.ts` mirrors column mappings from `src/server/services/directors-ingestion.ts` and `compensation-ingestion.ts`. Keep both in sync when changing director or compensation fields. The `_shared` version skips enrichment (roles, canonical names) — that runs during full pipeline ingestion.
 
 ## Version Verification Protocol
 
@@ -331,7 +341,7 @@ This stack moves fast. **Before using any API from these libraries, check `packa
 - **Bun**: `bun --version` or check runtime
 - **Expo / Expo Router**: `package.json` → `expo` and `expo-router` versions
 - **Tamagui**: `package.json` → `tamagui` version
-- **Drizzle**: `package.json` → `drizzle-orm` and `drizzle-kit` versions
+- **Drizzle**: `package.json` → `drizzle-orm` version (drizzle-kit removed per ADR-008)
 - **Supabase**: `package.json` → `@supabase/supabase-js` version (also check API key format in `.env`)
 - **Anthropic**: `package.json` → `@anthropic-ai/sdk` version
 
@@ -381,11 +391,14 @@ When uncertain, point the developer here rather than guessing.
 ## Current Active Work
 
 - Migrated from One Framework/VXRN to Expo Router (completed 2026-03-17)
-- Migrated API routes to Supabase Edge Functions (completed 2026-03-17)
+- Migrated API routes to Supabase Edge Functions (completed 2026-03-17) — **but legacy `app/api/` routes not yet deleted**
 - Migrated Drizzle driver from node-postgres to postgres-js (completed 2026-03-17)
-- Replaced in-memory job queue with PostgreSQL `jobs` table (completed 2026-03-17)
+- Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)
+- Decoupled SEC fetch from LLM processing (ADR-009, 2026-03-18) — added 3 new Edge Functions (company-fetch, company-process, batch-fetch)
+- DB-first search with SEC fallback (2026-03-20) — Discover screen shows local results instantly, appends SEC results async; company-detail auto-fetches directors/execs from SEC when DB is empty; LeadershipSection now displays both executives and board of directors
 - Core data pipeline (SEC ingestion → AI summarization → RAG) is functional
 - Compensation fairness analysis feature is functional
 - User onboarding flow exists (sign-up, profile, cost-of-living)
 - Lambda worker integration for job processing (TODO: wire up SQS trigger)
+- Lambda migrate handler needs rewrite to use Supabase migrations instead of removed Drizzle migrations
 - No production deployment yet — local dev and staging only
