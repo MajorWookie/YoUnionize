@@ -9,7 +9,7 @@
  * Keep column mappings in sync with the Node/Bun ingestion services.
  */
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { directors, executiveCompensation } from './schema.ts'
 import { fetchDirectorsFromSec, fetchCompensationFromSec } from './sec-fetch.ts'
@@ -24,6 +24,13 @@ function emptyToNull(value: unknown): string | null {
   if (value == null) return null
   const str = String(value).trim()
   return str.length > 0 ? str : null
+}
+
+const SUFFIX_PATTERN = /\s*,?\s*(Jr\.?|Sr\.?|II|III|IV|V|Esq\.?|Ph\.?D\.?|M\.?D\.?|CPA)\s*$/i
+
+/** Normalize a person's name for deduplication (mirrors @union/helpers normalizeName). */
+function normalizeName(name: string): string {
+  return name.trim().replace(SUFFIX_PATTERN, '').trim().toLowerCase()
 }
 
 /**
@@ -44,19 +51,12 @@ export async function ingestDirectorsFromSec(
   const insertResults = await Promise.allSettled(
     rawDirectors.map(async (director) => {
       const name = emptyToNull(director.name) ?? 'Unknown'
-
-      // Check for existing record
-      const existing = await db
-        .select({ id: directors.id })
-        .from(directors)
-        .where(and(eq(directors.companyId, companyId), eq(directors.name, name)))
-        .limit(1)
-
-      if (existing.length > 0) return 'skipped'
+      const normalized = normalizeName(name)
 
       await db.insert(directors).values({
         companyId,
         name,
+        normalizedName: normalized,
         title: emptyToNull(director.position) ?? 'Director',
         isIndependent: (director.isIndependent as boolean) ?? null,
         committees: (director.committeeMemberships as unknown) ?? null,
@@ -64,6 +64,15 @@ export async function ingestDirectorsFromSec(
         age: director.age ? Number(director.age) : null,
         directorClass: emptyToNull(director.directorClass),
         qualifications: (director.qualificationsAndExperience as unknown) ?? null,
+      }).onConflictDoUpdate({
+        target: [directors.companyId, directors.normalizedName],
+        set: {
+          title: sql`EXCLUDED.title`,
+          isIndependent: sql`EXCLUDED.is_independent`,
+          committees: sql`EXCLUDED.committees`,
+          tenureStart: sql`EXCLUDED.tenure_start`,
+          age: sql`EXCLUDED.age`,
+        },
       })
 
       return 'ingested'
@@ -105,26 +114,13 @@ export async function ingestCompensationFromSec(
     rawExecs.map(async (exec) => {
       const fiscalYear = (exec.year as number) ?? 0
       const execName = emptyToNull(exec.name) ?? 'Unknown'
-
-      // Check for existing record (idempotency)
-      const existing = await db
-        .select({ id: executiveCompensation.id })
-        .from(executiveCompensation)
-        .where(
-          and(
-            eq(executiveCompensation.companyId, companyId),
-            eq(executiveCompensation.executiveName, execName),
-            eq(executiveCompensation.fiscalYear, fiscalYear),
-          ),
-        )
-        .limit(1)
-
-      if (existing.length > 0) return 'skipped'
+      const normalized = normalizeName(execName)
 
       await db.insert(executiveCompensation).values({
         companyId,
         fiscalYear,
         executiveName: execName,
+        normalizedName: normalized,
         title: (exec.position as string) ?? 'Unknown',
         totalCompensation: (exec.total as number) ?? 0,
         salary: (exec.salary as number) ?? null,
@@ -134,6 +130,16 @@ export async function ingestCompensationFromSec(
         nonEquityIncentive: (exec.nonEquityIncentiveCompensation as number) ?? null,
         otherCompensation: (exec.otherCompensation as number) ?? null,
         ceoPayRatio: exec.ceoPayRatio != null ? String(exec.ceoPayRatio) : null,
+      }).onConflictDoUpdate({
+        target: [executiveCompensation.companyId, executiveCompensation.normalizedName, executiveCompensation.fiscalYear],
+        set: {
+          title: sql`EXCLUDED.title`,
+          totalCompensation: sql`EXCLUDED.total_compensation`,
+          salary: sql`EXCLUDED.salary`,
+          bonus: sql`EXCLUDED.bonus`,
+          stockAwards: sql`EXCLUDED.stock_awards`,
+          optionAwards: sql`EXCLUDED.option_awards`,
+        },
       })
 
       return 'ingested'

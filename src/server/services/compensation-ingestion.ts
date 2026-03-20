@@ -1,5 +1,6 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { getDb, executiveCompensation } from '@union/postgres'
+import { normalizeName } from '@union/helpers'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 
@@ -27,29 +28,13 @@ export async function ingestCompensation(
       try {
         const fiscalYear = exec.year ?? 0
         const execName = exec.name ?? 'Unknown'
-
-        // Check for existing record (idempotency)
-        const existing = await db
-          .select({ id: executiveCompensation.id })
-          .from(executiveCompensation)
-          .where(
-            and(
-              eq(executiveCompensation.companyId, company.id),
-              eq(executiveCompensation.executiveName, execName),
-              eq(executiveCompensation.fiscalYear, fiscalYear),
-            ),
-          )
-          .limit(1)
-
-        if (existing.length > 0) {
-          result.skipped++
-          continue
-        }
+        const normalized = normalizeName(execName)
 
         await db.insert(executiveCompensation).values({
           companyId: company.id,
           fiscalYear,
           executiveName: execName,
+          normalizedName: normalized,
           title: exec.position ?? 'Unknown',
           totalCompensation: exec.total ?? 0,
           salary: exec.salary ?? null,
@@ -59,6 +44,19 @@ export async function ingestCompensation(
           nonEquityIncentive: exec.nonEquityIncentiveCompensation ?? null,
           otherCompensation: exec.otherCompensation ?? null,
           ceoPayRatio: exec.ceoPayRatio ?? null,
+        }).onConflictDoUpdate({
+          target: [executiveCompensation.companyId, executiveCompensation.normalizedName, executiveCompensation.fiscalYear],
+          set: {
+            title: sql`EXCLUDED.title`,
+            totalCompensation: sql`EXCLUDED.total_compensation`,
+            salary: sql`EXCLUDED.salary`,
+            bonus: sql`EXCLUDED.bonus`,
+            stockAwards: sql`EXCLUDED.stock_awards`,
+            optionAwards: sql`EXCLUDED.option_awards`,
+            nonEquityIncentive: sql`EXCLUDED.non_equity_incentive`,
+            otherCompensation: sql`EXCLUDED.other_compensation`,
+            ceoPayRatio: sql`EXCLUDED.ceo_pay_ratio`,
+          },
         })
 
         result.ingested++

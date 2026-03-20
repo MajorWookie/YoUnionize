@@ -101,10 +101,10 @@
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion -type f \\\\\\(-name package.json -o -name app.json -o -name app.config.* -o -name *.plist -o -name *.xml -o -name tamagui.config.* -o -name README* -o -name CLAUDE.md \\\\\\))",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion -name *.config.ts -o -name *.config.js)",
       "Bash(grep -r \"display.*name\\\\|app.*name\\\\|CFBundleDisplayName\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.json --include=*.plist --include=*.xml --include=*.ts --include=*.tsx)",
-      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion -type d -name *Union*)",
-      "Bash(grep -r \"YoUnion\\\\|Yo Union\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.ts --include=*.tsx --include=*.json --include=*.plist --include=*.xml --include=*.md)",
-      "Bash(grep -rn ^Union /Users/majorwookie/Documents/GitHub/YoUnion --include=*.tsx --include=*.ts --include=*.json --include=*.md)",
-      "Bash(grep -rn \"Union\\\\|''''Union''''\\\\|H1>Union\\\\|union.app\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.tsx --include=*.ts --include=*.json --include=*.md)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion -type d -name *YoUnion*)",
+      "Bash(grep -r \"YoUnion\\\\|Yo YoUnion\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.ts --include=*.tsx --include=*.json --include=*.plist --include=*.xml --include=*.md)",
+      "Bash(grep -rn ^YoUnion /Users/majorwookie/Documents/GitHub/YoUnion --include=*.tsx --include=*.ts --include=*.json --include=*.md)",
+      "Bash(grep -rn \"YoUnion\\\\|''''YoUnion''''\\\\|H1>YoUnion\\\\|union.app\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.tsx --include=*.ts --include=*.json --include=*.md)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion -name README* -type f)",
       "Bash(grep -rn \"Understand your company\\\\|Know your worth\" /Users/majorwookie/Documents/GitHub/YoUnion --include=*.tsx --include=*.ts)",
       "Bash(grep -rn com.majorwookie.union /Users/majorwookie/Documents/GitHub/YoUnion --include=*.json --include=*.plist --include=*.xml --include=*.ts)",
@@ -138,7 +138,8 @@
       "Bash(ls -1 /Users/majorwookie/Documents/GitHub/YoUnion/*.md)",
       "Bash(ls -1 /Users/majorwookie/Documents/GitHub/YoUnion/.env*)",
       "Bash(find node_modules -path */react-native-reanimated/package.json -maxdepth 5)",
-      "Bash(python3 -c \"import json; d=json.load\\(open\\(''node_modules/expo/bundledNativeModules.json''\\)\\); [print\\(f''{k}: {v}''\\) for k,v in d.items\\(\\) if ''reanimate'' in k.lower\\(\\) or ''worklet'' in k.lower\\(\\)]\")"
+      "Bash(python3 -c \"import json; d=json.load\\(open\\(''node_modules/expo/bundledNativeModules.json''\\)\\); [print\\(f''{k}: {v}''\\) for k,v in d.items\\(\\) if ''reanimate'' in k.lower\\(\\) or ''worklet'' in k.lower\\(\\)]\")",
+      "Bash(ls \"/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)/company/\")"
     ]
   },
   "outputStyle": "Explanatory"

@@ -23,5 +23,6 @@ export const executiveCompensation = pgTable('executive_compensation', {
   ceoPayRatio: numeric('ceo_pay_ratio'),
   changeInPensionValue: bigint('change_in_pension_value', { mode: 'number' }),
   canonicalName: text('canonical_name'),
+  normalizedName: text('normalized_name'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })

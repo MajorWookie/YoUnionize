@@ -20,9 +20,11 @@ export interface KeyNumber {
 export interface FilingSummaryResult {
   executive_summary: string
   key_numbers: Array<KeyNumber>
+  /** Short-form: 2-3 sentences explaining what happened and why it matters */
   plain_language_explanation: string
   red_flags: Array<string>
   opportunities: Array<string>
+  /** Short-form: 2-3 sentences on what this means for employees */
   employee_relevance: string
 }
 

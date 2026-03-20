@@ -12,6 +12,8 @@ import { FinancialsSection } from '~/features/company/sections/FinancialsSection
 import { TextSummaryCard } from '~/features/company/sections/TextSummaryCard'
 import { RiskFactorsCard } from '~/features/company/sections/RiskFactorsCard'
 import { InsiderTradingSection } from '~/features/company/sections/InsiderTradingSection'
+import { IncomeStatementSunburst } from '~/features/company/sections/IncomeStatementSunburst'
+import { CeoSpotlightCard } from '~/features/company/sections/CeoSpotlightCard'
 import { IngestionPrompt } from '~/features/company/sections/IngestionPrompt'
 import { AskBar } from '~/features/ask/AskBar'
 import type {
@@ -145,6 +147,12 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
         placeholder={`Ask about ${data.company.name}...`}
       />
 
+      {/* Income Statement sunburst chart */}
+      {financialSource && <IncomeStatementSunburst summary={financialSource} />}
+
+      {/* CEO Spotlight */}
+      <CeoSpotlightCard executives={data.executives} execCompSummary={execCompSummary} />
+
       <Separator />
 
       {/* a. Executive Summary */}
@@ -159,7 +167,7 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
       <Separator />
 
       {/* b. Leadership */}
-      <LeadershipSection executives={data.executives} directors={data.directors} />
+      <LeadershipSection executives={data.executives} directors={data.directors} companyTicker={data.company.ticker} />
 
       <Separator />
 
@@ -174,6 +182,7 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
           title="Management Discussion & Analysis"
           content={primarySummary.mda as string}
           previewLines={8}
+          markdown
         />
       )}
 
@@ -207,6 +216,7 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
           title="Legal Proceedings"
           content={primarySummary.legal_proceedings as string}
           previewLines={4}
+          markdown
         />
       )}
       {primarySummary?.footnotes && (
@@ -231,6 +241,7 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
                 title={`8-K · ${new Date(event.filedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
                 content={eventSummary?.event_summary as string | undefined}
                 previewLines={3}
+                markdown
               />
             )
           })}

@@ -1,19 +1,22 @@
 import { useState } from 'react'
 import { Paragraph, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
+import { MarkdownContent } from '~/interface/display/MarkdownContent'
 
 interface Props {
   title: string
   content: string | null | undefined
   /** Maximum lines to show before "Read more" */
   previewLines?: number
+  /** Render content as markdown (headers, bold, bullets, etc.) */
+  markdown?: boolean
   /** Extra content to show below the text */
   children?: React.ReactNode
 }
 
 const PREVIEW_CHAR_LIMIT = 400
 
-export function TextSummaryCard({ title, content, previewLines, children }: Props) {
+export function TextSummaryCard({ title, content, previewLines, markdown, children }: Props) {
   const [expanded, setExpanded] = useState(false)
 
   if (!content) return null
@@ -26,13 +29,17 @@ export function TextSummaryCard({ title, content, previewLines, children }: Prop
       <Paragraph fontWeight="700" fontSize={16} marginBottom="$2">
         {title}
       </Paragraph>
-      <Paragraph
-        color="$color11"
-        lineHeight={22}
-        numberOfLines={!expanded && previewLines ? previewLines : undefined}
-      >
-        {displayText}
-      </Paragraph>
+      {markdown ? (
+        <MarkdownContent>{displayText}</MarkdownContent>
+      ) : (
+        <Paragraph
+          color="$color11"
+          lineHeight={22}
+          numberOfLines={!expanded && previewLines ? previewLines : undefined}
+        >
+          {displayText}
+        </Paragraph>
+      )}
       {isLong && (
         <Paragraph
           color="$color9"
