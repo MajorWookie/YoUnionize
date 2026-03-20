@@ -1,7 +1,7 @@
 # CLAUDE.md — Union
 
 > Last updated: 2026-03-20
-> Last updated by: AI session (DB-first search implementation)
+> Last updated by: AI session (CLAUDE.md sync — relations.ts, 2-phase ingestion, test suites, helpers/concurrency)
 
 ## Project Overview
 
@@ -62,7 +62,8 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 │  @union/ai       — Claude API wrapper + prompts           │
 │  @union/postgres  — Drizzle DB client (postgres-js)       │
 │  @union/sec-api   — SEC EDGAR API client + schemas        │
-│  @union/helpers   — Shared utilities (ensureEnv, types)   │
+│  @union/helpers   — Shared utilities (ensureEnv, types,   │
+│                     concurrency)                          │
 │  @union/hooks     — React hooks (useAuth, useDebounce)    │
 ├─────────────────────────────────────────────────────────┤
 │  src/server/lambda/ — AWS Lambda workers (SST v3)         │
@@ -80,17 +81,18 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 |-----------|---------------|
 | `app/` | File-based routing (Expo Router). Pages and layouts. **Note:** Legacy `app/api/` routes from One Framework still exist and use the old in-memory job queue — these should be removed (see tech debt). |
 | `app/api/` | ⚠️ **Legacy** — 14 One Framework `+api.ts` routes still present. Superseded by Edge Functions but not yet deleted. Still reference old in-memory job queue. |
-| `supabase/functions/` | 17 Supabase Edge Functions (Deno) — health, user-me, user-profile, user-cost-of-living, companies-lookup, companies-search, companies-search-sec, company-detail, company-fetch, company-ingest, company-process, company-summarize, company-summary-status, compensation-fairness, ask, batch-fetch, job-status |
+| `supabase/functions/` | 17 Supabase Edge Functions (Deno) — health, user-me, user-profile, user-cost-of-living, companies-lookup, companies-search, companies-search-sec, company-detail, company-fetch, company-ingest (⚠️ legacy — superseded by company-fetch + company-process), company-process, company-summarize, company-summary-status, compensation-fairness, ask, batch-fetch, job-status |
 | `supabase/functions/_shared/` | Shared Edge Function utilities: db, auth, cors, schema, api-utils, sec-fetch (SEC API call helpers), sec-ingest (lightweight DB insert for directors/compensation) |
-| `src/database/schema/` | Drizzle ORM table definitions (companies, filings, exec comp, embeddings, etc.) |
+| `src/database/schema/` | Drizzle ORM table definitions (companies, filings, exec comp, directors, insider trades, embeddings, jobs, raw-sec-responses, form-8k-events) |
 | `src/database/validators/` | Valibot schemas for insert validation |
 | `supabase/migrations/` | SQL migrations (applied via `supabase db reset`) |
 | `src/features/auth/` | Supabase client creation (server + client) and `ensureAuth()` |
-| `src/features/company/` | Company detail types and formatting utilities |
+| `src/features/ask/` | RAG Q&A UI (AskBar component) |
+| `src/features/company/` | Company detail types, formatting utilities, and section components (LeadershipSection, IngestionPrompt) |
 | `src/features/onboarding/` | Constants for user profile (org levels, pay frequencies, CoL categories) |
 | `src/interface/` | Shared UI components (ScreenContainer, ErrorBoundary, ToastProvider) |
-| `src/server/` | Server-side utilities (api-utils, job-queue, client wrappers) |
-| `src/server/services/` | Business logic: ingestion pipelines, XBRL transform, summarization |
+| `src/server/` | Server-side utilities (api-utils, job-queue, job-queue-db, ai-client, sec-api-client) |
+| `src/server/services/` | Business logic: ingestion pipelines (filing, compensation, directors, insider trading), XBRL transform, summarization, sec-fetcher (Phase 1 raw fetch), raw-data-processor (Phase 2 domain processing) |
 | `src/server/services/enrichment/` | Compensation and director enrichment functions (post-fetch processing) |
 | `scripts/` | Utility scripts: `seed-companies.ts` (run via `bun run seed` / `bun run seed:no-ai`) |
 | `src/lib/` | Client-side utilities (fetchWithRetry API client) |
@@ -99,7 +101,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 | `packages/ai/` | Anthropic SDK wrapper, prompt templates (filing summary, comp analysis, RAG) |
 | `packages/postgres/` | Database connection, vector search functions |
 | `packages/sec-api/` | SEC API client with Valibot-validated responses |
-| `packages/helpers/` | `ensureEnv()`, shared TypeScript types |
+| `packages/helpers/` | `ensureEnv()`, shared TypeScript types, concurrency utilities (`concurrency.ts`) |
 | `packages/hooks/` | `useAuth()` (Supabase), `useDebounce()` |
 | `supabase/` | Local Supabase config + migrations |
 | `e2e/` | Playwright E2E test scaffold |
@@ -108,10 +110,11 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 
 1. **User searches** for a company → Discover screen fires TWO parallel calls: `GET /api/companies/search` (local DB, fast) and, if local results < 3, `GET /api/companies/search-sec` (SEC API search + upsert). Local results display immediately; SEC results are appended asynchronously.
 2. **User navigates to company detail** → `GET /api/companies/{ticker}/detail` → if directors or executives are missing from DB, auto-fetches from SEC API (`_shared/sec-ingest.ts`) and stores them before returning.
-3. **Ingestion triggered** → `POST /api/companies/[ticker]/ingest` → background job fetches filings, exec comp, insider trades, directors from SEC API → bulk inserts into respective tables
-4. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates embeddings → stores in `embeddings` table
-5. **User asks a question** → `POST /api/ask` → vector search on embeddings → retrieves relevant filing context → Claude generates RAG answer with citations
-6. **Compensation analysis** → `POST /api/analysis/compensation-fairness` → combines user profile (salary, CoL, org level) with company exec comp data → Claude generates fairness analysis
+3. **Phase 1 — SEC fetch** → `POST /api/companies/[ticker]/fetch` → fetches raw SEC API responses (filings, exec comp, insider trades, directors) → stores verbatim JSON in `raw_sec_responses` table
+4. **Phase 2 — Processing** → `POST /api/companies/[ticker]/process` → reads from `raw_sec_responses` → transforms and inserts into domain tables (filings, executive_compensation, directors, insider_trades) with enrichment (canonical names, roles)
+5. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates embeddings → stores in `embeddings` table
+6. **User asks a question** → `POST /api/ask` → vector search on embeddings → retrieves relevant filing context → Claude generates RAG answer with citations
+7. **Compensation analysis** → `POST /api/analysis/compensation-fairness` → combines user profile (salary, CoL, org level) with company exec comp data → Claude generates fairness analysis
 
 ## Conventions
 
@@ -142,7 +145,7 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - Schema files: one file per domain/table group in `src/database/schema/`.
 - Use `snake_case` for table and column names.
 - Explicit types for all columns — don't rely on inference for anything touching the database.
-- Relations should go in `src/database/schema/relations.ts`, not inline with table definitions. (Note: this file does not yet exist — create it when relations are needed.)
+- Relations go in `src/database/relations.ts`, not inline with table definitions.
 - Migrations are plain SQL in `supabase/migrations/` (timestamp-prefixed). Apply locally with `supabase db reset`. drizzle-kit has been removed.
 
 ### AI/API Patterns
@@ -243,6 +246,8 @@ Union is a cross-platform application (iOS-first, then Android, then Web) for an
 - [ ] **Email confirmations disabled** in Supabase auth config — anyone can sign up with any email. Priority: **high before prod**.
 - [ ] **API client error parsing** — `fetchWithRetry()` assumes JSON error responses; HTML error pages (502) will cause secondary parse failures. Priority: **low**.
 - [ ] **Summarization text chunking** — Hardcoded 4 chars/token ratio is approximate; overlap of 50 tokens may lose context at chunk boundaries. Priority: **low**.
+- [ ] **Valibot `v.object()` silently strips undeclared keys** — SEC API responses contain fields not in our Valibot schemas, which are silently dropped during validation. This causes data loss in `raw_sec_responses` and domain tables. Detailed plan in `PLAN-8K-ITEMS-FIX.md`. Priority: **high**.
+- [ ] **`company-ingest` Edge Function is legacy** — Superseded by the 2-phase `company-fetch` + `company-process` per ADR-009. Should be removed alongside legacy `app/api/` cleanup. Priority: **medium**.
 
 ## Environment Setup
 
@@ -286,7 +291,7 @@ bun run android
 - **Unit tests**: Vitest, run with `bun test` or `bun run test:unit`
 - **Test location**: Co-located `.test.ts` files or `__tests__/` directories
 - **Test setup**: `src/test/setup.ts` (env defaults), `src/test/factories.ts` (data factories)
-- **Current coverage**: ~13 test suites — api-utils, job-queue, xbrl-transformer, compensation-math, api-client, ensureAuth, AI prompts, sec-api, helpers, enrichment (compensation + directors), company types
+- **Current coverage**: ~13 test suites — api-utils, xbrl-transformer, compensation-math, api-client, ensureAuth, AI prompts (claude, prompts), sec-api, helpers (ensureEnv), enrichment (compensation-name, director-role), company format
 - **Not tested**: Ingestion services, summarization pipeline, database operations, React components
 - **E2E**: Playwright config exists at `e2e/playwright.config.ts` but no test files written yet
 - **CI**: Lint → type-check → unit tests on every PR (`.github/workflows/ci.yml`)
@@ -390,15 +395,29 @@ When uncertain, point the developer here rather than guessing.
 
 ## Current Active Work
 
-- Migrated from One Framework/VXRN to Expo Router (completed 2026-03-17)
-- Migrated API routes to Supabase Edge Functions (completed 2026-03-17) — **but legacy `app/api/` routes not yet deleted**
-- Migrated Drizzle driver from node-postgres to postgres-js (completed 2026-03-17)
-- Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)
+### Completed
+- Migrated from One Framework/VXRN to Expo Router (2026-03-17)
+- Migrated API routes to Supabase Edge Functions (2026-03-17) — **but legacy `app/api/` routes not yet deleted**
+- Migrated Drizzle driver from node-postgres to postgres-js (2026-03-17)
 - Decoupled SEC fetch from LLM processing (ADR-009, 2026-03-18) — added 3 new Edge Functions (company-fetch, company-process, batch-fetch)
-- DB-first search with SEC fallback (2026-03-20) — Discover screen shows local results instantly, appends SEC results async; company-detail auto-fetches directors/execs from SEC when DB is empty; LeadershipSection now displays both executives and board of directors
+- DB-first search with SEC fallback (2026-03-20) — Discover screen shows local results instantly, appends SEC results async; company-detail auto-fetches directors/execs from SEC when DB is empty
+- LeadershipSection displays both executives (top 5 by comp, deduped) and board of directors
+- Enrichment pipeline: compensation canonical name matching (`compensation-name-enrichment.ts`) and director role normalization (`director-role-enrichment.ts`)
+- `fetchWithRetry` API client utility with configurable retry/backoff (2026-03-20)
+- Concurrency utilities added to `@union/helpers` (`packages/helpers/src/concurrency.ts`)
+- Drizzle relations file created at `src/database/relations.ts`
+
+### In Progress / Remaining
+- Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)
 - Core data pipeline (SEC ingestion → AI summarization → RAG) is functional
 - Compensation fairness analysis feature is functional
 - User onboarding flow exists (sign-up, profile, cost-of-living)
 - Lambda worker integration for job processing (TODO: wire up SQS trigger)
 - Lambda migrate handler needs rewrite to use Supabase migrations instead of removed Drizzle migrations
+- Valibot key-stripping data loss fix (see `PLAN-8K-ITEMS-FIX.md`)
 - No production deployment yet — local dev and staging only
+
+### Reference Docs (root)
+- `LLM-BRIEFING.md` — SEC API & ingestion pipeline deep-dive for AI assistants
+- `PLAN-8K-ITEMS-FIX.md` — Draft plan for Valibot schema & pipeline data integrity fixes
+- `SEED.md` — Seed script usage reference
