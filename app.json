@@ -4,10 +4,13 @@
     "slug": "younion",
     "scheme": "younion",
     "version": "0.1.0",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "ios": {
-      "bundleIdentifier": "com.majorwookie.younion",
-      "supportsTablet": true
+      "bundleIdentifier": "com.majorwookie.younion"
     },
     "android": {
       "package": "com.majorwookie.younion"
@@ -17,10 +20,23 @@
       "output": "single"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-dev-client"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "updates": {
+      "url": "https://u.expo.dev/38bce862-affa-4949-80a7-b3fb909df8e5"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "38bce862-affa-4949-80a7-b3fb909df8e5"
+      }
     }
   }
 }
