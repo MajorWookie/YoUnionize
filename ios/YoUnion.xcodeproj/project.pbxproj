@@ -8,25 +8,25 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		1FA74EED1BF3EF9E8E0EEB19 /* libPods-YoUnion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BC783123C7EEBAD1E2C0717D /* libPods-YoUnion.a */; };
+		202E5742684B40A7A0D5A2B5 /* libPods-YoUnion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B2EDA2E9439C261C78235434 /* libPods-YoUnion.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		47D462F13DF85332DFE42BD8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A91D7374C355FFFEE995FBFC /* PrivacyInfo.xcprivacy */; };
-		AA6DB536A0D32D983A624E42 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5376562E20CADE254A858B55 /* ExpoModulesProvider.swift */; };
+		74BC5B66A956675CDF37F4ED /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2E06C4492824264B9C251E /* ExpoModulesProvider.swift */; };
+		B0E0326645B6239412C3700C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 357AF7BF2D5450D049D51EFF /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		084ED148785F3FA072DEB7FE /* Pods-YoUnion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.debug.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.debug.xcconfig"; sourceTree = "<group>"; };
+		0F2E06C4492824264B9C251E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-YoUnion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* YoUnion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YoUnion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = YoUnion/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = YoUnion/Info.plist; sourceTree = "<group>"; };
-		5376562E20CADE254A858B55 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-YoUnion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		7F1CB5598C36BD34F325FD68 /* Pods-YoUnion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.release.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.release.xcconfig"; sourceTree = "<group>"; };
-		A91D7374C355FFFEE995FBFC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = YoUnion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		357AF7BF2D5450D049D51EFF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = YoUnion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		8296DD1FD30845532D259B41 /* Pods-YoUnion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.debug.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.debug.xcconfig"; sourceTree = "<group>"; };
+		8AA9E2F9514ED0479F8F2191 /* Pods-YoUnion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.release.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = YoUnion/SplashScreen.storyboard; sourceTree = "<group>"; };
+		B2EDA2E9439C261C78235434 /* libPods-YoUnion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-YoUnion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		BC783123C7EEBAD1E2C0717D /* libPods-YoUnion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-YoUnion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = YoUnion/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* YoUnion-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "YoUnion-Bridging-Header.h"; path = "YoUnion/YoUnion-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -37,21 +37,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1FA74EED1BF3EF9E8E0EEB19 /* libPods-YoUnion.a in Frameworks */,
+				202E5742684B40A7A0D5A2B5 /* libPods-YoUnion.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		044B181258744EE2FAC6DDCC /* YoUnion */ = {
-			isa = PBXGroup;
-			children = (
-				5376562E20CADE254A858B55 /* ExpoModulesProvider.swift */,
-			);
-			name = YoUnion;
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* YoUnion */ = {
 			isa = PBXGroup;
 			children = (
@@ -61,28 +53,36 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				A91D7374C355FFFEE995FBFC /* PrivacyInfo.xcprivacy */,
+				357AF7BF2D5450D049D51EFF /* PrivacyInfo.xcprivacy */,
 			);
 			name = YoUnion;
-			sourceTree = "<group>";
-		};
-		1F81738F71EFEA56F37D3732 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				084ED148785F3FA072DEB7FE /* Pods-YoUnion.debug.xcconfig */,
-				7F1CB5598C36BD34F325FD68 /* Pods-YoUnion.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				BC783123C7EEBAD1E2C0717D /* libPods-YoUnion.a */,
+				B2EDA2E9439C261C78235434 /* libPods-YoUnion.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		4642F817308E117FFE111483 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				8296DD1FD30845532D259B41 /* Pods-YoUnion.debug.xcconfig */,
+				8AA9E2F9514ED0479F8F2191 /* Pods-YoUnion.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		72ED8FB086B6AB05D863670E /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				B72E97933C265EA0F94BF504 /* YoUnion */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -99,8 +99,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				1F81738F71EFEA56F37D3732 /* Pods */,
-				A8678AABCCDA95003EF4FEA1 /* ExpoModulesProviders */,
+				4642F817308E117FFE111483 /* Pods */,
+				72ED8FB086B6AB05D863670E /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -115,12 +115,12 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A8678AABCCDA95003EF4FEA1 /* ExpoModulesProviders */ = {
+		B72E97933C265EA0F94BF504 /* YoUnion */ = {
 			isa = PBXGroup;
 			children = (
-				044B181258744EE2FAC6DDCC /* YoUnion */,
+				0F2E06C4492824264B9C251E /* ExpoModulesProvider.swift */,
 			);
-			name = ExpoModulesProviders;
+			name = YoUnion;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -140,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "YoUnion" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				47A9CCCC181B9B367BB3FE9F /* [Expo] Configure project */,
+				194F3C2F4D068F767CA111D0 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				46E32F874DDF3AA37070043A /* [CP] Embed Pods Frameworks */,
+				F86F2E64A892E850E4647C83 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				47D462F13DF85332DFE42BD8 /* PrivacyInfo.xcprivacy in Resources */,
+				B0E0326645B6239412C3700C /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -242,29 +242,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		46E32F874DDF3AA37070043A /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-YoUnion/Pods-YoUnion-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-YoUnion/Pods-YoUnion-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		47A9CCCC181B9B367BB3FE9F /* [Expo] Configure project */ = {
+		194F3C2F4D068F767CA111D0 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -318,6 +296,28 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-YoUnion/Pods-YoUnion-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		F86F2E64A892E850E4647C83 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-YoUnion/Pods-YoUnion-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-YoUnion/Pods-YoUnion-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -326,7 +326,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				AA6DB536A0D32D983A624E42 /* ExpoModulesProvider.swift in Sources */,
+				74BC5B66A956675CDF37F4ED /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -335,7 +335,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 084ED148785F3FA072DEB7FE /* Pods-YoUnion.debug.xcconfig */;
+			baseConfigurationReference = 8296DD1FD30845532D259B41 /* Pods-YoUnion.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -371,7 +371,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7F1CB5598C36BD34F325FD68 /* Pods-YoUnion.release.xcconfig */;
+			baseConfigurationReference = 8AA9E2F9514ED0479F8F2191 /* Pods-YoUnion.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

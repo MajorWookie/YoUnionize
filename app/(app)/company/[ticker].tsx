@@ -35,21 +35,7 @@ export default function CompanyDetailScreen() {
     setError(null)
 
     try {
-      // First ensure the company exists in our database
-      const lookupRes = await fetchWithRetry('/api/companies/lookup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker }),
-      })
-
-      if (!lookupRes.ok) {
-        const lookupErr = await lookupRes.json()
-        setError(extractErrorMessage(lookupErr))
-        setLoading(false)
-        return
-      }
-
-      // Now fetch the full detail
+      // Fetch company detail directly from DB (company must already exist from search)
       const res = await fetchWithRetry(`/api/companies/${ticker}/detail`)
       if (!res.ok) {
         const errData = await res.json()
@@ -173,7 +159,7 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
       <Separator />
 
       {/* b. Leadership */}
-      <LeadershipSection executives={data.executives} />
+      <LeadershipSection executives={data.executives} directors={data.directors} />
 
       <Separator />
 
