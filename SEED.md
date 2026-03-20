@@ -129,11 +129,10 @@ The script handles API rate limits with automatic retry + exponential backoff:
 | Supabase connection error | Run `supabase start` first, ensure Docker is running |
 | Script seems stuck | SEC API or Claude API may be slow — check network. XBRL extraction can take 10-30s per filing |
 
-## Default Tickers (28)
-
+## Default Tickers (30)
 ```
-NVDA  AAPL  GOOGL  MSFT  AMZN  META  TSLA  BRK-B  JPM  AVGO
-WMT   UPS   TGT    HD    KR    FDX   CVS   LOW    SBUX
+NVDA  AAPL  GOOGL  MSFT  AMZN  META  TSLA  JPM  AVGO  XOM  UNH
+WMT   UPS   TGT    HD    KR    FDX   CVS   LOW  SBUX  MCD
 NFLX  NKE   KO     DIS
 LAMR  ORCL  FFIV   SNX   CDW
 ```

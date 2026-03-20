@@ -35,9 +35,9 @@ import { TenKSection } from '@union/sec-api'
 // ─── Configuration ───────────────────────────────────────────────────────────
 
 const DEFAULT_TICKERS = [
-  'NVDA', 'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'META', 'TSLA', 'BRK-B', 'JPM', 'AVGO',
-  'WMT', 'UPS', 'TGT', 'HD', 'KR', 'FDX', 'CVS', 'LOW', 'SBUX',
-  'NFLX', 'NKE', 'KO', 'DIS',
+  'NVDA', 'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'META', 'TSLA', 'JPM', 'AVGO',
+  'WMT', 'UPS', 'TGT', 'HD', 'KR', 'FDX', 'CVS', 'LOW', 'SBUX', 'MCD',
+  'NFLX', 'NKE', 'KO', 'DIS', 'UNH', 'XOM',
   'LAMR', 'ORCL', 'FFIV', 'SNX', 'CDW',
 ]
 
@@ -204,16 +204,16 @@ async function extractSections(
   const sectionItems =
     filingType === '10-K'
       ? [
-          { key: 'businessOverview', item: TenKSection.BUSINESS_OVERVIEW },
-          { key: 'riskFactors', item: TenKSection.RISK_FACTORS },
-          { key: 'mdAndA', item: TenKSection.MD_AND_A },
-          { key: 'legalProceedings', item: TenKSection.LEGAL_PROCEEDINGS },
-        ]
+        { key: 'businessOverview', item: TenKSection.BUSINESS_OVERVIEW },
+        { key: 'riskFactors', item: TenKSection.RISK_FACTORS },
+        { key: 'mdAndA', item: TenKSection.MD_AND_A },
+        { key: 'legalProceedings', item: TenKSection.LEGAL_PROCEEDINGS },
+      ]
       : filingType === 'DEF 14A'
         ? [
-            { key: 'executiveCompensation', item: 'part1item7' as const },
-            { key: 'proxy', item: 'part1item1' as const },
-          ]
+          { key: 'executiveCompensation', item: 'part1item7' as const },
+          { key: 'proxy', item: 'part1item1' as const },
+        ]
         : []
 
   const results = await Promise.allSettled(

@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
 
       const client = new Anthropic({ apiKey })
       const message = await client.messages.create({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-haiku-4-5',
         max_tokens: 4096,
         system: `You are a compensation fairness analyst. Analyze the employee's pay relative to executive compensation at their company. Provide a JSON response with: fairness_score (1-10), summary, detailed_analysis, recommendations, and key_findings.`,
         messages: [{

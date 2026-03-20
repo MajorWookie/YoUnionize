@@ -136,7 +136,9 @@
       "Bash(grep -r job-queue.ts /Users/majorwookie/Documents/GitHub/YoUnion/src /Users/majorwookie/Documents/GitHub/YoUnion/app /Users/majorwookie/Documents/GitHub/YoUnion/supabase/functions --include=*.ts --include=*.tsx)",
       "Bash(grep -r \"postgres-js\\\\|sql-postgres\\\\|createConnection.*postgres\" /Users/majorwookie/Documents/GitHub/YoUnion/packages/postgres/src --include=*.ts)",
       "Bash(ls -1 /Users/majorwookie/Documents/GitHub/YoUnion/*.md)",
-      "Bash(ls -1 /Users/majorwookie/Documents/GitHub/YoUnion/.env*)"
+      "Bash(ls -1 /Users/majorwookie/Documents/GitHub/YoUnion/.env*)",
+      "Bash(find node_modules -path */react-native-reanimated/package.json -maxdepth 5)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\(''node_modules/expo/bundledNativeModules.json''\\)\\); [print\\(f''{k}: {v}''\\) for k,v in d.items\\(\\) if ''reanimate'' in k.lower\\(\\) or ''worklet'' in k.lower\\(\\)]\")"
     ]
   },
   "outputStyle": "Explanatory"
