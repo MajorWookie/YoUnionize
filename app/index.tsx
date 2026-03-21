@@ -1,17 +1,19 @@
 import { useEffect } from 'react'
-import { useRouter } from 'expo-router'
+import { useRouter, useRootNavigationState } from 'expo-router'
 import { Button, H1, Paragraph, Spinner, YStack } from 'tamagui'
 import { useAuth } from '@union/hooks'
 
 export default function HomePage() {
   const router = useRouter()
+  const rootNavState = useRootNavigationState()
   const { user, isLoading } = useAuth()
 
   useEffect(() => {
+    if (!rootNavState?.key) return
     if (!isLoading && user) {
       router.replace('/discover' as string)
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, router, rootNavState?.key])
 
   if (isLoading) {
     return (
