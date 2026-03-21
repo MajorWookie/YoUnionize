@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'expo-router'
-import { Button, H2, H4, Paragraph, Separator, Spinner, View, XStack, YStack } from 'tamagui'
+import { View as RNView } from 'react-native'
+import { Button, H2, H4, Paragraph, Separator, Spinner, XStack, YStack } from 'tamagui'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { Card } from '~/interface/display/Card'
 import { LoadingState } from '~/interface/display/LoadingState'
@@ -160,7 +161,7 @@ export default function MyPayScreen() {
   if (!profile?.grossAnnualPay) {
     return (
       <ScreenContainer>
-        <YStack gap="$2" marginBottom="$4">
+        <YStack gap="$2" mb="$4">
           <H2>My Pay</H2>
           <Paragraph color="$color8">
             Understand how your compensation compares.
@@ -206,14 +207,14 @@ export default function MyPayScreen() {
 
   return (
     <ScreenContainer>
-      <YStack gap="$2" marginBottom="$3">
+      <YStack gap="$2" mb="$3">
         <H2>My Pay</H2>
         <Paragraph color="$color8">
           Understand how your compensation compares.
         </Paragraph>
       </YStack>
 
-      <YStack gap="$4" paddingBottom="$6">
+      <YStack gap="$4" pb="$6">
         {/* a. Fairness Score */}
         {ad ? (
           <FairnessScoreSection
@@ -224,11 +225,11 @@ export default function MyPayScreen() {
           />
         ) : (
           <Card>
-            <YStack alignItems="center" gap="$3" padding="$3">
+            <YStack items="center" gap="$3" p="$3">
               <Paragraph fontWeight="600" fontSize={16} color="$color12">
                 Get Your Fairness Score
               </Paragraph>
-              <Paragraph color="$color8" textAlign="center" fontSize={13}>
+              <Paragraph color="$color8" text="center" fontSize={13}>
                 {profile.companyTicker
                   ? `Run an AI analysis comparing your pay at ${profile.companyTicker} to executive compensation, industry benchmarks, and your cost of living.`
                   : 'Link your company in Profile to compare your pay to executive compensation.'}
@@ -320,7 +321,7 @@ function FairnessScoreSection({
     <Card gap="$3">
       <FairnessGauge score={analysis.fairness_score} />
 
-      <Paragraph color="$color8" fontSize={12} textAlign="center">
+      <Paragraph color="$color8" fontSize={12} text="center">
         Last analyzed {formatDate(createdAt)}
         {analysis.companyName ? ` at ${analysis.companyName}` : ''}
       </Paragraph>
@@ -330,7 +331,7 @@ function FairnessScoreSection({
         variant="outlined"
         onPress={onRefresh}
         disabled={analyzing}
-        alignSelf="center"
+        self="center"
       >
         {analyzing ? <Spinner size="small" /> : 'Refresh Analysis'}
       </Button>
@@ -409,7 +410,7 @@ function BudgetBreakdownSection({
           onPress={() => setShowBreakdown((v) => !v)}
           gap="$2"
         >
-          <XStack justifyContent="space-between" alignItems="center">
+          <XStack justify="space-between" items="center">
             <Paragraph fontWeight="600" fontSize={14}>
               Expense Breakdown
             </Paragraph>
@@ -419,20 +420,20 @@ function BudgetBreakdownSection({
           </XStack>
 
           {showBreakdown && (
-            <YStack gap="$1" marginTop="$1">
+            <YStack gap="$1" mt="$1">
               {COST_OF_LIVING_FIELDS.filter((f) => f.key !== 'savingsTarget').map((field) => {
                 const v = costOfLiving[field.key as CostOfLivingKey]
                 if (v == null || v === 0) return null
                 const pct = monthlyExpenses > 0 ? (v / 100 / monthlyExpenses) * 100 : 0
                 return (
-                  <XStack key={field.key} justifyContent="space-between" paddingVertical={2}>
+                  <XStack key={field.key} justify="space-between" py={2}>
                     <Paragraph fontSize={13} color="$color11" flex={1}>
                       {field.label}
                     </Paragraph>
-                    <Paragraph fontSize={13} color="$color8" width={60} textAlign="right">
+                    <Paragraph fontSize={13} color="$color8" width={60} text="right">
                       {pct.toFixed(0)}%
                     </Paragraph>
-                    <Paragraph fontSize={13} fontWeight="500" color="$color12" width={80} textAlign="right">
+                    <Paragraph fontSize={13} fontWeight="500" color="$color12" width={80} text="right">
                       {fmtDollars(v)}/mo
                     </Paragraph>
                   </XStack>
@@ -503,18 +504,20 @@ function WhatYouNeedSection({
         </XStack>
 
         {/* Gap visual */}
-        <View height={12} borderRadius={6} backgroundColor="$color4" overflow="hidden">
+        <RNView style={{ height: 12, borderRadius: 6, backgroundColor: '#e2e8f0', overflow: 'hidden' }}>
           {isAbove ? (
-            <View height={12} borderRadius={6} width="100%" backgroundColor="#069639" />
+            <RNView style={{ height: 12, borderRadius: 6, width: '100%', backgroundColor: '#069639' }} />
           ) : (
-            <View
-              height={12}
-              borderRadius={6}
-              width={`${Math.min((grossAnnualDollars / minimumViableSalary) * 100, 100)}%`}
-              backgroundColor="#e53e3e"
+            <RNView
+              style={{
+                height: 12,
+                borderRadius: 6,
+                width: `${Math.min((grossAnnualDollars / minimumViableSalary) * 100, 100)}%`,
+                backgroundColor: '#e53e3e',
+              }}
             />
           )}
-        </View>
+        </RNView>
 
         <Paragraph
           fontSize={14}
@@ -578,20 +581,20 @@ function ConversationStartersSection({ analysis }: { analysis: AnalysisData }) {
 
       {analysis.recommendations.map((rec, idx) => (
         <Card key={idx} gap="$1">
-          <XStack gap="$2" alignItems="flex-start">
-            <View
+          <XStack gap="$2" items="flex-start">
+            <YStack
               width={24}
               height={24}
-              borderRadius={12}
-              backgroundColor="$color4"
-              alignItems="center"
-              justifyContent="center"
-              marginTop={2}
+              rounded={12}
+              bg="$color4"
+              items="center"
+              justify="center"
+              mt={2}
             >
               <Paragraph fontSize={12} fontWeight="700" color="$color9">
                 {idx + 1}
               </Paragraph>
-            </View>
+            </YStack>
             <Paragraph flex={1} color="$color11" fontSize={14} lineHeight={22}>
               {rec}
             </Paragraph>
@@ -611,7 +614,7 @@ function AnalysisHistorySection({ history }: { history: Array<AnalysisRecord> })
         pressable
         onPress={() => setExpanded((v) => !v)}
       >
-        <XStack justifyContent="space-between" alignItems="center">
+        <XStack justify="space-between" items="center">
           <Paragraph fontWeight="600" fontSize={14}>
             Analysis History ({history.length})
           </Paragraph>
@@ -621,7 +624,7 @@ function AnalysisHistorySection({ history }: { history: Array<AnalysisRecord> })
         </XStack>
 
         {expanded && (
-          <YStack gap="$2" marginTop="$3">
+          <YStack gap="$2" mt="$3">
             {history.map((item) => {
               const ad = item.analysisData
               const color =
@@ -636,20 +639,20 @@ function AnalysisHistorySection({ history }: { history: Array<AnalysisRecord> })
               return (
                 <XStack
                   key={item.id}
-                  justifyContent="space-between"
-                  alignItems="center"
-                  paddingVertical="$1"
+                  justify="space-between"
+                  items="center"
+                  py="$1"
                   borderBottomWidth={1}
                   borderBottomColor="$color3"
                 >
                   <Paragraph fontSize={13} color="$color8">
                     {formatDate(item.createdAt)}
                   </Paragraph>
-                  <XStack gap="$2" alignItems="center">
+                  <XStack gap="$2" items="center">
                     <Paragraph fontSize={13} color="$color11">
                       {ad.companyName}
                     </Paragraph>
-                    <Paragraph fontSize={16} fontWeight="700" color={color}>
+                    <Paragraph fontSize={16} fontWeight="700" color={color as any}>
                       {ad.fairness_score}
                     </Paragraph>
                   </XStack>

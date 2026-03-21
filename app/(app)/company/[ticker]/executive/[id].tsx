@@ -117,21 +117,21 @@ export default function ExecutiveDetailScreen() {
         size="$2"
         variant="outlined"
         onPress={() => router.back()}
-        alignSelf="flex-start"
-        marginBottom="$2"
+        self="flex-start"
+        mb="$2"
       >
         {'\u2190'} Back to {data.company.name}
       </Button>
 
       {/* Header */}
-      <XStack gap="$3" alignItems="center" marginBottom="$4">
+      <XStack gap="$3" items="center" mb="$4">
         <YStack
           width={60}
           height={60}
-          borderRadius={30}
-          backgroundColor="$blue4"
-          alignItems="center"
-          justifyContent="center"
+          rounded={30}
+          bg="$blue4"
+          items="center"
+          justify="center"
         >
           <Paragraph fontWeight="700" color="$blue10" fontSize={22}>
             {getInitials(person.name)}
@@ -150,17 +150,17 @@ export default function ExecutiveDetailScreen() {
         </YStack>
       </XStack>
 
-      <YStack gap="$4" paddingBottom="$6">
+      <YStack gap="$4" pb="$6">
         {/* Tenure */}
         {person.director?.tenureStart && (
           <Card>
-            <Paragraph fontWeight="600" marginBottom="$1">Tenure</Paragraph>
+            <Paragraph fontWeight="600" mb="$1">Tenure</Paragraph>
             <Paragraph color="$color11">
               Board member since {new Date(person.director.tenureStart).getFullYear()}
               {person.director.age ? ` · Age ${person.director.age}` : ''}
             </Paragraph>
             {person.director.directorClass && (
-              <Paragraph color="$color8" fontSize={13} marginTop="$1">
+              <Paragraph color="$color8" fontSize={13} mt="$1">
                 {person.director.directorClass}
               </Paragraph>
             )}
@@ -172,10 +172,10 @@ export default function ExecutiveDetailScreen() {
           <XStack gap="$2" flexWrap="wrap">
             {person.director.isIndependent != null && (
               <YStack
-                paddingHorizontal="$3"
-                paddingVertical="$2"
-                borderRadius="$3"
-                backgroundColor={person.director.isIndependent ? '$green3' : '$color3'}
+                px="$3"
+                py="$2"
+                rounded="$3"
+                bg={person.director.isIndependent ? '$green3' : '$color3'}
               >
                 <Paragraph
                   fontSize={13}
@@ -188,10 +188,10 @@ export default function ExecutiveDetailScreen() {
             )}
             {person.director.role && (
               <YStack
-                paddingHorizontal="$3"
-                paddingVertical="$2"
-                borderRadius="$3"
-                backgroundColor="$color3"
+                px="$3"
+                py="$2"
+                rounded="$3"
+                bg="$color3"
               >
                 <Paragraph fontSize={13} fontWeight="600" color="$color8">
                   {person.director.role}
@@ -221,13 +221,13 @@ function CommitteesCard({ director }: { director: DirectorData | null }) {
 
   return (
     <Card>
-      <Paragraph fontWeight="600" marginBottom="$2">
+      <Paragraph fontWeight="600" mb="$2">
         Committee Memberships
       </Paragraph>
       <YStack gap="$1.5">
         {committees.map((c) => (
-          <XStack key={c} gap="$2" alignItems="center">
-            <YStack width={6} height={6} borderRadius={3} backgroundColor="$blue8" />
+          <XStack key={c} gap="$2" items="center">
+            <YStack width={6} height={6} rounded={3} bg="$blue8" />
             <Paragraph color="$color11" fontSize={14}>
               {c}
             </Paragraph>
@@ -255,22 +255,22 @@ function CompensationCard({ executive }: { executive: ExecutiveData | null }) {
 
   return (
     <Card>
-      <Paragraph fontWeight="600" marginBottom="$1">
+      <Paragraph fontWeight="600" mb="$1">
         Compensation Breakdown
       </Paragraph>
-      <Paragraph color="$color8" fontSize={12} marginBottom="$3">
+      <Paragraph color="$color8" fontSize={12} mb="$3">
         FY {executive.fiscalYear}
       </Paragraph>
 
       {/* Total */}
-      <XStack justifyContent="space-between" alignItems="center" marginBottom="$3">
+      <XStack justify="space-between" items="center" mb="$3">
         <Paragraph fontWeight="600" fontSize={15}>Total Compensation</Paragraph>
         <Paragraph fontWeight="700" fontSize={18} color="$color12">
           {formatDollars(executive.totalCompensation)}
         </Paragraph>
       </XStack>
 
-      <Separator marginBottom="$2" />
+      <Separator mb="$2" />
 
       {/* Line items */}
       <YStack gap="$2">
@@ -279,15 +279,15 @@ function CompensationCard({ executive }: { executive: ExecutiveData | null }) {
             ? ((item.value! / executive.totalCompensation) * 100).toFixed(1)
             : '0'
           return (
-            <XStack key={item.label} justifyContent="space-between" alignItems="center">
+            <XStack key={item.label} justify="space-between" items="center">
               <Paragraph color="$color11" fontSize={14} flex={1}>
                 {item.label}
               </Paragraph>
-              <XStack gap="$2" alignItems="center">
+              <XStack gap="$2" items="center">
                 <Paragraph fontWeight="600" fontSize={14} color="$color12">
                   {formatDollars(item.value)}
                 </Paragraph>
-                <Paragraph color="$color8" fontSize={12} width={45} textAlign="right">
+                <Paragraph color="$color8" fontSize={12} width={45} text="right">
                   {pct}%
                 </Paragraph>
               </XStack>
@@ -298,8 +298,8 @@ function CompensationCard({ executive }: { executive: ExecutiveData | null }) {
 
       {executive.ceoPayRatio && (
         <>
-          <Separator marginVertical="$2" />
-          <XStack justifyContent="space-between" alignItems="center">
+          <Separator my="$2" />
+          <XStack justify="space-between" items="center">
             <Paragraph color="$color8" fontSize={13}>CEO-to-Median-Worker Pay Ratio</Paragraph>
             <Paragraph fontWeight="700" fontSize={14} color="$color12">
               {executive.ceoPayRatio}:1
@@ -331,7 +331,7 @@ function QualificationsCard({ director }: { director: DirectorData | null }) {
 
   return (
     <Card>
-      <Paragraph fontWeight="600" marginBottom="$2">
+      <Paragraph fontWeight="600" mb="$2">
         Background & Qualifications
       </Paragraph>
       <Paragraph color="$color11" fontSize={14} lineHeight={21}>

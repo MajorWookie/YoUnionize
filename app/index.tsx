@@ -11,13 +11,13 @@ export default function HomePage() {
   useEffect(() => {
     if (!rootNavState?.key) return
     if (!isLoading && user) {
-      router.replace('/discover' as string)
+      router.replace('/discover')
     }
   }, [user, isLoading, router, rootNavState?.key])
 
   if (isLoading) {
     return (
-      <YStack flex={1} alignItems="center" justifyContent="center">
+      <YStack flex={1} items="center" justify="center">
         <Spinner size="large" color="$color9" />
       </YStack>
     )
@@ -26,12 +26,12 @@ export default function HomePage() {
   if (user) return null
 
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" padding="$4" gap="$4">
+    <YStack flex={1} items="center" justify="center" p="$4" gap="$4">
       <H1>YoUnion</H1>
       <Paragraph color="$color8">
         Understand your company. Know your worth.
       </Paragraph>
-      <YStack gap="$3" width="100%" maxWidth={320}>
+      <YStack gap="$3" width="100%" maxW={320}>
         <Button size="$4" theme="accent" onPress={() => router.push('/sign-in')}>
           Sign In
         </Button>

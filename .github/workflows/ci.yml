@@ -23,7 +23,6 @@ jobs:
 
       - name: Type check
         run: bun run typecheck
-        continue-on-error: true  # Pre-existing Tamagui TS2322 errors
 
       - name: Test
         run: bun run test --run

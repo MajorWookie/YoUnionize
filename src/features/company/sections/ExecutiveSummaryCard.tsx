@@ -14,10 +14,10 @@ export function ExecutiveSummaryCard({ summary, periodEnd, filingType }: Props) 
   return (
     <YStack gap="$3">
       <Card>
-        <Paragraph fontWeight="700" fontSize={16} marginBottom="$2">
+        <Paragraph fontWeight="700" fontSize={16} mb="$2">
           Executive Summary
         </Paragraph>
-        <Paragraph color="$color8" fontSize={12} marginBottom="$3">
+        <Paragraph color="$color8" fontSize={12} mb="$3">
           {filingType} · {periodEnd ? formatDate(periodEnd) : 'Recent filing'}
         </Paragraph>
         <Paragraph color="$color11" lineHeight={22}>
@@ -28,10 +28,10 @@ export function ExecutiveSummaryCard({ summary, periodEnd, filingType }: Props) 
       {summary.key_numbers.length > 0 && (
         <XStack flexWrap="wrap" gap="$3">
           {summary.key_numbers.slice(0, 4).map((kn) => (
-            <YStack key={kn.label} flex={1} minWidth={140}>
+            <YStack key={kn.label} flex={1} minW={140}>
               <Card>
                 <Stat label={kn.label} value={kn.value} />
-                <Paragraph color="$color8" fontSize={11} marginTop="$1">
+                <Paragraph color="$color8" fontSize={11} mt="$1">
                   {kn.context}
                 </Paragraph>
               </Card>
@@ -42,7 +42,7 @@ export function ExecutiveSummaryCard({ summary, periodEnd, filingType }: Props) 
 
       {summary.plain_language_explanation && (
         <Card>
-          <Paragraph fontWeight="600" marginBottom="$2">
+          <Paragraph fontWeight="600" mb="$2">
             What does this mean?
           </Paragraph>
           <Paragraph color="$color11" lineHeight={22}>
@@ -53,7 +53,7 @@ export function ExecutiveSummaryCard({ summary, periodEnd, filingType }: Props) 
 
       {summary.employee_relevance && (
         <Card>
-          <Paragraph fontWeight="600" marginBottom="$2">
+          <Paragraph fontWeight="600" mb="$2">
             What this may mean for employees
           </Paragraph>
           <Paragraph color="$color11" lineHeight={22}>

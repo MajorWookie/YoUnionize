@@ -146,7 +146,26 @@
       "Bash(grep -l \"pgvector\\\\|vector\" /Users/majorwookie/Documents/GitHub/YoUnion/supabase/migrations/*.sql)",
       "Bash(supabase --version)",
       "Bash(chmod +x /Users/majorwookie/Documents/GitHub/YoUnion/scripts/reset-remote.sh)",
-      "WebFetch(domain:docs.voyageai.com)"
+      "WebFetch(domain:docs.voyageai.com)",
+      "Bash(bun tsc:*)",
+      "Bash(cut -d'\\(' -f1)",
+      "Bash(grep -n \"CompanyMapping\\\\|ExecutiveCompensationResponse\\\\|InsiderTradingResponse\\\\|DirectorsFiling\" /Users/majorwookie/Documents/GitHub/YoUnion/packages/sec-api/src/*.ts /Users/majorwookie/Documents/GitHub/YoUnion/packages/sec-api/src/**/*.ts)",
+      "Bash(find node_modules -name stackTypes.d.ts -path */tamagui/*)",
+      "Bash(find node_modules -name XStack*)",
+      "Bash(node -e \"const t = require\\(''''tamagui''''\\); console.log\\(Object.keys\\(t\\).slice\\(0,20\\)\\)\")",
+      "Bash(find node_modules -name index.d.ts -path */tamagui/*)",
+      "Bash(find node_modules -path */@tamagui/stacks/types* -name *.d.ts)",
+      "Bash(find node_modules -path */@tamagui/core/types* -name *.d.ts)",
+      "Bash(find node_modules -path */@tamagui/web/types* -name *.d.ts)",
+      "Bash(find node_modules -name types.d.ts -path */@tamagui/web*)",
+      "Bash(grep -rn SpaceTokens node_modules/@tamagui/core/types/*.d.ts)",
+      "Bash(head -5 grep -rn SpaceTokens node_modules/.bun/@tamagui+web*/node_modules/@tamagui/web/types/types.d.ts)",
+      "Bash(find node_modules -path */@tamagui/config* -name *.d.ts)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/node_modules/@tamagui/config -name shorthands*)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/node_modules -path */tamagui/config* -name *.js)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/node_modules/.bun -path */tamagui/shorthands/v4* -name *.ts)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/node_modules -path *tamagui/shorthands*)",
+      "Bash(grep -r onlyAllowShorthands /Users/majorwookie/Documents/GitHub/YoUnion/ --include=*.ts --include=*.tsx --include=*.json)"
     ]
   },
   "outputStyle": "Explanatory"

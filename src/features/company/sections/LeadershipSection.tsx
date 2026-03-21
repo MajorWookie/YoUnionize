@@ -44,14 +44,14 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
               pressable
               onPress={() => router.push(`/company/${companyTicker}/executive/${exec.id}`)}
             >
-              <XStack gap="$3" alignItems="center">
+              <XStack gap="$3" items="center">
                 <YStack
                   width={44}
                   height={44}
-                  borderRadius={22}
-                  backgroundColor="$color4"
-                  alignItems="center"
-                  justifyContent="center"
+                  rounded={22}
+                  bg="$color4"
+                  items="center"
+                  justify="center"
                 >
                   <Paragraph fontWeight="700" color="$color9" fontSize={15}>
                     {getInitials(exec.name)}
@@ -67,7 +67,7 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
                   </Paragraph>
                 </YStack>
 
-                <YStack alignItems="flex-end" gap={2}>
+                <YStack items="flex-end" gap={2}>
                   <Paragraph fontWeight="700" fontSize={15} color="$color12">
                     {formatDollars(exec.totalCompensation)}
                   </Paragraph>
@@ -78,7 +78,7 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
               </XStack>
 
               {(exec.salary != null || exec.stockAwards != null) && (
-                <XStack marginTop="$2" gap="$3" flexWrap="wrap">
+                <XStack mt="$2" gap="$3" flexWrap="wrap">
                   {exec.salary != null && (
                     <YStack>
                       <Paragraph color="$color8" fontSize={11}>Salary</Paragraph>
@@ -107,7 +107,7 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
               )}
 
               {exec.ceoPayRatio != null && (
-                <Paragraph color="$color8" fontSize={12} marginTop="$2">
+                <Paragraph color="$color8" fontSize={12} mt="$2">
                   CEO-to-median-worker pay ratio: {exec.ceoPayRatio}:1
                 </Paragraph>
               )}
@@ -133,14 +133,14 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
                 pressable
                 onPress={() => router.push(`/company/${companyTicker}/executive/${dir.id}`)}
               >
-                <XStack gap="$3" alignItems="center">
+                <XStack gap="$3" items="center">
                   <YStack
                     width={44}
                     height={44}
-                    borderRadius={22}
-                    backgroundColor="$color4"
-                    alignItems="center"
-                    justifyContent="center"
+                    rounded={22}
+                    bg="$color4"
+                    items="center"
+                    justify="center"
                   >
                     <Paragraph fontWeight="700" color="$color9" fontSize={15}>
                       {getInitials(dir.name)}
@@ -158,10 +158,10 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
 
                   {dir.isIndependent != null && (
                     <YStack
-                      paddingHorizontal="$2"
-                      paddingVertical="$1"
-                      borderRadius="$2"
-                      backgroundColor={dir.isIndependent ? '$green3' : '$color3'}
+                      px="$2"
+                      py="$1"
+                      rounded="$2"
+                      bg={dir.isIndependent ? '$green3' : '$color3'}
                     >
                       <Paragraph
                         fontSize={11}
@@ -175,7 +175,7 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
                 </XStack>
 
                 {(committees.length > 0 || tenureYear) && (
-                  <XStack marginTop="$2" gap="$3" flexWrap="wrap" alignItems="center">
+                  <XStack mt="$2" gap="$3" flexWrap="wrap" items="center">
                     {tenureYear != null && !isNaN(tenureYear) && (
                       <Paragraph color="$color8" fontSize={12}>
                         Since {tenureYear}

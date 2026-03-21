@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useColorScheme } from 'react-native'
-import { TamaguiProvider, isWeb } from 'tamagui'
+import { TamaguiProvider, Theme, isWeb } from 'tamagui'
 import { config } from './tamagui.config'
 
 export function TamaguiRootProvider({ children }: { children: ReactNode }) {
@@ -12,7 +12,9 @@ export function TamaguiRootProvider({ children }: { children: ReactNode }) {
       config={config}
       defaultTheme={scheme ?? 'light'}
     >
-      {children}
+      <Theme name={scheme ?? 'light'}>
+        {children}
+      </Theme>
     </TamaguiProvider>
   )
 }

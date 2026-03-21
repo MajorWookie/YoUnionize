@@ -6,7 +6,7 @@ interface LoadingStateProps {
 
 export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$6">
+    <YStack flex={1} items="center" justify="center" gap="$3" p="$6">
       <Spinner size="large" color="$color9" />
       <Paragraph color="$color8">{message}</Paragraph>
     </YStack>

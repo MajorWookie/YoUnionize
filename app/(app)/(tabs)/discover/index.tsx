@@ -128,7 +128,7 @@ export default function DiscoverScreen() {
 
   return (
     <ScreenContainer>
-      <YStack gap="$2" marginBottom="$3">
+      <YStack gap="$2" mb="$3">
         <H2>Discover</H2>
         <Paragraph color="$color8">
           Search public companies and explore their SEC filings.
@@ -136,13 +136,13 @@ export default function DiscoverScreen() {
       </YStack>
 
       <XStack
-        backgroundColor="$color2"
-        borderRadius="$3"
+        bg="$color2"
+        rounded="$3"
         borderWidth={1}
         borderColor="$borderColor"
-        alignItems="center"
-        paddingHorizontal="$3"
-        marginBottom="$3"
+        items="center"
+        px="$3"
+        mb="$3"
       >
         <DiscoverIcon size={18} color="var(--color7)" />
         <Input
@@ -160,12 +160,12 @@ export default function DiscoverScreen() {
       </XStack>
 
       {/* Global ask bar */}
-      <YStack marginBottom="$3" gap="$2">
+      <YStack mb="$3" gap="$2">
         <H4>Ask about any company</H4>
         <AskBar placeholder="Ask anything about any public company..." />
       </YStack>
 
-      <Separator marginBottom="$3" />
+      <Separator mb="$3" />
 
       {searchError ? (
         <EmptyState
@@ -191,12 +191,12 @@ export default function DiscoverScreen() {
               pressable
               onPress={() => router.push(`/company/${company.ticker}` as never)}
             >
-              <XStack justifyContent="space-between" alignItems="center">
+              <XStack justify="space-between" items="center">
                 <YStack flex={1} gap={2}>
                   <Paragraph fontWeight="600" fontSize={16} numberOfLines={1}>
                     {company.name}
                   </Paragraph>
-                  <XStack gap="$2" alignItems="center">
+                  <XStack gap="$2" items="center">
                     <Paragraph fontWeight="700" color="$color9" fontSize={14}>
                       {company.ticker}
                     </Paragraph>
@@ -221,7 +221,7 @@ export default function DiscoverScreen() {
           ))}
 
           {secLoading && (
-            <XStack gap="$2" alignItems="center" justifyContent="center" paddingVertical="$2">
+            <XStack gap="$2" items="center" justify="center" py="$2">
               <Spinner size="small" color="$color7" />
               <Paragraph color="$color7" fontSize={13}>
                 Searching more companies...

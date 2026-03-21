@@ -2,7 +2,8 @@
  * Stacked waterfall chart showing income → expenses → remaining.
  * Each segment is a horizontal bar with label and amount.
  */
-import { Paragraph, View, XStack, YStack } from 'tamagui'
+import { View as RNView } from 'react-native'
+import { Paragraph, XStack, YStack } from 'tamagui'
 
 interface WaterfallItem {
   label: string
@@ -43,7 +44,7 @@ export function WaterfallChart({ items }: WaterfallChartProps) {
 
         return (
           <YStack key={`${item.label}-${idx}`} gap={3}>
-            <XStack justifyContent="space-between" alignItems="center">
+            <XStack justify="space-between" items="center">
               <Paragraph
                 fontSize={13}
                 color={isResult ? '$color12' : '$color11'}
@@ -56,19 +57,28 @@ export function WaterfallChart({ items }: WaterfallChartProps) {
               <Paragraph
                 fontSize={14}
                 fontWeight="700"
-                color={color}
+                color={color as any}
               >
                 {item.formattedAmount}
               </Paragraph>
             </XStack>
-            <View height={isResult ? 10 : 8} borderRadius={5} backgroundColor="$color4" overflow="hidden">
-              <View
-                height={isResult ? 10 : 8}
-                borderRadius={5}
-                width={`${Math.max(pct, 2)}%`}
-                backgroundColor={color}
+            <RNView
+              style={{
+                height: isResult ? 10 : 8,
+                borderRadius: 5,
+                backgroundColor: '#e2e8f0',
+                overflow: 'hidden',
+              }}
+            >
+              <RNView
+                style={{
+                  height: isResult ? 10 : 8,
+                  borderRadius: 5,
+                  width: `${Math.max(pct, 2)}%`,
+                  backgroundColor: color,
+                }}
               />
-            </View>
+            </RNView>
           </YStack>
         )
       })}

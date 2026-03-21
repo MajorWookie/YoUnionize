@@ -1,11 +1,14 @@
 /**
  * Lambda handler for running Drizzle database migrations at deploy time.
  *
- * Invoked by SST during deployment to keep the schema in sync.
+ * ⚠️ STALE — This handler references drizzle-kit migrations that no longer exist.
+ * Per ADR-008 and CLAUDE.md tech debt, migrations now live in supabase/migrations/.
+ * This file needs rewrite or removal before it can be deployed.
  */
 
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { drizzle } from 'drizzle-orm/node-postgres'
+// @ts-expect-error -- stale handler: pg removed (ADR-008), see CLAUDE.md tech debt
 import pg from 'pg'
 
 export async function handler() {

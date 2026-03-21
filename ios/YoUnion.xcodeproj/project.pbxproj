@@ -7,12 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		005F08F540730FD07D3359CE /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0F5B9763FB4D742E47DF64 /* ExpoModulesProvider.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		3B9F57E9A8CD582551960D67 /* libPods-YoUnion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2397B2A9777E9ABCEE9B04A6 /* libPods-YoUnion.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		ADA1B463B06C46784C1AE94B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D8DA56A3D527A0BB65E28356 /* PrivacyInfo.xcprivacy */; };
+		912E2D605F25EC5EC243E836 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86B3E24CA056D3E631A5660 /* ExpoModulesProvider.swift */; };
+		9CB6C9CD36A149875F8F96BF /* libPods-YoUnion.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D5C141E94E1CC04A725F3AE /* libPods-YoUnion.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		D783A03FB12793951A5EF8DB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2724C1A30D7964ACD5807E15 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
@@ -20,16 +20,16 @@
 		13B07F961A680F5B00A75B9A /* YoUnion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YoUnion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = YoUnion/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = YoUnion/Info.plist; sourceTree = "<group>"; };
-		2397B2A9777E9ABCEE9B04A6 /* libPods-YoUnion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-YoUnion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		431CD83000B8A1BFF8D90295 /* Pods-YoUnion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.debug.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.debug.xcconfig"; sourceTree = "<group>"; };
+		1F87A1F9FA1F3A68EA031BE0 /* Pods-YoUnion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.release.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.release.xcconfig"; sourceTree = "<group>"; };
+		2724C1A30D7964ACD5807E15 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = YoUnion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		4D5C141E94E1CC04A725F3AE /* libPods-YoUnion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-YoUnion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = YoUnion/SplashScreen.storyboard; sourceTree = "<group>"; };
-		AAD1FFB55F6DD544228EA2AA /* Pods-YoUnion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.release.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.release.xcconfig"; sourceTree = "<group>"; };
-		AB0F5B9763FB4D742E47DF64 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-YoUnion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		D8DA56A3D527A0BB65E28356 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = YoUnion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		CC538DA46060018903EDAA9A /* Pods-YoUnion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.debug.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = YoUnion/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* YoUnion-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "YoUnion-Bridging-Header.h"; path = "YoUnion/YoUnion-Bridging-Header.h"; sourceTree = "<group>"; };
+		F86B3E24CA056D3E631A5660 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-YoUnion/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,20 +37,19 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3B9F57E9A8CD582551960D67 /* libPods-YoUnion.a in Frameworks */,
+				9CB6C9CD36A149875F8F96BF /* libPods-YoUnion.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		01AB8209B40156E833DD6D75 /* Pods */ = {
+		01277C769627A3760585044A /* YoUnion */ = {
 			isa = PBXGroup;
 			children = (
-				431CD83000B8A1BFF8D90295 /* Pods-YoUnion.debug.xcconfig */,
-				AAD1FFB55F6DD544228EA2AA /* Pods-YoUnion.release.xcconfig */,
+				F86B3E24CA056D3E631A5660 /* ExpoModulesProvider.swift */,
 			);
-			path = Pods;
+			name = YoUnion;
 			sourceTree = "<group>";
 		};
 		13B07FAE1A68108700A75B9A /* YoUnion */ = {
@@ -62,7 +61,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				D8DA56A3D527A0BB65E28356 /* PrivacyInfo.xcprivacy */,
+				2724C1A30D7964ACD5807E15 /* PrivacyInfo.xcprivacy */,
 			);
 			name = YoUnion;
 			sourceTree = "<group>";
@@ -71,9 +70,17 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				2397B2A9777E9ABCEE9B04A6 /* libPods-YoUnion.a */,
+				4D5C141E94E1CC04A725F3AE /* libPods-YoUnion.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		7D96F42B154050A25348E7C0 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				01277C769627A3760585044A /* YoUnion */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -90,8 +97,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				01AB8209B40156E833DD6D75 /* Pods */,
-				93720DFCCD8A50930DC0CE41 /* ExpoModulesProviders */,
+				912DD4A44BFCFF0905CD5610 /* Pods */,
+				7D96F42B154050A25348E7C0 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -106,20 +113,13 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		92F34A1534D3E3189219B1AB /* YoUnion */ = {
+		912DD4A44BFCFF0905CD5610 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				AB0F5B9763FB4D742E47DF64 /* ExpoModulesProvider.swift */,
+				CC538DA46060018903EDAA9A /* Pods-YoUnion.debug.xcconfig */,
+				1F87A1F9FA1F3A68EA031BE0 /* Pods-YoUnion.release.xcconfig */,
 			);
-			name = YoUnion;
-			sourceTree = "<group>";
-		};
-		93720DFCCD8A50930DC0CE41 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				92F34A1534D3E3189219B1AB /* YoUnion */,
-			);
-			name = ExpoModulesProviders;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -139,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "YoUnion" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				38023E86219D59965DAF601C /* [Expo] Configure project */,
+				7EE9DCC0AC81F2AB470E8F96 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				C3C50C74D7D8FB6A435EE128 /* [CP] Embed Pods Frameworks */,
+				87346872A7C59B93397D1AFA /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				ADA1B463B06C46784C1AE94B /* PrivacyInfo.xcprivacy in Resources */,
+				D783A03FB12793951A5EF8DB /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,7 +241,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		38023E86219D59965DAF601C /* [Expo] Configure project */ = {
+		7EE9DCC0AC81F2AB470E8F96 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -303,7 +303,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-YoUnion/Pods-YoUnion-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		C3C50C74D7D8FB6A435EE128 /* [CP] Embed Pods Frameworks */ = {
+		87346872A7C59B93397D1AFA /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -333,7 +333,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				005F08F540730FD07D3359CE /* ExpoModulesProvider.swift in Sources */,
+				912E2D605F25EC5EC243E836 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -342,7 +342,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 431CD83000B8A1BFF8D90295 /* Pods-YoUnion.debug.xcconfig */;
+			baseConfigurationReference = CC538DA46060018903EDAA9A /* Pods-YoUnion.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -379,7 +379,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = AAD1FFB55F6DD544228EA2AA /* Pods-YoUnion.release.xcconfig */;
+			baseConfigurationReference = 1F87A1F9FA1F3A68EA031BE0 /* Pods-YoUnion.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
