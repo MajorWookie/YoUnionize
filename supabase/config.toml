@@ -40,3 +40,41 @@ file_size_limit = "50MiB"
 
 [analytics]
 enabled = false
+
+# Edge Functions — disable gateway JWT verification for new publishable API keys
+# (sb_publishable_* keys are opaque, not JWTs). Auth-protected functions use
+# ensureAuth() internally via supabase.auth.getUser() instead.
+[functions.ask]
+verify_jwt = false
+[functions.batch-fetch]
+verify_jwt = false
+[functions.companies-lookup]
+verify_jwt = false
+[functions.companies-search]
+verify_jwt = false
+[functions.companies-search-sec]
+verify_jwt = false
+[functions.company-detail]
+verify_jwt = false
+[functions.company-fetch]
+verify_jwt = false
+[functions.company-ingest]
+verify_jwt = false
+[functions.company-process]
+verify_jwt = false
+[functions.company-summarize]
+verify_jwt = false
+[functions.company-summary-status]
+verify_jwt = false
+[functions.compensation-fairness]
+verify_jwt = false
+[functions.health]
+verify_jwt = false
+[functions.job-status]
+verify_jwt = false
+[functions.user-cost-of-living]
+verify_jwt = false
+[functions.user-me]
+verify_jwt = false
+[functions.user-profile]
+verify_jwt = false
