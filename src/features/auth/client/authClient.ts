@@ -6,11 +6,12 @@ const getSupabaseConfig = () => {
     process.env.EXPO_PUBLIC_SUPABASE_URL
     ?? 'http://127.0.0.1:54321'
 
-  const anonKey =
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+  const key =
+    process.env.EXPO_PUBLIC_SUPABASE_KEY
+    ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
     ?? ''
 
-  return { url, anonKey }
+  return { url, anonKey: key }
 }
 
 let client: SupabaseClient | undefined
