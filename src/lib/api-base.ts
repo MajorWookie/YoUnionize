@@ -21,9 +21,10 @@ function getSupabaseUrl(): string {
   return 'http://127.0.0.1:54321'
 }
 
-function getSupabaseAnonKey(): string {
+function getSupabaseKey(): string {
   if (typeof process !== 'undefined' && process.env) {
     return (
+      process.env.EXPO_PUBLIC_SUPABASE_KEY ??
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
       process.env.VITE_SUPABASE_ANON_KEY ??
       ''
@@ -38,11 +39,11 @@ function getSupabaseAnonKey(): string {
  * even for Edge Functions that don't perform auth checks internally.
  */
 export function getDefaultHeaders(): Record<string, string> {
-  const anonKey = getSupabaseAnonKey()
-  if (!anonKey) return {}
+  const key = getSupabaseKey()
+  if (!key) return {}
   return {
-    apikey: anonKey,
-    Authorization: `Bearer ${anonKey}`,
+    apikey: key,
+    Authorization: `Bearer ${key}`,
   }
 }
 
