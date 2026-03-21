@@ -6,13 +6,14 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
  */
 export function createServerClient(): SupabaseClient {
   const url = process.env.SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  // Prefer new secret key name; fall back to legacy service_role key
+  const secretKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
 
-  if (!url || !serviceRoleKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set')
+  if (!url || !secretKey) {
+    throw new Error('SUPABASE_URL and SUPABASE_SECRET_KEY must be set')
   }
 
-  return createClient(url, serviceRoleKey, {
+  return createClient(url, secretKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -26,10 +27,11 @@ export function createServerClient(): SupabaseClient {
  */
 export function createRequestClient(request: Request): SupabaseClient {
   const url = process.env.SUPABASE_URL
-  const anonKey = process.env.SUPABASE_ANON_KEY
+  // Prefer new publishable key name; fall back to legacy anon key
+  const key = process.env.SUPABASE_KEY ?? process.env.SUPABASE_ANON_KEY
 
-  if (!url || !anonKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set')
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL and SUPABASE_KEY must be set')
   }
 
   // Extract the access token from the Authorization header or cookie
@@ -40,7 +42,7 @@ export function createRequestClient(request: Request): SupabaseClient {
 
   // If we have a bearer token, create a client with it
   if (accessToken) {
-    return createClient(url, anonKey, {
+    return createClient(url, key, {
       global: {
         headers: { Authorization: `Bearer ${accessToken}` },
       },

@@ -53,8 +53,8 @@ export default $config({
       anthropicApiKey: new sst.Secret('AnthropicApiKey'),
       postmarkApiKey: new sst.Secret('PostmarkApiKey'),
       supabaseUrl: new sst.Secret('SupabaseUrl'),
-      supabaseAnonKey: new sst.Secret('SupabaseAnonKey'),
-      supabaseServiceRoleKey: new sst.Secret('SupabaseServiceRoleKey'),
+      supabaseKey: new sst.Secret('SupabaseKey'),
+      supabaseSecretKey: new sst.Secret('SupabaseSecretKey'),
       databaseUrl: new sst.Secret('DatabaseUrl'),
     }
 
@@ -88,8 +88,8 @@ export default $config({
       NODE_ENV: 'production',
       DATABASE_URL: secrets.databaseUrl.value,
       SUPABASE_URL: secrets.supabaseUrl.value,
-      SUPABASE_ANON_KEY: secrets.supabaseAnonKey.value,
-      SUPABASE_SERVICE_ROLE_KEY: secrets.supabaseServiceRoleKey.value,
+      SUPABASE_KEY: secrets.supabaseKey.value,
+      SUPABASE_SECRET_KEY: secrets.supabaseSecretKey.value,
       SEC_API_KEY: secrets.secApiKey.value,
       ANTHROPIC_API_KEY: secrets.anthropicApiKey.value,
       POSTMARK_API_KEY: secrets.postmarkApiKey.value,
