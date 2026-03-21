@@ -2,6 +2,7 @@ import { styled, YStack } from 'tamagui'
 
 export const Card = styled(YStack, {
   background: '$color2',
+  // @ts-expect-error -- Tamagui v2 rc type bug: borderRadius missing from styled() base config type but valid at runtime
   borderRadius: '$4',
   padding: '$4',
   borderWidth: 1,

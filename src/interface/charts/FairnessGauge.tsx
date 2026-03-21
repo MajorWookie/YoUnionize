@@ -39,8 +39,8 @@ export function FairnessGauge({ score, size = 180 }: FairnessGaugeProps) {
   const offset = circumference - progress
 
   return (
-    <YStack alignItems="center" gap="$2">
-      <View width={size} height={size} alignItems="center" justifyContent="center">
+    <YStack items="center" gap="$2">
+      <View width={size} height={size} items="center" justify="center">
         {/* SVG ring — works on web */}
         {typeof window !== 'undefined' ? (
           <View
@@ -72,23 +72,23 @@ export function FairnessGauge({ score, size = 180 }: FairnessGaugeProps) {
           <View
             width={size}
             height={size}
-            borderRadius={size / 2}
+            rounded={size / 2}
             borderWidth={strokeWidth}
-            borderColor={color}
+            borderColor={color as any}
             position="absolute"
             opacity={0.2}
           />
         )}
 
         {/* Score text in center */}
-        <YStack alignItems="center" zIndex={1}>
-          <Paragraph fontSize={size * 0.25} fontWeight="800" color={color}>
+        <YStack items="center" z={1}>
+          <Paragraph fontSize={size * 0.25} fontWeight="800" color={color as any}>
             {clampedScore}
           </Paragraph>
         </YStack>
       </View>
 
-      <Paragraph fontWeight="700" fontSize={16} color={color}>
+      <Paragraph fontWeight="700" fontSize={16} color={color as any}>
         {label}
       </Paragraph>
       <Paragraph color="$color8" fontSize={12}>

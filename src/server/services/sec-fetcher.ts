@@ -1,7 +1,7 @@
 import { eq, and, sql } from 'drizzle-orm'
 import { getDb, rawSecResponses, companies } from '@union/postgres'
 import { TenKSection, TenQSection, EightKSection } from '@union/sec-api'
-import type { Filing } from '@union/sec-api'
+import type { Filing, SectionItem } from '@union/sec-api'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 
@@ -273,18 +273,18 @@ async function fetchForm8K(
 // ─── Helper: Section item codes by filing type ─────────────────────────
 
 interface SectionItemInfo {
-  code: string
+  code: SectionItem
   name: string
 }
 
 function getSectionItems(filingType: string): Array<SectionItemInfo> {
   switch (filingType) {
     case '10-K':
-      return Object.entries(TenKSection).map(([name, code]) => ({ code, name }))
+      return (Object.entries(TenKSection) as Array<[string, SectionItem]>).map(([name, code]) => ({ code, name }))
     case '10-Q':
-      return Object.entries(TenQSection).map(([name, code]) => ({ code, name }))
+      return (Object.entries(TenQSection) as Array<[string, SectionItem]>).map(([name, code]) => ({ code, name }))
     case '8-K':
-      return Object.entries(EightKSection).map(([name, code]) => ({ code, name }))
+      return (Object.entries(EightKSection) as Array<[string, SectionItem]>).map(([name, code]) => ({ code, name }))
     default:
       return []
   }

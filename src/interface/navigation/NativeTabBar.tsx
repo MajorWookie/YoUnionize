@@ -27,12 +27,12 @@ export function NativeTabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <XStack
-      backgroundColor="$background"
+      bg="$background"
       borderTopWidth={1}
       borderTopColor="$borderColor"
-      paddingBottom={insets.bottom}
-      justifyContent="space-around"
-      alignItems="center"
+      pb={insets.bottom}
+      justify="space-around"
+      items="center"
     >
       {state.routes.map((route, index) => {
         const focused = state.index === index
@@ -60,7 +60,7 @@ export function NativeTabBar({ state, navigation }: BottomTabBarProps) {
             }}
             style={{ flex: 1, alignItems: 'center', paddingVertical: 8 }}
           >
-            <YStack alignItems="center" gap={2}>
+            <YStack items="center" gap={2}>
               <Icon
                 size={22}
                 color={focused ? activeColor : inactiveColor}

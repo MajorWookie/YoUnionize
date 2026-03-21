@@ -8,7 +8,8 @@ export const config = createTamagui({
   tokens: {
     ...defaultConfig.tokens,
     color: {
-      ...defaultConfig.tokens.color,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- defaultConfig.tokens.color missing from Tamagui v2 rc types
+      ...(defaultConfig.tokens as any).color,
       // Semantic tokens available everywhere
       positive: '#069639',
       negative: '#e53e3e',

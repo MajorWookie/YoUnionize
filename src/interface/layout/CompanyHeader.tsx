@@ -8,15 +8,15 @@ interface CompanyHeaderProps {
 
 export function CompanyHeader({ name, ticker, sector }: CompanyHeaderProps) {
   return (
-    <XStack alignItems="center" gap="$3" paddingVertical="$3">
+    <XStack items="center" gap="$3" py="$3">
       {/* Placeholder logo circle */}
       <YStack
         width={48}
         height={48}
-        borderRadius={24}
-        backgroundColor="$color9"
-        alignItems="center"
-        justifyContent="center"
+        rounded={24}
+        bg="$color9"
+        items="center"
+        justify="center"
       >
         <Paragraph color="white" fontWeight="700" fontSize={18}>
           {ticker.slice(0, 2)}

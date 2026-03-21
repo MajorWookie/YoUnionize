@@ -48,7 +48,7 @@ describe('api-client', () => {
 
     beforeEach(() => {
       vi.clearAllMocks()
-      globalThis.fetch = mockFetch
+      globalThis.fetch = mockFetch as unknown as typeof fetch
     })
 
     it('returns response on success', async () => {

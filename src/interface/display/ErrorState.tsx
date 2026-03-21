@@ -12,16 +12,16 @@ export function ErrorState({
   onRetry,
 }: ErrorStateProps) {
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$6">
+    <YStack flex={1} items="center" justify="center" gap="$3" p="$6">
       <Paragraph fontSize={40}>!</Paragraph>
       <Paragraph fontSize={18} fontWeight="600" color="$color12">
         {title}
       </Paragraph>
-      <Paragraph color="$color8" textAlign="center" maxWidth={320}>
+      <Paragraph color="$color8" text="center" maxW={320}>
         {message}
       </Paragraph>
       {onRetry && (
-        <Button size="$3" theme="accent" onPress={onRetry} marginTop="$2">
+        <Button size="$3" theme="accent" onPress={onRetry} mt="$2">
           Try Again
         </Button>
       )}

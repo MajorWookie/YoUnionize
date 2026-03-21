@@ -234,7 +234,7 @@ export function SunburstChart({
   )
 
   return (
-    <View width={size} height={size} alignSelf="center">
+    <View width={size} height={size} self="center">
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         {arcs.map((arc) => {
           const layout = ringLayouts[arc.ringIndex]

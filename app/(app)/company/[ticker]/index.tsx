@@ -93,8 +93,8 @@ export default function CompanyDetailScreen() {
         size="$2"
         variant="outlined"
         onPress={() => router.back()}
-        alignSelf="flex-start"
-        marginBottom="$2"
+        self="flex-start"
+        mb="$2"
       >
         {'\u2190'} Back
       </Button>
@@ -107,7 +107,7 @@ export default function CompanyDetailScreen() {
       />
 
       {company.industry && (
-        <Paragraph color="$color8" fontSize={13} marginBottom="$3">
+        <Paragraph color="$color8" fontSize={13} mb="$3">
           {company.industry}
           {company.exchange ? ` · ${company.exchange}` : ''}
         </Paragraph>
@@ -140,7 +140,7 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
   const execCompSummary = proxySummary?.executive_compensation as ExecCompSummary | undefined
 
   return (
-    <YStack gap="$4" paddingBottom="$6">
+    <YStack gap="$4" pb="$6">
       {/* Ask bar */}
       <AskBar
         companyTicker={data.company.ticker}
@@ -250,7 +250,7 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
 
       {/* Pending summary notice */}
       {data.status.pendingFilings > 0 && (
-        <Paragraph color="$color8" fontSize={12} textAlign="center">
+        <Paragraph color="$color8" fontSize={12} text="center">
           {data.status.pendingFilings} filing{data.status.pendingFilings !== 1 ? 's' : ''} still
           being analyzed...
         </Paragraph>

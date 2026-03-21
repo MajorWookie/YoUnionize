@@ -28,24 +28,24 @@ export function InsiderTradingSection({ trades }: Props) {
       <Card>
         {/* Table header */}
         <XStack
-          paddingBottom="$2"
+          pb="$2"
           borderBottomWidth={1}
           borderBottomColor="$color4"
-          marginBottom="$1"
+          mb="$1"
         >
           <Paragraph fontSize={11} fontWeight="600" color="$color8" flex={2}>
             Name
           </Paragraph>
-          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={50} textAlign="center">
+          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={50} text="center">
             Type
           </Paragraph>
-          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={70} textAlign="right">
+          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={70} text="right">
             Shares
           </Paragraph>
-          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={80} textAlign="right">
+          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={80} text="right">
             Value
           </Paragraph>
-          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={80} textAlign="right">
+          <Paragraph fontSize={11} fontWeight="600" color="$color8" width={80} text="right">
             Date
           </Paragraph>
         </XStack>
@@ -59,10 +59,10 @@ export function InsiderTradingSection({ trades }: Props) {
           return (
             <XStack
               key={trade.id}
-              paddingVertical="$1.5"
+              py="$1.5"
               borderBottomWidth={1}
               borderBottomColor="$color3"
-              alignItems="center"
+              items="center"
             >
               <YStack flex={2}>
                 <Paragraph fontSize={13} fontWeight="500" numberOfLines={1}>
@@ -78,18 +78,18 @@ export function InsiderTradingSection({ trades }: Props) {
                 fontSize={12}
                 fontWeight="600"
                 width={50}
-                textAlign="center"
+                text="center"
                 color={isBuy ? '$positive' : isSell ? '$negative' : '$color8'}
               >
                 {typeLabel}
               </Paragraph>
-              <Paragraph fontSize={12} width={70} textAlign="right" color="$color11">
+              <Paragraph fontSize={12} width={70} text="right" color="$color11">
                 {formatShares(trade.shares)}
               </Paragraph>
-              <Paragraph fontSize={12} width={80} textAlign="right" color="$color11">
+              <Paragraph fontSize={12} width={80} text="right" color="$color11">
                 {trade.totalValue != null ? formatDollars(trade.totalValue) : '-'}
               </Paragraph>
-              <Paragraph fontSize={11} width={80} textAlign="right" color="$color8">
+              <Paragraph fontSize={11} width={80} text="right" color="$color8">
                 {formatDate(trade.transactionDate)}
               </Paragraph>
             </XStack>

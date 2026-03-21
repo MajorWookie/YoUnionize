@@ -109,27 +109,27 @@ export default function OnboardingScreen() {
 
   return (
     <ScreenContainer>
-      <YStack gap="$4" maxWidth={480} alignSelf="center" width="100%" paddingVertical="$4">
+      <YStack gap="$4" maxW={480} self="center" width="100%" py="$4">
         {/* Progress indicator */}
-        <XStack gap="$2" justifyContent="center" marginBottom="$2">
+        <XStack gap="$2" justify="center" mb="$2">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => (
             <View
               key={i}
               height={4}
               flex={1}
-              maxWidth={80}
-              borderRadius={2}
-              backgroundColor={i < step ? '$color9' : '$color4'}
+              maxW={80}
+              rounded={2}
+              bg={i < step ? '$color9' : '$color4'}
             />
           ))}
         </XStack>
 
-        <Paragraph color="$color8" textAlign="center" fontSize={13}>
+        <Paragraph color="$color8" text="center" fontSize={13}>
           Step {step} of {TOTAL_STEPS}
         </Paragraph>
 
         {error && (
-          <Paragraph color="$negative" textAlign="center">
+          <Paragraph color="$negative" text="center">
             {error}
           </Paragraph>
         )}
@@ -162,7 +162,7 @@ export default function OnboardingScreen() {
         )}
 
         {/* Actions */}
-        <XStack justifyContent="space-between" marginTop="$2">
+        <XStack justify="space-between" mt="$2">
           <Button variant="outlined" onPress={handleSkip} disabled={saving}>
             Skip for now
           </Button>
@@ -198,8 +198,8 @@ function StepJob({
 }) {
   return (
     <YStack gap="$3">
-      <H2 textAlign="center">Tell us about your job</H2>
-      <Paragraph color="$color8" textAlign="center" marginBottom="$2">
+      <H2 text="center">Tell us about your job</H2>
+      <Paragraph color="$color8" text="center" mb="$2">
         This helps us tailor compensation insights to your role.
       </Paragraph>
 
@@ -239,8 +239,8 @@ function StepPay({
 }) {
   return (
     <YStack gap="$3">
-      <H2 textAlign="center">What do you earn?</H2>
-      <Paragraph color="$color8" textAlign="center" marginBottom="$2">
+      <H2 text="center">What do you earn?</H2>
+      <Paragraph color="$color8" text="center" mb="$2">
         Your pay is stored securely and never shared with your employer.
       </Paragraph>
 
@@ -271,8 +271,8 @@ function StepCostOfLiving({
 }) {
   return (
     <YStack gap="$3">
-      <H2 textAlign="center">What does it cost you to live?</H2>
-      <Paragraph color="$color8" textAlign="center" marginBottom="$2">
+      <H2 text="center">What does it cost you to live?</H2>
+      <Paragraph color="$color8" text="center" mb="$2">
         Monthly amounts. This unlocks a true picture of your take-home pay.
       </Paragraph>
 

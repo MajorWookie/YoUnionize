@@ -195,12 +195,12 @@ export default function ProfileScreen() {
 
   return (
     <ScreenContainer>
-      <YStack marginBottom="$4">
+      <YStack mb="$4">
         <H2>Profile</H2>
       </YStack>
 
       {/* Account info */}
-      <Card marginBottom="$4" gap="$2">
+      <Card mb="$4" gap="$2">
         <Paragraph fontWeight="600" fontSize={16}>
           {user?.name ?? 'User'}
         </Paragraph>
@@ -209,10 +209,10 @@ export default function ProfileScreen() {
         </Paragraph>
       </Card>
 
-      <Separator marginVertical="$3" />
+      <Separator my="$3" />
 
       {/* Employment Details */}
-      <YStack marginBottom="$4" gap="$3">
+      <YStack mb="$4" gap="$3">
         <H4>Employment Details</H4>
 
         {editingProfile ? (
@@ -273,7 +273,7 @@ export default function ProfileScreen() {
             <Button
               size="$3"
               variant="outlined"
-              marginTop="$2"
+              mt="$2"
               onPress={() => setEditingProfile(true)}
             >
               Edit
@@ -282,10 +282,10 @@ export default function ProfileScreen() {
         )}
       </YStack>
 
-      <Separator marginVertical="$3" />
+      <Separator my="$3" />
 
       {/* Cost of Living */}
-      <YStack marginBottom="$4" gap="$3">
+      <YStack mb="$4" gap="$3">
         <H4>Cost of Living</H4>
         <Paragraph color="$color8" fontSize={13}>
           Monthly amounts — used for compensation fairness analysis.
@@ -330,7 +330,7 @@ export default function ProfileScreen() {
             <Button
               size="$3"
               variant="outlined"
-              marginTop="$2"
+              mt="$2"
               onPress={() => setEditingCOL(true)}
             >
               Edit
@@ -339,10 +339,10 @@ export default function ProfileScreen() {
         )}
       </YStack>
 
-      <Separator marginVertical="$3" />
+      <Separator my="$3" />
 
       {/* About */}
-      <Card marginBottom="$4" gap="$2">
+      <Card mb="$4" gap="$2">
         <Paragraph fontWeight="600">About YoUnion</Paragraph>
         <Paragraph color="$color8" fontSize={13} lineHeight={20}>
           YoUnion helps employees understand their compensation in context. We analyze
@@ -353,7 +353,7 @@ export default function ProfileScreen() {
       </Card>
 
       {/* Sign out */}
-      <YStack marginTop="$2" marginBottom="$6">
+      <YStack mt="$2" mb="$6">
         <Button size="$4" theme="red" onPress={signOut}>
           Sign Out
         </Button>
@@ -365,7 +365,7 @@ export default function ProfileScreen() {
 function ProfileRow({ label, value }: { label: string; value: string }) {
   const isPlaceholder = value === 'Not set' || value === 'Not linked' || value === '-'
   return (
-    <YStack gap={2} paddingVertical="$1">
+    <YStack gap={2} py="$1">
       <Paragraph fontSize={12} color="$color8" fontWeight="500">
         {label}
       </Paragraph>

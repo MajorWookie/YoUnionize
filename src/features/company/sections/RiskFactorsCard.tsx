@@ -23,7 +23,7 @@ export function RiskFactorsCard({
     <YStack gap="$3">
       <TextSummaryCard title="Risk Factors" content={riskFactorsSummary}>
         {redFlags && redFlags.length > 0 && (
-          <YStack marginTop="$3" gap="$2">
+          <YStack mt="$3" gap="$2">
             <Paragraph fontWeight="600" color="$negative" fontSize={14}>
               Red Flags
             </Paragraph>
@@ -36,7 +36,7 @@ export function RiskFactorsCard({
         )}
 
         {opportunities && opportunities.length > 0 && (
-          <YStack marginTop="$3" gap="$2">
+          <YStack mt="$3" gap="$2">
             <Paragraph fontWeight="600" color="$positive" fontSize={14}>
               Opportunities
             </Paragraph>

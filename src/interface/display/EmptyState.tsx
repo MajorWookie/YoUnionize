@@ -17,20 +17,20 @@ export function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$6">
+    <YStack flex={1} items="center" justify="center" gap="$3" p="$6">
       {icon && (
-        <YStack opacity={0.4} marginBottom="$2">
+        <YStack opacity={0.4} mb="$2">
           {icon}
         </YStack>
       )}
       <Paragraph fontSize={18} fontWeight="600" color="$color12">
         {title}
       </Paragraph>
-      <Paragraph color="$color8" textAlign="center" maxWidth={320}>
+      <Paragraph color="$color8" text="center" maxW={320}>
         {description}
       </Paragraph>
       {actionLabel && onAction && (
-        <Button size="$3" theme="accent" onPress={onAction} marginTop="$2">
+        <Button size="$3" theme="accent" onPress={onAction} mt="$2">
           {actionLabel}
         </Button>
       )}

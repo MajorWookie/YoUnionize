@@ -55,7 +55,7 @@ export function createRequestClient(request: Request): SupabaseClient {
 
   // Otherwise create a client that will read from cookies via the request
   const cookieHeader = request.headers.get('cookie') ?? ''
-  return createClient(url, anonKey, {
+  return createClient(url, key, {
     global: {
       headers: { cookie: cookieHeader },
     },

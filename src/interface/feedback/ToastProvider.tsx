@@ -55,32 +55,33 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {/* Toast container — positioned at bottom center */}
       <YStack
         position="absolute"
-        bottom={80}
-        left={0}
-        right={0}
-        alignItems="center"
+        b={80}
+        l={0}
+        r={0}
+        items="center"
         gap="$2"
         pointerEvents="none"
-        zIndex={100_000}
+        z={100_000}
       >
         {toasts.map((toast) => {
           const colors = TOAST_COLORS[toast.type]
           return (
             <XStack
               key={toast.id}
-              backgroundColor={colors.bg}
-              paddingHorizontal="$4"
-              paddingVertical="$2.5"
-              borderRadius="$3"
-              maxWidth={400}
-              animation="quick"
-              enterStyle={{ opacity: 0, y: 20 }}
-              exitStyle={{ opacity: 0, y: 20 }}
-              opacity={1}
-              y={0}
-              elevation={4}
+              bg={colors.bg as any}
+              px="$4"
+              py="$2.5"
+              rounded="$3"
+              maxW={400}
+              {...({
+                animation: 'quick',
+                enterStyle: { opacity: 0, y: 20 },
+                exitStyle: { opacity: 0, y: 20 },
+                opacity: 1,
+                y: 0,
+              } as any)}
             >
-              <Paragraph color={colors.text} fontSize={14} fontWeight="500">
+              <Paragraph color={colors.text as any} fontSize={14} fontWeight="500">
                 {toast.message}
               </Paragraph>
             </XStack>

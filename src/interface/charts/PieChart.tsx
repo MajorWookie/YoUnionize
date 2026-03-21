@@ -3,6 +3,7 @@
  * Renders a donut chart with labeled segments and a center label.
  */
 import Svg, { G, Path, Text as SvgText } from 'react-native-svg'
+import { View as RNView } from 'react-native'
 import { Paragraph, View, XStack, YStack } from 'tamagui'
 
 export interface PieSegment {
@@ -68,7 +69,7 @@ export function PieChart({
   })
 
   return (
-    <YStack alignItems="center" gap="$3">
+    <YStack items="center" gap="$3">
       <View width={size} height={size}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <G>
@@ -114,23 +115,25 @@ export function PieChart({
       {/* Legend */}
       <YStack gap="$1.5" width="100%">
         {arcs.map((arc) => (
-          <XStack key={arc.label} alignItems="center" justifyContent="space-between">
-            <XStack alignItems="center" gap="$2" flex={1}>
-              <View
-                width={10}
-                height={10}
-                borderRadius={2}
-                backgroundColor={arc.color}
+          <XStack key={arc.label} items="center" justify="space-between">
+            <XStack items="center" gap="$2" flex={1}>
+              <RNView
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  backgroundColor: arc.color,
+                }}
               />
               <Paragraph fontSize={13} color="$color11" numberOfLines={1}>
                 {arc.label}
               </Paragraph>
             </XStack>
-            <XStack gap="$2" alignItems="center">
+            <XStack gap="$2" items="center">
               <Paragraph fontSize={13} fontWeight="600" color="$color12">
                 {arc.formattedValue}
               </Paragraph>
-              <Paragraph fontSize={12} color="$color8" width={45} textAlign="right">
+              <Paragraph fontSize={12} color="$color8" width={45} text="right">
                 {arc.percent}%
               </Paragraph>
             </XStack>
