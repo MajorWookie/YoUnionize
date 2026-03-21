@@ -1,7 +1,7 @@
 # CLAUDE.md — YoUnion
 
-> Last updated: 2026-03-20
-> Last updated by: AI session (Voyage AI embedding migration — OpenAI → Voyage AI, 1536→1024 dims, input_type support)
+> Last updated: 2026-03-21
+> Last updated by: AI session (Supabase API key naming migration — anon→publishable, service_role→secret, .env.example sanitized)
 
 ## Project Overview
 
@@ -39,7 +39,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 | UI | Tamagui 2.0-rc | https://tamagui.dev/docs | Good docs, but compiler has edge cases. |
 | ORM | Drizzle 0.40 | https://orm.drizzle.team/docs | Solid docs, but Bun-specific integration has known bugs. |
 | API Layer | Supabase Edge Functions | https://supabase.com/docs/guides/functions | Well-documented. Runs on Deno. |
-| Auth | Supabase Auth | https://supabase.com/docs | Well-documented. API keys are transitioning — verify key format. |
+| Auth | Supabase Auth | https://supabase.com/docs | Well-documented. Uses new key naming (`SUPABASE_KEY` / `SUPABASE_SECRET_KEY`) with legacy fallbacks. |
 | AI | Anthropic Claude | https://docs.anthropic.com | Well-documented. Use for summarization/RAG features. |
 | Embeddings | Voyage AI | https://docs.voyageai.com/docs/embeddings | Well-documented. REST API similar to OpenAI. Use `input_type` param. |
 
@@ -343,7 +343,7 @@ bun run android
 - **Dark mode uses React Native's `useColorScheme()`** — see `src/tamagui/TamaguiRootProvider.tsx`.
 
 ### Supabase
-- **API keys are transitioning.** Supabase is moving from legacy `anon`/`service_role` keys to new `publishable`/`secret` keys (format: `sb_publishable_xxx`). Both work during transition, but new keys behave differently — they can't be used as JWTs. Before touching auth or API config, check which key format the project uses.
+- **API keys have been migrated to new naming.** Supabase renamed `anon key` → `publishable key` and `service_role key` → `secret key` (format: `sb_publishable_*`, `sb_secret_*`). This project uses the new env var names: `SUPABASE_KEY` / `EXPO_PUBLIC_SUPABASE_KEY` (publishable) and `SUPABASE_SECRET_KEY` (secret). Code includes fallbacks to legacy names (`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) since Supabase Edge Functions runtime still auto-injects the old names. New publishable keys cannot be used as JWTs.
 - **Realtime pulls in WebSocket/Node dependencies.** `@supabase/supabase-js` bundles Realtime support which depends on `stream` and `ws`. In React Native/One native builds, this **will crash** with `attempted to import the Node standard library module "stream"`. If not using Realtime, disable it in client config or import only Auth/Database clients directly.
 - **Realtime subscriptions leak memory if not cleaned up.** Every channel subscription must be unsubscribed on component unmount. Missing cleanup → doubled subscriptions and memory leaks. Always use cleanup returns in `useEffect` for `.on()` subscriptions.
 - **RLS is your responsibility.** Supabase exposes PostgreSQL directly to the client via PostgREST. Misconfigured RLS policies expose all rows to all users. This is a **Level 3 escalation zone**.
@@ -370,7 +370,7 @@ This stack moves fast. **Before using any API from these libraries, check `packa
 - **Expo / Expo Router**: `package.json` → `expo` and `expo-router` versions
 - **Tamagui**: `package.json` → `tamagui` version
 - **Drizzle**: `package.json` → `drizzle-orm` version (drizzle-kit removed per ADR-008)
-- **Supabase**: `package.json` → `@supabase/supabase-js` version (also check API key format in `.env`)
+- **Supabase**: `package.json` → `@supabase/supabase-js` version (uses `SUPABASE_KEY` / `SUPABASE_SECRET_KEY` env vars)
 - **Anthropic**: `package.json` → `@anthropic-ai/sdk` version
 
 If the version is **older** than what you're trained on — do NOT assume latest APIs exist. Use what's documented for that version, or escalate with Level 1.
@@ -390,7 +390,7 @@ In addition to Layer 1's general escalation rules, **always escalate** in this s
 | Cross-platform divergence (web vs. native behavior) | Level 1 |
 | Supabase Edge Function schema changes (keep _shared/schema.ts in sync) | Level 1 |
 | Supabase Realtime channel setup or subscriptions | Level 1 |
-| Supabase API key changes or migration to new key format | Level 2 |
+| Supabase API key env var names (must match new naming: `SUPABASE_KEY`, `SUPABASE_SECRET_KEY`) | Level 2 |
 | Supabase RLS policy creation or modification | Level 3 |
 | Supabase Auth configuration changes | Level 3 |
 | Native build issues (iOS/Android) | Level 2 |
@@ -438,6 +438,7 @@ When uncertain, point the developer here rather than guessing.
 - Name normalization and dedup: `normalizeName()` helper, `normalized_name` DB columns + dedup indexes on directors and executive_compensation tables (2026-03-20)
 - Expo modules support and privacy information (2026-03-20)
 - Migrated embeddings from OpenAI (`text-embedding-3-small`, 1536-dim) to Voyage AI (`voyage-4-lite`, 1024-dim) (2026-03-20) — added `input_type` support (`document` for storage, `query` for search), removed Ollama fallback, migration truncates old embeddings
+- Supabase API key naming migration (2026-03-21) — `SUPABASE_ANON_KEY` → `SUPABASE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_SECRET_KEY` across all code (client, server, Edge Functions, SST, tests). Legacy fallbacks retained for Edge Functions runtime compatibility. `.env.example` sanitized to use placeholders.
 
 ### In Progress / Remaining
 - Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)
