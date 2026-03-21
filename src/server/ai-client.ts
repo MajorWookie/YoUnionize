@@ -10,7 +10,7 @@ export function getAiClient(): ClaudeClient {
     }
     client = new ClaudeClient({
       apiKey,
-      openaiApiKey: process.env.OPENAI_API_KEY,
+      voyageApiKey: process.env.VOYAGE_API_KEY,
     })
   }
   return client

@@ -23,48 +23,34 @@ import type {
 const DEFAULT_MODEL = 'claude-haiku-4-5'
 const DEFAULT_MAX_TOKENS = 4096
 
-// OpenAI embedding config
-const OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small'
-const OPENAI_EMBEDDING_DIMENSIONS = 1536
-
-// Ollama embedding config
-const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434'
-const DEFAULT_OLLAMA_EMBEDDING_MODEL = 'nomic-embed-text'
-const OLLAMA_EMBEDDING_DIMENSIONS = 768
+// Voyage AI embedding config
+const DEFAULT_VOYAGE_EMBEDDING_MODEL = 'voyage-4-lite'
+const VOYAGE_EMBEDDING_DIMENSIONS = 1024
 
 /**
  * Claude API client for SEC filing analysis, compensation insights, and RAG.
  *
- * Uses Claude for text generation. Embeddings are configurable:
- * - OpenAI (default): text-embedding-3-small, 1536 dimensions, requires OPENAI_API_KEY
- * - Ollama (local alternative): nomic-embed-text, 768 dimensions, activated by setting OLLAMA_BASE_URL
+ * Uses Claude for text generation. Embeddings via Voyage AI:
+ * - Default: voyage-4-lite (dev), 1024 dimensions
+ * - Production: voyage-finance-2 (financial domain), 1024 dimensions
  */
 export class ClaudeClient {
   private readonly anthropic: Anthropic
   private readonly model: string
-  private readonly openaiApiKey: string | undefined
-  private readonly embeddingProvider: 'openai' | 'ollama'
-  private readonly ollamaBaseUrl: string
-  private readonly ollamaEmbeddingModel: string
+  private readonly voyageApiKey: string | undefined
+  private readonly voyageModel: string
 
   constructor(config: ClaudeClientConfig) {
     this.anthropic = new Anthropic({ apiKey: config.apiKey })
     this.model = config.model ?? DEFAULT_MODEL
-    this.openaiApiKey = config.openaiApiKey ?? process.env.OPENAI_API_KEY
-    this.ollamaBaseUrl =
-      config.ollamaBaseUrl ?? process.env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_BASE_URL
-    this.ollamaEmbeddingModel =
-      config.ollamaEmbeddingModel ?? process.env.OLLAMA_EMBEDDING_MODEL ?? DEFAULT_OLLAMA_EMBEDDING_MODEL
-    this.embeddingProvider =
-      config.embeddingProvider ??
-      (process.env.OLLAMA_BASE_URL ? 'ollama' : (this.openaiApiKey ? 'openai' : 'ollama'))
+    this.voyageApiKey = config.voyageApiKey ?? process.env.VOYAGE_API_KEY
+    this.voyageModel =
+      config.voyageModel ?? process.env.VOYAGE_EMBEDDING_MODEL ?? DEFAULT_VOYAGE_EMBEDDING_MODEL
   }
 
-  /** Returns the embedding dimensions for the active provider. */
+  /** Returns the embedding dimensions (1024 for all Voyage AI models). */
   get embeddingDimensions(): number {
-    return this.embeddingProvider === 'ollama'
-      ? OLLAMA_EMBEDDING_DIMENSIONS
-      : OPENAI_EMBEDDING_DIMENSIONS
+    return VOYAGE_EMBEDDING_DIMENSIONS
   }
 
   // ─── Core Claude call ───────────────────────────────────────────────
@@ -205,64 +191,36 @@ export class ClaudeClient {
     return { data, usage, cached: false }
   }
 
-  // ─── Embeddings (Ollama or OpenAI) ──────────────────────────────────
+  // ─── Embeddings (Voyage AI) ─────────────────────────────────────────
 
-  async generateEmbedding(params: { text: string }): Promise<Array<number>> {
-    if (this.embeddingProvider === 'ollama') {
-      return this.generateOllamaEmbedding(params.text)
-    }
-    return this.generateOpenAiEmbedding(params.text)
-  }
-
-  private async generateOllamaEmbedding(text: string): Promise<Array<number>> {
-    const url = `${this.ollamaBaseUrl}/api/embeddings`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: this.ollamaEmbeddingModel,
-        prompt: text,
-      }),
-    })
-
-    if (!response.ok) {
-      const body = await response.text()
-      throw new Error(`Ollama embeddings error ${response.status}: ${body}`)
-    }
-
-    const result = (await response.json()) as { embedding: Array<number> }
-
-    console.info(
-      `[ClaudeClient] embedding (ollama/${this.ollamaEmbeddingModel}) — ${text.length} chars`,
-    )
-
-    return result.embedding
-  }
-
-  private async generateOpenAiEmbedding(text: string): Promise<Array<number>> {
-    if (!this.openaiApiKey) {
+  async generateEmbedding(params: {
+    text: string
+    /** Use 'document' when storing, 'query' when searching. Defaults to 'document'. */
+    inputType?: 'document' | 'query'
+  }): Promise<Array<number>> {
+    if (!this.voyageApiKey) {
       throw new Error(
-        'OpenAI API key required for embeddings. Set OPENAI_API_KEY or pass openaiApiKey in config.',
+        'Voyage AI API key required for embeddings. Set VOYAGE_API_KEY or pass voyageApiKey in config.',
       )
     }
 
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
+    const response = await fetch('https://api.voyageai.com/v1/embeddings', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${this.openaiApiKey}`,
+        Authorization: `Bearer ${this.voyageApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: OPENAI_EMBEDDING_MODEL,
-        input: text,
-        dimensions: OPENAI_EMBEDDING_DIMENSIONS,
+        model: this.voyageModel,
+        input: params.text,
+        input_type: params.inputType ?? 'document',
+        output_dimension: VOYAGE_EMBEDDING_DIMENSIONS,
       }),
     })
 
     if (!response.ok) {
       const body = await response.text()
-      throw new Error(`OpenAI embeddings API error ${response.status}: ${body}`)
+      throw new Error(`Voyage AI embeddings error ${response.status}: ${body}`)
     }
 
     const result = (await response.json()) as {
@@ -271,7 +229,7 @@ export class ClaudeClient {
     }
 
     console.info(
-      `[ClaudeClient] embedding (openai) — ${result.usage.total_tokens} tokens`,
+      `[ClaudeClient] embedding (voyage/${this.voyageModel}) — ${result.usage.total_tokens} tokens`,
     )
 
     return result.data[0].embedding

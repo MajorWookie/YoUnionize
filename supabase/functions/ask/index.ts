@@ -36,7 +36,6 @@ Deno.serve(async (req) => {
 
     const db = getDb()
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')
     if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY is not set')
 
     // Resolve company
@@ -56,19 +55,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 1: Generate embedding for the question
+    // Step 1: Generate embedding for the question via Voyage AI
     let queryEmbedding: Array<number> | null = null
-    if (openaiKey) {
+    const voyageKey = Deno.env.get('VOYAGE_API_KEY')
+    if (voyageKey) {
       try {
-        const res = await fetch('https://api.openai.com/v1/embeddings', {
+        const res = await fetch('https://api.voyageai.com/v1/embeddings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${openaiKey}`,
+            Authorization: `Bearer ${voyageKey}`,
           },
           body: JSON.stringify({
-            model: 'text-embedding-3-small',
+            model: Deno.env.get('VOYAGE_EMBEDDING_MODEL') ?? 'voyage-4-lite',
             input: question,
+            input_type: 'query',
+            output_dimension: 1024,
           }),
         })
         const data = await res.json()
