@@ -26,6 +26,7 @@ function getSupabaseKey(): string {
     return (
       process.env.EXPO_PUBLIC_SUPABASE_KEY ??
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.VITE_SUPABASE_KEY ??
       process.env.VITE_SUPABASE_ANON_KEY ??
       ''
     )
