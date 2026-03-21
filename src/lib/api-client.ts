@@ -3,6 +3,7 @@
  */
 
 import { apiUrl, getDefaultHeaders } from './api-base'
+import { getSupabaseBrowserClient } from '~/features/auth/client/authClient'
 
 interface ApiErrorShape {
   error: {
@@ -31,10 +32,29 @@ export function extractErrorMessage(data: unknown): string {
 }
 
 /**
+ * Get the current user's access token (JWT) from the Supabase auth session.
+ * Returns an Authorization header object if a session exists, empty object otherwise.
+ */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const client = getSupabaseBrowserClient()
+    const { data } = await client.auth.getSession()
+    if (data.session?.access_token) {
+      return { Authorization: `Bearer ${data.session.access_token}` }
+    }
+  } catch {
+    // Auth not available (e.g. not yet initialized)
+  }
+  return {}
+}
+
+/**
  * Fetch with automatic retry on network errors and 5xx responses.
  * Does NOT retry on 4xx (client errors).
  *
  * Automatically routes /api/* paths to Supabase Edge Functions.
+ * Injects the Supabase publishable key (apikey header) and the user's
+ * session JWT (Authorization header) when available.
  */
 export async function fetchWithRetry(
   url: string,
@@ -44,16 +64,19 @@ export async function fetchWithRetry(
   const isApiRoute = url.startsWith('/api/')
   const resolvedUrl = isApiRoute ? apiUrl(url) : url
 
-  // Merge Supabase gateway headers for /api/* routes
-  const mergedOptions = isApiRoute
-    ? {
-        ...options,
-        headers: {
-          ...getDefaultHeaders(),
-          ...options?.headers,
-        },
-      }
-    : options
+  // Merge Supabase gateway headers + user auth for /api/* routes
+  let mergedOptions = options
+  if (isApiRoute) {
+    const authHeaders = await getAuthHeaders()
+    mergedOptions = {
+      ...options,
+      headers: {
+        ...getDefaultHeaders(),
+        ...authHeaders,
+        ...options?.headers,
+      },
+    }
+  }
 
   let lastError: Error | null = null
 
