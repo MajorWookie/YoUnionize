@@ -38,13 +38,17 @@ function getSupabaseKey(): string {
  * Returns default headers required by the Supabase API gateway.
  * The gateway requires the `apikey` header on every request,
  * even for Edge Functions that don't perform auth checks internally.
+ *
+ * Note: Only sets `apikey`, NOT `Authorization`. The new publishable keys
+ * (sb_publishable_*) are opaque — not JWTs — and cannot be used in
+ * the Authorization header. For authenticated requests, the user's
+ * session JWT is injected separately by fetchWithRetry().
  */
 export function getDefaultHeaders(): Record<string, string> {
   const key = getSupabaseKey()
   if (!key) return {}
   return {
     apikey: key,
-    Authorization: `Bearer ${key}`,
   }
 }
 
