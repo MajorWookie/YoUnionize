@@ -60,12 +60,12 @@ export function CurrencyInput({
         {label}
       </Paragraph>
       <XStack
-        backgroundColor="$color2"
-        borderRadius="$3"
+        bg="$color2"
+        rounded="$3"
         borderWidth={1}
         borderColor="$borderColor"
-        alignItems="center"
-        paddingLeft="$3"
+        items="center"
+        pl="$3"
       >
         <Paragraph color="$color8" fontSize={16} fontWeight="600">
           $

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { ScrollView, YStack, isWeb } from 'tamagui'
+import { ScrollView } from 'react-native'
+import { YStack, isWeb } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ScreenContainerProps {
@@ -19,13 +20,13 @@ export function ScreenContainer({
 
   const content = (
     <YStack
-      flex={1}
+      style={{ flexGrow: 1 }}
       width="100%"
-      maxWidth={isWeb ? 960 : undefined}
-      alignSelf="center"
-      paddingHorizontal={padded ? '$4' : undefined}
-      paddingTop={isWeb ? '$4' : insets.top + 8}
-      paddingBottom={isWeb ? '$4' : insets.bottom + 8}
+      maxW={isWeb ? 960 : undefined}
+      self="center"
+      px={padded ? '$4' : undefined}
+      pt={isWeb ? '$4' : insets.top + 8}
+      pb={isWeb ? '$4' : insets.bottom + 8}
     >
       {children}
     </YStack>
@@ -35,9 +36,9 @@ export function ScreenContainer({
 
   return (
     <ScrollView
-      flex={1}
-      backgroundColor="$background"
+      style={{ flex: 1 }}
       contentContainerStyle={{ flexGrow: 1 }}
+      keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {content}

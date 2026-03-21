@@ -71,7 +71,6 @@ export function createCompanyMapping(overrides: Partial<CompanyMapping> = {}): C
     sic: '7372',
     currency: 'USD',
     location: 'San Francisco, CA',
-    id: nextId(),
     ...overrides,
   }
 }
@@ -80,7 +79,6 @@ export function createExecCompResponse(
   count = 3,
 ): ExecutiveCompensationResponse {
   return {
-    total: { value: count, relation: 'eq' },
     data: Array.from({ length: count }, (_, i) => ({
       ticker: 'TEST',
       cik: '0001234567',
@@ -105,60 +103,62 @@ export function createExecCompResponse(
 export function createInsiderTradingResponse(): InsiderTradingResponse {
   return {
     total: { value: 2, relation: 'eq' },
-    data: [
+    transactions: [
       {
         id: nextId(),
         accessionNo: '0001234567-24-000001',
+        formType: '4',
         filedAt: '2024-06-01T00:00:00.000Z',
-        issuer: { cik: '0001234567', name: 'Test Corp', ticker: 'TEST' },
+        periodOfReport: '2024-05-30',
+        issuer: { cik: '0001234567', name: 'Test Corp', tradingSymbol: 'TEST' },
         reportingOwner: {
           cik: '0009876543',
           name: 'Jane CEO',
-          relationship: {
-            isDirector: true,
-            isOfficer: true,
-            officerTitle: 'CEO',
-            isTenPercentOwner: false,
-            isOther: false,
-          },
+          isDirector: true,
+          isOfficer: true,
+          officerTitle: 'CEO',
+          isTenPercentOwner: false,
         },
-        transactions: [
-          {
-            transactionDate: '2024-05-30',
-            transactionCode: 'S',
-            sharesTraded: 10000,
-            pricePerShare: 150.5,
-            sharesOwnedAfter: 500000,
-            transactionType: 'Non-Derivative',
-          },
-        ],
+        nonDerivativeTable: {
+          transactions: [
+            {
+              transactionDate: '2024-05-30',
+              transactionCode: 'S',
+              sharesTraded: 10000,
+              pricePerShare: 150.5,
+              sharesOwnedAfter: 500000,
+            },
+          ],
+        },
+        derivativeTable: null,
       },
       {
         id: nextId(),
         accessionNo: '0001234567-24-000002',
+        formType: '4',
         filedAt: '2024-05-15T00:00:00.000Z',
-        issuer: { cik: '0001234567', name: 'Test Corp', ticker: 'TEST' },
+        periodOfReport: '2024-05-14',
+        issuer: { cik: '0001234567', name: 'Test Corp', tradingSymbol: 'TEST' },
         reportingOwner: {
           cik: '0009876544',
           name: 'John CFO',
-          relationship: {
-            isDirector: false,
-            isOfficer: true,
-            officerTitle: 'CFO',
-            isTenPercentOwner: false,
-            isOther: false,
-          },
+          isDirector: false,
+          isOfficer: true,
+          officerTitle: 'CFO',
+          isTenPercentOwner: false,
         },
-        transactions: [
-          {
-            transactionDate: '2024-05-14',
-            transactionCode: 'P',
-            sharesTraded: 5000,
-            pricePerShare: 145.0,
-            sharesOwnedAfter: 100000,
-            transactionType: 'Non-Derivative',
-          },
-        ],
+        nonDerivativeTable: {
+          transactions: [
+            {
+              transactionDate: '2024-05-14',
+              transactionCode: 'P',
+              sharesTraded: 5000,
+              pricePerShare: 145.0,
+              sharesOwnedAfter: 100000,
+            },
+          ],
+        },
+        derivativeTable: null,
       },
     ],
   }
@@ -166,29 +166,29 @@ export function createInsiderTradingResponse(): InsiderTradingResponse {
 
 export function createDirectorsResponse(): DirectorsResponse {
   return {
-    total: { value: 2, relation: 'eq' },
+    total: { value: 1, relation: 'eq' },
     data: [
       {
         ticker: 'TEST',
         cik: '0001234567',
-        companyName: 'Test Corp',
-        name: 'Alice Board',
-        title: 'Lead Independent Director',
-        isIndependent: true,
-        committees: ['Audit', 'Compensation'],
-        qualifications: 'Former CEO of BigCo',
+        entityName: 'Test Corp',
         filedAt: '2024-04-15T00:00:00.000Z',
-      },
-      {
-        ticker: 'TEST',
-        cik: '0001234567',
-        companyName: 'Test Corp',
-        name: 'Bob Director',
-        title: 'Director',
-        isIndependent: true,
-        committees: ['Nominating'],
-        qualifications: 'Industry Expert',
-        filedAt: '2024-04-15T00:00:00.000Z',
+        directors: [
+          {
+            name: 'Alice Board',
+            position: 'Lead Independent Director',
+            isIndependent: true,
+            committeeMemberships: ['Audit', 'Compensation'],
+            qualificationsAndExperience: ['Former CEO of BigCo'],
+          },
+          {
+            name: 'Bob Director',
+            position: 'Director',
+            isIndependent: true,
+            committeeMemberships: ['Nominating'],
+            qualificationsAndExperience: ['Industry Expert'],
+          },
+        ],
       },
     ],
   }

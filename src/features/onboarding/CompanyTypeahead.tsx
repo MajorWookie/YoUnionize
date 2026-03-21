@@ -73,11 +73,11 @@ export function CompanyTypeahead({ value, onSelect, disabled }: CompanyTypeahead
         borderColor="$borderColor"
       />
       {showResults && results.length > 0 && (
-        <Card padding="$0">
+        <Card p="$0">
           {results.slice(0, 5).map((company) => (
             <XStack
               key={company.ticker}
-              padding="$3"
+              p="$3"
               cursor="pointer"
               hoverStyle={{ background: '$backgroundHover' }}
               pressStyle={{ background: '$backgroundPress' }}

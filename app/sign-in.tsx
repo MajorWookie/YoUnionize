@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Button, H2, Input, Paragraph, Spinner, XStack, YStack } from 'tamagui'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@union/hooks'
 
 export default function SignInPage() {
@@ -29,14 +30,23 @@ export default function SignInPage() {
   }
 
   const busy = submitting || isLoading
+  const insets = useSafeAreaInsets()
 
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" padding="$4" gap="$4">
-      <YStack width="100%" maxWidth={400} gap="$3">
-        <H2 textAlign="center">Sign In</H2>
+    <YStack
+      flex={1}
+      items="center"
+      justify="center"
+      px="$4"
+      pt={insets.top + 16}
+      pb={insets.bottom + 16}
+      gap="$4"
+    >
+      <YStack width="100%" maxW={400} gap="$3">
+        <H2 text="center">Sign In</H2>
 
         {error ? (
-          <Paragraph color="$red10" textAlign="center">
+          <Paragraph color="$red10" text="center">
             {error}
           </Paragraph>
         ) : null}
@@ -61,12 +71,12 @@ export default function SignInPage() {
         <Button
           onPress={handleSignIn}
           disabled={busy || !email || !password}
-          theme="active"
+          theme={"active" as any}
         >
           {busy ? <Spinner size="small" /> : 'Sign In'}
         </Button>
 
-        <XStack justifyContent="center" gap="$2">
+        <XStack justify="center" gap="$2">
           <Paragraph>Don&apos;t have an account?</Paragraph>
           <Paragraph
             color="$blue10"

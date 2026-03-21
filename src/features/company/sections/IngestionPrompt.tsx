@@ -123,11 +123,11 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
   if (stage === 'idle') {
     return (
       <Card>
-        <YStack alignItems="center" gap="$3" padding="$4">
+        <YStack items="center" gap="$3" p="$4">
           <Paragraph fontSize={18} fontWeight="600" color="$color12">
             No data loaded yet
           </Paragraph>
-          <Paragraph color="$color8" textAlign="center">
+          <Paragraph color="$color8" text="center">
             Load this company's SEC filings, executive compensation, and insider trading data
             to see a full analysis.
           </Paragraph>
@@ -142,11 +142,11 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
   if (stage === 'error') {
     return (
       <Card>
-        <YStack alignItems="center" gap="$3" padding="$4">
+        <YStack items="center" gap="$3" p="$4">
           <Paragraph fontSize={18} fontWeight="600" color="$negative">
             Something went wrong
           </Paragraph>
-          <Paragraph color="$color8" textAlign="center">
+          <Paragraph color="$color8" text="center">
             {message}
           </Paragraph>
           <Button size="$4" theme="accent" onPress={startIngestion}>
@@ -163,7 +163,7 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
 
   return (
     <Card>
-      <YStack alignItems="center" gap="$3" padding="$4">
+      <YStack items="center" gap="$3" p="$4">
         <Spinner size="large" color="$color9" />
         <Paragraph fontSize={16} fontWeight="600" color="$color12">
           {stage === 'ingesting'
@@ -172,7 +172,7 @@ export function IngestionPrompt({ ticker, onComplete }: Props) {
               ? 'Starting Analysis...'
               : 'Analyzing Filings...'}
         </Paragraph>
-        <Paragraph color="$color8" textAlign="center">
+        <Paragraph color="$color8" text="center">
           {message}
         </Paragraph>
         {stage === 'polling' && progress.total > 0 && (

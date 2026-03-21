@@ -35,15 +35,15 @@ export function CeoSpotlightCard({ executives, execCompSummary }: Props) {
 
   return (
     <Card>
-      <XStack gap="$3" alignItems="center" marginBottom="$3">
+      <XStack gap="$3" items="center" mb="$3">
         {/* Avatar */}
         <YStack
           width={52}
           height={52}
-          borderRadius={26}
-          backgroundColor="$blue4"
-          alignItems="center"
-          justifyContent="center"
+          rounded={26}
+          bg="$blue4"
+          items="center"
+          justify="center"
         >
           <Paragraph fontWeight="700" color="$blue10" fontSize={18}>
             {getInitials(ceo.name)}
@@ -59,7 +59,7 @@ export function CeoSpotlightCard({ executives, execCompSummary }: Props) {
           </Paragraph>
         </YStack>
 
-        <YStack alignItems="flex-end" gap={2}>
+        <YStack items="flex-end" gap={2}>
           <Paragraph fontWeight="700" fontSize={16} color="$color12">
             {formatDollars(ceo.totalCompensation)}
           </Paragraph>
@@ -71,7 +71,7 @@ export function CeoSpotlightCard({ executives, execCompSummary }: Props) {
 
       {/* AI-generated analysis snippet */}
       {analysis && (
-        <Paragraph color="$color11" fontSize={14} lineHeight={21} marginBottom="$2">
+        <Paragraph color="$color11" fontSize={14} lineHeight={21} mb="$2">
           {analysis.length > 250 ? `${analysis.slice(0, 247)}...` : analysis}
         </Paragraph>
       )}
@@ -79,12 +79,12 @@ export function CeoSpotlightCard({ executives, execCompSummary }: Props) {
       {/* Pay ratio */}
       {payRatio && (
         <XStack
-          paddingVertical="$2"
-          paddingHorizontal="$3"
-          backgroundColor="$color3"
-          borderRadius="$3"
-          alignItems="center"
-          justifyContent="space-between"
+          py="$2"
+          px="$3"
+          bg="$color3"
+          rounded="$3"
+          items="center"
+          justify="space-between"
         >
           <Paragraph fontSize={13} color="$color8">
             CEO-to-Median-Worker Pay Ratio

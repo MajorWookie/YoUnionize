@@ -26,7 +26,7 @@ export function TextSummaryCard({ title, content, previewLines, markdown, childr
 
   return (
     <Card pressable={isLong} onPress={isLong ? () => setExpanded((v) => !v) : undefined}>
-      <Paragraph fontWeight="700" fontSize={16} marginBottom="$2">
+      <Paragraph fontWeight="700" fontSize={16} mb="$2">
         {title}
       </Paragraph>
       {markdown ? (
@@ -45,7 +45,7 @@ export function TextSummaryCard({ title, content, previewLines, markdown, childr
           color="$color9"
           fontSize={13}
           fontWeight="600"
-          marginTop="$2"
+          mt="$2"
           cursor="pointer"
         >
           {expanded ? 'Show less' : 'Read more'}

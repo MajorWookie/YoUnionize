@@ -132,7 +132,7 @@ describe('api-utils', () => {
       const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
 
       const handlers = withLogging('/api/test', {
-        async GET() {
+        async GET(_req: Request) {
           return Response.json({ ok: true })
         },
       })
@@ -155,7 +155,7 @@ describe('api-utils', () => {
       const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
 
       const handlers = withLogging('/api/test', {
-        async GET() {
+        async GET(_req: Request): Promise<Response> {
           throw new Error('Something broke')
         },
       })
@@ -176,7 +176,7 @@ describe('api-utils', () => {
       )
 
       const handlers = withLogging('/api/test', {
-        async GET() {
+        async GET(_req: Request) {
           throw authResponse
         },
       })
@@ -191,7 +191,7 @@ describe('api-utils', () => {
       const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
 
       const handlers = withLogging('/api/slow', {
-        async POST() {
+        async POST(_req: Request) {
           await new Promise((r) => setTimeout(r, 50))
           return Response.json({ done: true })
         },

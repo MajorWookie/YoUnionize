@@ -68,7 +68,7 @@ export function AskBar({
 
   return (
     <YStack gap="$3">
-      <XStack gap="$2" alignItems="center">
+      <XStack gap="$2" items="center">
         <Input
           flex={1}
           value={question}
@@ -105,12 +105,12 @@ export function AskBar({
           </Paragraph>
 
           {sources.length > 0 && (
-            <YStack gap="$1" marginTop="$1">
+            <YStack gap="$1" mt="$1">
               <Paragraph fontSize={11} color="$color8" fontWeight="600">
                 Sources
               </Paragraph>
               {sources.map((src, idx) => (
-                <XStack key={idx} gap="$2" alignItems="center">
+                <XStack key={idx} gap="$2" items="center">
                   <Paragraph fontSize={11} color="$color7">
                     {src.companyTicker} {src.filingType}
                   </Paragraph>

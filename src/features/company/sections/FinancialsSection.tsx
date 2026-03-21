@@ -66,10 +66,10 @@ function FinancialStatementView({
 }) {
   return (
     <Card>
-      <Paragraph fontWeight="600" marginBottom="$1">
+      <Paragraph fontWeight="600" mb="$1">
         {statement.title}
       </Paragraph>
-      <XStack marginBottom="$3" gap="$2">
+      <XStack mb="$3" gap="$2">
         <Paragraph color="$color8" fontSize={12}>
           Current: {statement.periodCurrent}
         </Paragraph>
@@ -104,25 +104,25 @@ function StatementTableView({ items }: { items: Array<FinancialLineItem> }) {
       <BarChart items={chartItems} />
 
       {/* Detailed table below chart */}
-      <YStack gap="$1" marginTop="$2">
+      <YStack gap="$1" mt="$2">
         {items.map((item) => (
           <XStack
             key={item.label}
-            justifyContent="space-between"
-            alignItems="center"
-            paddingVertical="$1"
+            justify="space-between"
+            items="center"
+            py="$1"
             borderBottomWidth={1}
             borderBottomColor="$color3"
           >
             <Paragraph fontSize={13} color="$color11" flex={1} numberOfLines={1}>
               {item.label}
             </Paragraph>
-            <XStack gap="$3" alignItems="center">
-              <Paragraph fontSize={13} fontWeight="600" color="$color12" width={90} textAlign="right">
+            <XStack gap="$3" items="center">
+              <Paragraph fontSize={13} fontWeight="600" color="$color12" width={90} text="right">
                 {formatFinancial(item.current)}
               </Paragraph>
               {item.prior != null && (
-                <Paragraph fontSize={12} color="$color8" width={80} textAlign="right">
+                <Paragraph fontSize={12} color="$color8" width={80} text="right">
                   {formatFinancial(item.prior)}
                 </Paragraph>
               )}
@@ -132,7 +132,7 @@ function StatementTableView({ items }: { items: Array<FinancialLineItem> }) {
                   fontWeight="600"
                   color={item.changePercent > 0 ? '$positive' : item.changePercent < 0 ? '$negative' : '$color8'}
                   width={60}
-                  textAlign="right"
+                  text="right"
                 >
                   {formatPercent(item.changePercent)}
                 </Paragraph>
@@ -185,13 +185,13 @@ function BalanceSheetView({ items }: { items: Array<FinancialLineItem> }) {
       )}
 
       {/* Full table */}
-      <YStack gap="$1" marginTop="$2">
+      <YStack gap="$1" mt="$2">
         {items.map((item) => (
           <XStack
             key={item.label}
-            justifyContent="space-between"
-            alignItems="center"
-            paddingVertical="$1"
+            justify="space-between"
+            items="center"
+            py="$1"
             borderBottomWidth={1}
             borderBottomColor="$color3"
           >
@@ -199,7 +199,7 @@ function BalanceSheetView({ items }: { items: Array<FinancialLineItem> }) {
               {item.label}
             </Paragraph>
             <XStack gap="$3">
-              <Paragraph fontSize={13} fontWeight="600" color="$color12" width={90} textAlign="right">
+              <Paragraph fontSize={13} fontWeight="600" color="$color12" width={90} text="right">
                 {formatFinancial(item.current)}
               </Paragraph>
               {item.changePercent != null && (
@@ -208,7 +208,7 @@ function BalanceSheetView({ items }: { items: Array<FinancialLineItem> }) {
                   fontWeight="600"
                   color={item.changePercent > 0 ? '$positive' : item.changePercent < 0 ? '$negative' : '$color8'}
                   width={60}
-                  textAlign="right"
+                  text="right"
                 >
                   {formatPercent(item.changePercent)}
                 </Paragraph>

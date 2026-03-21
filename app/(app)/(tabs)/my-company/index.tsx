@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'expo-router'
+import { View as RNView } from 'react-native'
 import { Button, H2, H4, Paragraph, Separator, View, XStack, YStack } from 'tamagui'
 import { fetchWithRetry } from '~/lib/api-client'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
@@ -120,7 +121,7 @@ export default function MyCompanyScreen() {
   if (!profile?.companyTicker) {
     return (
       <ScreenContainer>
-        <YStack gap="$2" marginBottom="$4">
+        <YStack gap="$2" mb="$4">
           <H2>My Company</H2>
           <Paragraph color="$color8">
             Your employer's financial health at a glance.
@@ -143,7 +144,7 @@ export default function MyCompanyScreen() {
   if (!cd || !cd.status.hasData) {
     return (
       <ScreenContainer>
-        <YStack gap="$2" marginBottom="$4">
+        <YStack gap="$2" mb="$4">
           <H2>My Company</H2>
         </YStack>
         {cd && (
@@ -165,7 +166,7 @@ export default function MyCompanyScreen() {
   if (cd.status.summarizedFilings === 0) {
     return (
       <ScreenContainer>
-        <YStack gap="$2" marginBottom="$4">
+        <YStack gap="$2" mb="$4">
           <H2>My Company</H2>
         </YStack>
         <CompanyHeader
@@ -183,11 +184,11 @@ export default function MyCompanyScreen() {
 
   return (
     <ScreenContainer>
-      <YStack gap="$2" marginBottom="$3">
+      <YStack gap="$2" mb="$3">
         <H2>My Company</H2>
       </YStack>
 
-      <YStack gap="$4" paddingBottom="$6">
+      <YStack gap="$4" pb="$6">
         <AtAGlanceCard data={cd} />
 
         <Separator />
@@ -255,7 +256,7 @@ function AtAGlanceCard({ data }: { data: CompanyDetailResponse }) {
         </Paragraph>
       )}
 
-      <XStack flexWrap="wrap" gap="$3" marginTop="$2">
+      <XStack flexWrap="wrap" gap="$3" mt="$2">
         {latestFiled && (
           <Stat label="Latest Filing" value={formatDate(latestFiled)} />
         )}
@@ -323,7 +324,7 @@ function YouVsLeadershipSection({
 
       {/* CEO ratio callout */}
       {ceoRatio != null && ceoRatio > 0 && (
-        <Card backgroundColor="$color3" gap="$2">
+        <Card bg="$color3" gap="$2">
           <Paragraph fontWeight="700" fontSize={28} color="$color12">
             {ceoRatio}x
           </Paragraph>
@@ -341,14 +342,14 @@ function YouVsLeadershipSection({
         const execDollars = exec.totalCompensation / 100
         return (
           <Card key={exec.id} gap="$2">
-            <XStack gap="$3" alignItems="center">
+            <XStack gap="$3" items="center">
               <YStack
                 width={40}
                 height={40}
-                borderRadius={20}
-                backgroundColor="$color4"
-                alignItems="center"
-                justifyContent="center"
+                rounded={20}
+                bg="$color4"
+                items="center"
+                justify="center"
               >
                 <Paragraph fontWeight="700" color="$color9" fontSize={14}>
                   {getInitials(exec.name)}
@@ -368,36 +369,40 @@ function YouVsLeadershipSection({
             </XStack>
 
             {userPayDollars != null && userPayDollars > 0 && (
-              <YStack marginTop="$2" gap="$1">
+              <YStack mt="$2" gap="$1">
                 {/* Exec bar */}
-                <XStack alignItems="center" gap="$2">
+                <XStack items="center" gap="$2">
                   <Paragraph fontSize={11} color="$color8" width={30}>
                     Exec
                   </Paragraph>
-                  <View flex={1} height={8} borderRadius={4} backgroundColor="$color4" overflow="hidden">
-                    <View
-                      height={8}
-                      borderRadius={4}
-                      width="100%"
-                      backgroundColor="#e53e3e"
+                  <RNView style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: '#e2e8f0', overflow: 'hidden' }}>
+                    <RNView
+                      style={{
+                        height: 8,
+                        borderRadius: 4,
+                        width: '100%',
+                        backgroundColor: '#e53e3e',
+                      }}
                     />
-                  </View>
+                  </RNView>
                 </XStack>
                 {/* User bar */}
-                <XStack alignItems="center" gap="$2">
+                <XStack items="center" gap="$2">
                   <Paragraph fontSize={11} color="$color8" width={30}>
                     You
                   </Paragraph>
-                  <View flex={1} height={8} borderRadius={4} backgroundColor="$color4" overflow="hidden">
-                    <View
-                      height={8}
-                      borderRadius={4}
-                      width={`${Math.max(Math.min((userPayDollars / execDollars) * 100, 100), 0.5)}%`}
-                      backgroundColor="#069639"
+                  <RNView style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: '#e2e8f0', overflow: 'hidden' }}>
+                    <RNView
+                      style={{
+                        height: 8,
+                        borderRadius: 4,
+                        width: `${Math.max(Math.min((userPayDollars / execDollars) * 100, 100), 0.5)}%`,
+                        backgroundColor: '#069639',
+                      }}
                     />
-                  </View>
+                  </RNView>
                 </XStack>
-                <Paragraph fontSize={11} color="$color8" marginTop={2}>
+                <Paragraph fontSize={11} color="$color8" mt={2}>
                   {userTitle ?? 'You'}: {formatCents(userPay)} vs {exec.title}: {formatCents(exec.totalCompensation)}
                 </Paragraph>
               </YStack>
@@ -483,7 +488,7 @@ function CashFlowComparisonSection({
 
       <XStack gap="$3" flexWrap="wrap">
         {/* Company side */}
-        <YStack flex={1} minWidth={280} gap="$2">
+        <YStack flex={1} minW={280} gap="$2">
           <Card gap="$3">
             <Paragraph fontWeight="700" fontSize={14} color="$color9">
               Company
@@ -522,7 +527,7 @@ function CashFlowComparisonSection({
             )}
 
             {operatingPct != null && (
-              <Paragraph color="$color8" fontSize={12} marginTop="$1">
+              <Paragraph color="$color8" fontSize={12} mt="$1">
                 The company allocates {operatingPct.toFixed(0)}% of cash flows to operations.
               </Paragraph>
             )}
@@ -530,7 +535,7 @@ function CashFlowComparisonSection({
         </YStack>
 
         {/* User side */}
-        <YStack flex={1} minWidth={280} gap="$2">
+        <YStack flex={1} minW={280} gap="$2">
           <Card gap="$3">
             <Paragraph fontWeight="700" fontSize={14} color="$color9">
               You
@@ -576,7 +581,7 @@ function CashFlowComparisonSection({
             )}
 
             {userExpensePct != null && (
-              <Paragraph color="$color8" fontSize={12} marginTop="$1">
+              <Paragraph color="$color8" fontSize={12} mt="$1">
                 You spend {userExpensePct.toFixed(0)}% of your income on living expenses.
               </Paragraph>
             )}
@@ -586,7 +591,7 @@ function CashFlowComparisonSection({
 
       {/* Analogy summary */}
       {operatingPct != null && userExpensePct != null && (
-        <Card backgroundColor="$color3">
+        <Card bg="$color3">
           <Paragraph color="$color11" fontSize={13} lineHeight={20}>
             The company spends {operatingPct.toFixed(0)}% on operations;
             you spend {userExpensePct.toFixed(0)}% on living expenses.
@@ -693,7 +698,7 @@ function CompanyPayInsightsSection({ data }: { data: CompanyDetailResponse }) {
             const summary = event.summary as Record<string, unknown> | undefined
             const text = (summary?.event_summary as string) ?? ''
             return (
-              <YStack key={event.id} gap="$1" paddingVertical="$1">
+              <YStack key={event.id} gap="$1" py="$1">
                 <Paragraph color="$color8" fontSize={11}>
                   {formatDate(event.filedAt)}
                 </Paragraph>
@@ -812,7 +817,7 @@ function InsiderActivitySection({
           </Card>
 
           {/* Plain language context */}
-          <Card backgroundColor="$color3" gap="$2">
+          <Card bg="$color3" gap="$2">
             <Paragraph fontWeight="600" fontSize={14} color="$color12">
               What this means
             </Paragraph>
@@ -835,7 +840,7 @@ function InsiderActivitySection({
 
           {/* Recent trades list */}
           <Card gap="$1">
-            <Paragraph fontWeight="600" fontSize={14} marginBottom="$2">
+            <Paragraph fontWeight="600" fontSize={14} mb="$2">
               Recent Transactions
             </Paragraph>
             {recentTrades.slice(0, 10).map((trade) => {
@@ -844,11 +849,11 @@ function InsiderActivitySection({
               return (
                 <XStack
                   key={trade.id}
-                  paddingVertical="$1.5"
+                  py="$1.5"
                   borderBottomWidth={1}
                   borderBottomColor="$color3"
                   gap="$2"
-                  alignItems="center"
+                  items="center"
                 >
                   <YStack flex={1}>
                     <Paragraph fontSize={13} fontWeight="500" numberOfLines={1}>
@@ -867,10 +872,10 @@ function InsiderActivitySection({
                   >
                     {isBuy ? 'Buy' : isSell ? 'Sell' : trade.transactionType ?? '-'}
                   </Paragraph>
-                  <Paragraph fontSize={12} color="$color11" width={80} textAlign="right">
+                  <Paragraph fontSize={12} color="$color11" width={80} text="right">
                     {trade.totalValue != null ? formatCents(trade.totalValue) : '-'}
                   </Paragraph>
-                  <Paragraph fontSize={11} color="$color8" width={70} textAlign="right">
+                  <Paragraph fontSize={11} color="$color8" width={70} text="right">
                     {formatDate(trade.transactionDate)}
                   </Paragraph>
                 </XStack>

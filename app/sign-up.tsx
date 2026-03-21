@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Button, H2, Input, Paragraph, Spinner, XStack, YStack } from 'tamagui'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@union/hooks'
 
 export default function SignUpPage() {
@@ -45,14 +46,23 @@ export default function SignUpPage() {
 
   const busy = submitting || isLoading
   const canSubmit = name && email && password && confirmPassword && !busy
+  const insets = useSafeAreaInsets()
 
   return (
-    <YStack flex={1} alignItems="center" justifyContent="center" padding="$4" gap="$4">
-      <YStack width="100%" maxWidth={400} gap="$3">
-        <H2 textAlign="center">Create Account</H2>
+    <YStack
+      flex={1}
+      items="center"
+      justify="center"
+      px="$4"
+      pt={insets.top + 16}
+      pb={insets.bottom + 16}
+      gap="$4"
+    >
+      <YStack width="100%" maxW={400} gap="$3">
+        <H2 text="center">Create Account</H2>
 
         {error ? (
-          <Paragraph color="$red10" textAlign="center">
+          <Paragraph color="$red10" text="center">
             {error}
           </Paragraph>
         ) : null}
@@ -92,12 +102,12 @@ export default function SignUpPage() {
         <Button
           onPress={handleSignUp}
           disabled={!canSubmit}
-          theme="active"
+          theme={"active" as any}
         >
           {busy ? <Spinner size="small" /> : 'Create Account'}
         </Button>
 
-        <XStack justifyContent="center" gap="$2">
+        <XStack justify="center" gap="$2">
           <Paragraph>Already have an account?</Paragraph>
           <Paragraph
             color="$blue10"

@@ -112,7 +112,7 @@ function YearToggle({
   onSelect: (idx: number) => void
 }) {
   return (
-    <XStack gap="$2" marginBottom="$3" justifyContent="center">
+    <XStack gap="$2" mb="$3" justify="center">
       {years.map((y, idx) => (
         <Button
           key={y.year}
@@ -144,7 +144,7 @@ function RingLegend({
   const legendSlices = legendRings.flatMap((r) => r.slices)
 
   return (
-    <YStack gap="$1.5" marginTop="$3">
+    <YStack gap="$1.5" mt="$3">
       {legendSlices.map((slice) => {
         const isActive = activeSliceId === slice.id
         return (
@@ -153,28 +153,28 @@ function RingLegend({
             onPress={() => onPress(isActive ? null : slice)}
           >
             <XStack
-              alignItems="center"
-              justifyContent="space-between"
+              items="center"
+              justify="space-between"
               opacity={activeSliceId != null && !isActive ? 0.5 : 1}
-              paddingVertical="$1"
+              py="$1"
             >
-              <XStack alignItems="center" gap="$2" flex={1}>
+              <XStack items="center" gap="$2" flex={1}>
                 <YStack
                   width={10}
                   height={10}
-                  borderRadius={2}
-                  backgroundColor={slice.color}
+                  rounded={2}
+                  bg={slice.color as any}
                 />
                 <Paragraph fontSize={13} color="$color11" numberOfLines={1}>
                   {slice.isNegative ? '\u2193 ' : ''}
                   {slice.label}
                 </Paragraph>
               </XStack>
-              <XStack gap="$2" alignItems="center">
+              <XStack gap="$2" items="center">
                 <Paragraph fontSize={13} fontWeight="600" color="$color12">
                   {slice.formattedValue}
                 </Paragraph>
-                <Paragraph fontSize={12} color="$color8" width={45} textAlign="right">
+                <Paragraph fontSize={12} color="$color8" width={45} text="right">
                   {slice.percentOfRevenue}%
                 </Paragraph>
               </XStack>
@@ -199,21 +199,21 @@ function SlicePopover({
 }) {
   return (
     <YStack
-      marginTop="$3"
-      padding="$3"
-      backgroundColor="$color3"
-      borderRadius="$3"
+      mt="$3"
+      p="$3"
+      bg="$color3"
+      rounded="$3"
       borderWidth={1}
       borderColor="$borderColor"
     >
       {/* Header */}
-      <XStack justifyContent="space-between" alignItems="center" marginBottom="$2">
-        <XStack alignItems="center" gap="$2">
+      <XStack justify="space-between" items="center" mb="$2">
+        <XStack items="center" gap="$2">
           <YStack
             width={12}
             height={12}
-            borderRadius={3}
-            backgroundColor={slice.color}
+            rounded={3}
+            bg={slice.color as any}
           />
           <Paragraph fontWeight="700" fontSize={15}>
             {slice.label}
@@ -227,7 +227,7 @@ function SlicePopover({
       </XStack>
 
       {/* Value and percent */}
-      <XStack gap="$4" marginBottom={slice.breakdown ? '$3' : 0}>
+      <XStack gap="$4" mb={slice.breakdown ? '$3' : 0}>
         <YStack>
           <Paragraph color="$color8" fontSize={11}>
             Value
@@ -248,29 +248,29 @@ function SlicePopover({
 
       {/* Negative indicator */}
       {slice.isNegative && (
-        <Paragraph color="$color8" fontSize={12} marginBottom="$2">
+        <Paragraph color="$color8" fontSize={12} mb="$2">
           {'\u2193'} Reduces income — this is a cost deducted from operating results
         </Paragraph>
       )}
 
       {/* Operating Expenses breakdown */}
       {slice.breakdown && slice.breakdown.length > 0 && (
-        <YStack gap="$1" borderTopWidth={1} borderTopColor="$borderColor" paddingTop="$2">
-          <Paragraph fontWeight="600" fontSize={13} color="$color8" marginBottom="$1">
+        <YStack gap="$1" borderTopWidth={1} borderTopColor="$borderColor" pt="$2">
+          <Paragraph fontWeight="600" fontSize={13} color="$color8" mb="$1">
             Expense Breakdown
           </Paragraph>
-          <ScrollView maxHeight={180} showsVerticalScrollIndicator={false}>
+          <ScrollView maxH={180} showsVerticalScrollIndicator={false}>
             <YStack gap="$1">
               {slice.breakdown.map((item) => (
-                <XStack key={item.label} justifyContent="space-between" alignItems="center">
+                <XStack key={item.label} justify="space-between" items="center">
                   <Paragraph fontSize={13} color="$color11" flex={1} numberOfLines={1}>
                     {item.label}
                   </Paragraph>
-                  <XStack gap="$2" alignItems="center">
+                  <XStack gap="$2" items="center">
                     <Paragraph fontSize={13} fontWeight="600" color="$color12">
                       {item.formattedValue}
                     </Paragraph>
-                    <Paragraph fontSize={12} color="$color8" width={42} textAlign="right">
+                    <Paragraph fontSize={12} color="$color8" width={42} text="right">
                       {item.percentOfRevenue}%
                     </Paragraph>
                   </XStack>
@@ -310,7 +310,7 @@ function FallbackCard({ statement }: { statement: FinancialStatement }) {
         Income Breakdown
       </Paragraph>
       <Card>
-        <Paragraph color="$color8" fontSize={12} marginBottom="$2">
+        <Paragraph color="$color8" fontSize={12} mb="$2">
           Detailed breakdown unavailable
         </Paragraph>
         <XStack gap="$4">
