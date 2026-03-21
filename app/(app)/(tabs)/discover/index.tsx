@@ -31,6 +31,7 @@ export default function DiscoverScreen() {
   const [secLoading, setSecLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [secSearched, setSecSearched] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   // Track the latest search query to avoid stale SEC results overwriting newer local results
   const latestQueryRef = useRef('')
@@ -44,16 +45,32 @@ export default function DiscoverScreen() {
       setHasSearched(false)
       setSecSearched(false)
       setSecLoading(false)
+      setSearchError(null)
       return
     }
 
     latestQueryRef.current = trimmed
     setLoading(true)
     setSecSearched(false)
+    setSearchError(null)
 
     try {
       // 1. Local DB search (fast)
       const res = await fetchWithRetry(`/api/companies/search?q=${encodeURIComponent(trimmed)}`)
+
+      if (!res.ok) {
+        if (latestQueryRef.current !== trimmed) return
+        const statusMsg = res.status === 401 || res.status === 403
+          ? 'Unable to connect — check your Supabase API key configuration.'
+          : `Search failed (${res.status}). Please try again.`
+        setSearchError(statusMsg)
+        setResults([])
+        setHasSearched(true)
+        setSecSearched(true)
+        setLoading(false)
+        return
+      }
+
       const data = await res.json()
       const localResults: Array<SearchResult> = data.results ?? []
 
@@ -69,12 +86,15 @@ export default function DiscoverScreen() {
         setSecLoading(true)
         try {
           const secRes = await fetchWithRetry(`/api/companies/search-sec?q=${encodeURIComponent(trimmed)}`)
-          const secData = await secRes.json()
-          const secResults: Array<SearchResult> = secData.results ?? []
 
-          // Only merge if this is still the latest query
-          if (latestQueryRef.current === trimmed && secResults.length > 0) {
-            setResults((prev) => mergeResults(prev, secResults))
+          if (secRes.ok) {
+            const secData = await secRes.json()
+            const secResults: Array<SearchResult> = secData.results ?? []
+
+            // Only merge if this is still the latest query
+            if (latestQueryRef.current === trimmed && secResults.length > 0) {
+              setResults((prev) => mergeResults(prev, secResults))
+            }
           }
         } catch {
           // SEC search failure is non-fatal — local results are already shown
@@ -87,8 +107,10 @@ export default function DiscoverScreen() {
       } else {
         setSecSearched(true)
       }
-    } catch {
+    } catch (err) {
       if (latestQueryRef.current === trimmed) {
+        const message = err instanceof Error ? err.message : 'Network request failed'
+        setSearchError(`Could not reach the server. ${message}`)
         setResults([])
         setHasSearched(true)
         setSecSearched(true)
@@ -102,7 +124,7 @@ export default function DiscoverScreen() {
   }, [debouncedQuery, search])
 
   // Show "no results" only after both sources have been checked
-  const showNoResults = hasSearched && secSearched && results.length === 0 && !loading && !secLoading
+  const showNoResults = hasSearched && secSearched && results.length === 0 && !loading && !secLoading && !searchError
 
   return (
     <ScreenContainer>
@@ -145,7 +167,12 @@ export default function DiscoverScreen() {
 
       <Separator marginBottom="$3" />
 
-      {!hasSearched && query.length === 0 ? (
+      {searchError ? (
+        <EmptyState
+          title="Search unavailable"
+          description={searchError}
+        />
+      ) : !hasSearched && query.length === 0 ? (
         <EmptyState
           icon={<DiscoverIcon size={48} color="var(--color8)" />}
           title="Search for a company"
