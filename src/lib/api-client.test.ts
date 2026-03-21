@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Mock the Supabase auth client before importing api-client
+vi.mock('~/features/auth/client/authClient', () => ({
+  getSupabaseBrowserClient: () => ({
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null } }),
+    },
+  }),
+}))
+
 import { extractErrorMessage, fetchWithRetry } from './api-client'
 
 describe('api-client', () => {
