@@ -153,7 +153,7 @@ This env file points to your hosted Supabase. **Do NOT commit this.**
 
 ```bash
 EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_HOSTED_ANON_KEY
+EXPO_PUBLIC_SUPABASE_KEY=YOUR_HOSTED_PUBLISHABLE_KEY
 ```
 
 Add to `.gitignore`:

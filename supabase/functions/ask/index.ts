@@ -208,12 +208,12 @@ Deno.serve(async (req) => {
     let userContext = ''
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')
-      const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+      const key = Deno.env.get('SUPABASE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')
       const authHeader = req.headers.get('authorization')
       const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined
 
-      if (supabaseUrl && anonKey && accessToken) {
-        const supabase = createClient(supabaseUrl, anonKey, {
+      if (supabaseUrl && key && accessToken) {
+        const supabase = createClient(supabaseUrl, key, {
           global: { headers: { Authorization: `Bearer ${accessToken}` } },
           auth: { autoRefreshToken: false, persistSession: false },
         })

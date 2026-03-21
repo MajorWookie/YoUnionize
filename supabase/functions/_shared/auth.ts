@@ -16,10 +16,11 @@ export interface AuthSession {
  */
 export async function ensureAuth(request: Request): Promise<AuthSession> {
   const url = Deno.env.get('SUPABASE_URL')
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  // Prefer new publishable key name; fall back to legacy anon key (auto-injected by Supabase runtime)
+  const key = Deno.env.get('SUPABASE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')
 
-  if (!url || !anonKey) {
-    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set')
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL and SUPABASE_KEY must be set')
   }
 
   const authHeader = request.headers.get('authorization')
@@ -34,7 +35,7 @@ export async function ensureAuth(request: Request): Promise<AuthSession> {
     )
   }
 
-  const supabase = createClient(url, anonKey, {
+  const supabase = createClient(url, key, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { autoRefreshToken: false, persistSession: false },
   })
