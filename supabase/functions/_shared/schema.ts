@@ -181,7 +181,7 @@ export const directors = pgTable('directors', {
 
 const vector = customType<{ data: number[]; dpiType: string }>({
   dataType() {
-    return 'vector(1536)'
+    return 'vector(1024)'
   },
   toDriver(value: number[]) {
     return `[${value.join(',')}]`

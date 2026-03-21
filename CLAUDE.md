@@ -1,7 +1,7 @@
 # CLAUDE.md — YoUnion
 
 > Last updated: 2026-03-20
-> Last updated by: AI session (CLAUDE.md sync — nested company routes, SVG charts, markdown rendering, name normalization, income data extractor)
+> Last updated by: AI session (Voyage AI embedding migration — OpenAI → Voyage AI, 1536→1024 dims, input_type support)
 
 ## Project Overview
 
@@ -14,9 +14,10 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 - **UI**: Tamagui 2.0.0-rc.15 (cross-platform design system — native views on mobile, web on browser)
 - **Database**: PostgreSQL via Supabase (local dev) / hosted Supabase (staging/prod)
 - **ORM**: Drizzle ORM 0.40 (query builder only, no drizzle-kit), postgres-js driver
-- **Vector Search**: pgvector extension (1536-dim embeddings for RAG)
+- **Vector Search**: pgvector extension (1024-dim embeddings for RAG via Voyage AI)
 - **Auth**: Supabase Auth (email/password, managed externally)
 - **AI**: Anthropic Claude via @anthropic-ai/sdk 0.39
+- **Embeddings**: Voyage AI (voyage-4-lite for dev, voyage-finance-2 for prod), 1024 dimensions
 - **SEC Data**: sec-api.io (filings, XBRL, company search)
 - **API Layer**: Supabase Edge Functions (Deno runtime, 17 endpoints)
 - **Background Jobs**: PostgreSQL-backed job queue + AWS Lambda workers (SST v3)
@@ -40,6 +41,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 | API Layer | Supabase Edge Functions | https://supabase.com/docs/guides/functions | Well-documented. Runs on Deno. |
 | Auth | Supabase Auth | https://supabase.com/docs | Well-documented. API keys are transitioning — verify key format. |
 | AI | Anthropic Claude | https://docs.anthropic.com | Well-documented. Use for summarization/RAG features. |
+| Embeddings | Voyage AI | https://docs.voyageai.com/docs/embeddings | Well-documented. REST API similar to OpenAI. Use `input_type` param. |
 
 ## Architecture
 
@@ -105,7 +107,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 | `src/lib/` | Client-side utilities (fetchWithRetry API client) |
 | `src/tamagui/` | Tamagui config, themes, semantic tokens |
 | `src/test/` | Vitest setup and test data factories |
-| `packages/ai/` | Anthropic SDK wrapper, prompt templates (filing summary, comp analysis, RAG) |
+| `packages/ai/` | Anthropic SDK wrapper, Voyage AI embeddings, prompt templates (filing summary, comp analysis, RAG) |
 | `packages/postgres/` | Database connection, vector search functions |
 | `packages/sec-api/` | SEC API client with Valibot-validated responses |
 | `packages/helpers/` | `ensureEnv()`, `normalizeName()`, shared TypeScript types, concurrency utilities (`concurrency.ts`) |
@@ -120,8 +122,8 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 2a. **User taps an executive/director** → navigates to `/company/[ticker]/executive/[id]` → shows full profile with compensation breakdown, committee memberships, qualifications, and dual-role handling.
 3. **Phase 1 — SEC fetch** → `POST /api/companies/[ticker]/fetch` → fetches raw SEC API responses (filings, exec comp, insider trades, directors) → stores verbatim JSON in `raw_sec_responses` table
 4. **Phase 2 — Processing** → `POST /api/companies/[ticker]/process` → reads from `raw_sec_responses` → transforms and inserts into domain tables (filings, executive_compensation, directors, insider_trades) with enrichment (canonical names, roles)
-5. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates embeddings → stores in `embeddings` table
-6. **User asks a question** → `POST /api/ask` → vector search on embeddings → retrieves relevant filing context → Claude generates RAG answer with citations
+5. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates 1024-dim embeddings via Voyage AI (`input_type: 'document'`) → stores in `embeddings` table
+6. **User asks a question** → `POST /api/ask` → embeds question via Voyage AI (`input_type: 'query'`) → vector search on embeddings → retrieves relevant filing context → Claude generates RAG answer with citations
 7. **Compensation analysis** → `POST /api/analysis/compensation-fairness` → combines user profile (salary, CoL, org level) with company exec comp data → Claude generates fairness analysis
 
 ## Conventions
@@ -169,6 +171,8 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 
 ### AI/API Patterns
 - Claude API calls centralized in `packages/ai/` — don't scatter API calls across components.
+- Embeddings use Voyage AI (`voyage-4-lite` for dev, `voyage-finance-2` for prod). Always pass `input_type: 'document'` when storing and `input_type: 'query'` when searching — this asymmetric encoding improves retrieval quality.
+- The `/ask` Edge Function calls Voyage AI directly (not through `ClaudeClient`) because Edge Functions run on Deno and can't import the Node-based `@union/ai` package.
 - Always handle API rate limits explicitly with retry logic and exponential backoff.
 - RAG pipeline components (embedding, retrieval, generation) must be clearly separated — no monolithic "do everything" functions.
 
@@ -277,7 +281,7 @@ bun install
 
 # 2. Set up environment
 cp .env.example .env
-# Edit .env with your SEC_API_KEY and ANTHROPIC_API_KEY
+# Edit .env with your SEC_API_KEY, ANTHROPIC_API_KEY, and VOYAGE_API_KEY
 
 # 3. Start local Supabase (requires Docker + Supabase CLI)
 supabase start
@@ -402,6 +406,7 @@ When uncertain, point the developer here rather than guessing.
 - **Drizzle + postgres-js**: https://orm.drizzle.team/docs/get-started/postgresql-new
 - **Bun Docs**: https://bun.sh/docs
 - **Anthropic API**: https://docs.anthropic.com
+- **Voyage AI Embeddings**: https://docs.voyageai.com/docs/embeddings
 - **Supabase Docs**: https://supabase.com/docs
 - **Supabase Auth (React)**: https://supabase.com/docs/guides/auth/quickstarts/react
 - **Supabase RLS**: https://supabase.com/docs/guides/database/postgres/row-level-security
@@ -432,6 +437,7 @@ When uncertain, point the developer here rather than guessing.
 - Markdown rendering: `MarkdownContent` component using `react-native-markdown-display` with Tamagui theme tokens (2026-03-20)
 - Name normalization and dedup: `normalizeName()` helper, `normalized_name` DB columns + dedup indexes on directors and executive_compensation tables (2026-03-20)
 - Expo modules support and privacy information (2026-03-20)
+- Migrated embeddings from OpenAI (`text-embedding-3-small`, 1536-dim) to Voyage AI (`voyage-4-lite`, 1024-dim) (2026-03-20) — added `input_type` support (`document` for storage, `query` for search), removed Ollama fallback, migration truncates old embeddings
 
 ### In Progress / Remaining
 - Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)

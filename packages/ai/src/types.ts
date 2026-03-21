@@ -1,14 +1,10 @@
 export interface ClaudeClientConfig {
   apiKey: string
   model?: string
-  /** OpenAI API key for embeddings. Falls back to OPENAI_API_KEY env var. */
-  openaiApiKey?: string
-  /** Embedding provider: 'ollama' for local embeddings, 'openai' for OpenAI API. Defaults to 'ollama' if OLLAMA_BASE_URL is set, otherwise 'openai'. */
-  embeddingProvider?: 'openai' | 'ollama'
-  /** Ollama base URL. Defaults to OLLAMA_BASE_URL env var or http://localhost:11434. */
-  ollamaBaseUrl?: string
-  /** Ollama embedding model name. Defaults to OLLAMA_EMBEDDING_MODEL env var or 'nomic-embed-text'. */
-  ollamaEmbeddingModel?: string
+  /** Voyage AI API key for embeddings. Falls back to VOYAGE_API_KEY env var. */
+  voyageApiKey?: string
+  /** Voyage AI embedding model. Defaults to VOYAGE_EMBEDDING_MODEL env var or 'voyage-4-lite'. */
+  voyageModel?: string
 }
 
 export interface KeyNumber {

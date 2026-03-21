@@ -1,8 +1,8 @@
 -- Initial schema: all public tables for YoUnion app
 -- Source of truth: src/database/schema/*.ts
 
--- Enable pgvector extension for embeddings
-CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
+-- Enable pgvector extension for embeddings (public schema for remote compatibility)
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 -- ============================================================
 -- User tables

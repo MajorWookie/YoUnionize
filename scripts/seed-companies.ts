@@ -15,7 +15,7 @@
  *   bun run scripts/seed-companies.ts --years=2              # 2 10-Ks, 2 DEF 14As, 24mo 8-Ks
  *
  * Requires:
- *   - .env with SEC_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, DATABASE_URL
+ *   - .env with SEC_API_KEY, ANTHROPIC_API_KEY, VOYAGE_API_KEY, DATABASE_URL
  *   - Local Supabase running (supabase start)
  */
 
@@ -352,8 +352,8 @@ async function main() {
   console.info(`[Seed] Tickers: ${tickers.join(', ')}`)
   console.info(`[Seed] Config: ${SEED_CONFIG.tenKCount} 10-Ks, ${SEED_CONFIG.defCount} DEF 14As, ${SEED_CONFIG.eightKMonths}mo 8-Ks`)
   console.info(`[Seed] Concurrency: ${SEED_CONFIG.companyConcurrency} companies in parallel`)
-  const embeddingProvider = process.env.OLLAMA_BASE_URL ? 'Ollama' : (process.env.OPENAI_API_KEY ? 'OpenAI' : 'Ollama')
-  console.info(`[Seed] Summarization: ${skipSummarization ? 'SKIPPED' : `enabled (Claude + ${embeddingProvider})`}`)
+  const embeddingModel = process.env.VOYAGE_EMBEDDING_MODEL ?? 'voyage-4-lite'
+  console.info(`[Seed] Summarization: ${skipSummarization ? 'SKIPPED' : `enabled (Claude + Voyage AI ${embeddingModel})`}`)
   console.info(`[Seed] ═══════════════════════════════════════════════════\n`)
 
   const totalStart = Date.now()

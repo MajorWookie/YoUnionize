@@ -139,7 +139,14 @@
       "Bash(ls -1 /Users/majorwookie/Documents/GitHub/YoUnion/.env*)",
       "Bash(find node_modules -path */react-native-reanimated/package.json -maxdepth 5)",
       "Bash(python3 -c \"import json; d=json.load\\(open\\(''node_modules/expo/bundledNativeModules.json''\\)\\); [print\\(f''{k}: {v}''\\) for k,v in d.items\\(\\) if ''reanimate'' in k.lower\\(\\) or ''worklet'' in k.lower\\(\\)]\")",
-      "Bash(ls \"/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)/company/\")"
+      "Bash(ls \"/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)/company/\")",
+      "Bash(dotenvx run:*)",
+      "Bash(bunx dotenvx:*)",
+      "Bash(kill %%)",
+      "Bash(grep -l \"pgvector\\\\|vector\" /Users/majorwookie/Documents/GitHub/YoUnion/supabase/migrations/*.sql)",
+      "Bash(supabase --version)",
+      "Bash(chmod +x /Users/majorwookie/Documents/GitHub/YoUnion/scripts/reset-remote.sh)",
+      "WebFetch(domain:docs.voyageai.com)"
     ]
   },
   "outputStyle": "Explanatory"

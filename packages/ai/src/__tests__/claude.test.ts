@@ -69,7 +69,7 @@ const MOCK_COMPENSATION_ANALYSIS: CompensationAnalysisResult = {
   ],
 }
 
-const MOCK_EMBEDDING = Array.from({ length: 1536 }, (_, i) =>
+const MOCK_EMBEDDING = Array.from({ length: 1024 }, (_, i) =>
   Math.sin(i * 0.01),
 )
 
@@ -101,7 +101,7 @@ describe('ClaudeClient', () => {
   beforeEach(() => {
     client = new ClaudeClient({
       apiKey: 'test-anthropic-key',
-      openaiApiKey: 'test-openai-key',
+      voyageApiKey: 'test-voyage-key',
     })
   })
 
@@ -285,7 +285,7 @@ describe('ClaudeClient', () => {
   // ─── generateEmbedding ──────────────────────────────────────────────
 
   describe('generateEmbedding', () => {
-    it('calls OpenAI embeddings API and returns 1536-dim vector', async () => {
+    it('calls Voyage AI embeddings API and returns 1024-dim vector', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () =>
@@ -300,23 +300,45 @@ describe('ClaudeClient', () => {
         text: 'Apple reported strong quarterly results',
       })
 
-      expect(embedding).toHaveLength(1536)
+      expect(embedding).toHaveLength(1024)
       expect(mockFetch).toHaveBeenCalledOnce()
 
       const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit]
-      expect(url).toBe('https://api.openai.com/v1/embeddings')
+      expect(url).toBe('https://api.voyageai.com/v1/embeddings')
       expect(options.method).toBe('POST')
 
       const body = JSON.parse(options.body as string)
-      expect(body.model).toBe('text-embedding-3-small')
-      expect(body.dimensions).toBe(1536)
+      expect(body.model).toBe('voyage-4-lite')
+      expect(body.output_dimension).toBe(1024)
+      expect(body.input_type).toBe('document')
       expect(body.input).toContain('Apple')
 
       const headers = options.headers as Record<string, string>
-      expect(headers.Authorization).toBe('Bearer test-openai-key')
+      expect(headers.Authorization).toBe('Bearer test-voyage-key')
     })
 
-    it('throws on OpenAI API errors', async () => {
+    it('passes input_type query for search embeddings', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [{ embedding: MOCK_EMBEDDING }],
+            usage: { total_tokens: 10 },
+          }),
+      })
+
+      await client.generateEmbedding({
+        text: 'What is Apple revenue?',
+        inputType: 'query',
+      })
+
+      const body = JSON.parse(
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+      )
+      expect(body.input_type).toBe('query')
+    })
+
+    it('throws on Voyage AI API errors', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
@@ -325,7 +347,7 @@ describe('ClaudeClient', () => {
 
       await expect(
         client.generateEmbedding({ text: 'test' }),
-      ).rejects.toThrow('OpenAI embeddings API error 401')
+      ).rejects.toThrow('Voyage AI embeddings error 401')
     })
   })
 

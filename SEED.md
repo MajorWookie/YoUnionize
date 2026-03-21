@@ -109,7 +109,7 @@ When summarization is enabled (the default), each filing is processed through:
 | `DATABASE_URL` | Always | PostgreSQL connection string |
 | `SEC_API_KEY` | Always | sec-api.io API key |
 | `ANTHROPIC_API_KEY` | Unless `--skip-summarization` | Claude AI summarization |
-| `OPENAI_API_KEY` | For OpenAI embeddings | Embedding generation (falls back to Ollama) |
+| `VOYAGE_API_KEY` | For Voyage embeddings | Embedding generation (falls back to Ollama) |
 | `OLLAMA_BASE_URL` | For Ollama embeddings | Local embedding generation (used if set, or as fallback) |
 
 ## Rate Limits

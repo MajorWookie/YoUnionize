@@ -2,7 +2,7 @@ import { customType, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/p
 
 const vector = customType<{ data: number[]; dpiType: string }>({
   dataType() {
-    return 'vector(1536)'
+    return 'vector(1024)'
   },
   toDriver(value: number[]) {
     return `[${value.join(',')}]`
