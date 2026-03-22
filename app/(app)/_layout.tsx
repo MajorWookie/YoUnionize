@@ -6,7 +6,7 @@ export default function AppLayout() {
     <Protected>
       <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="company" />
+        <Stack.Screen name="company/[ticker]" />
         <Stack.Screen name="onboarding" />
       </Stack>
     </Protected>
