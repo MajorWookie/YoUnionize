@@ -12,6 +12,7 @@ export default function RootLayout() {
         <ErrorBoundary>
           <ToastProvider>
             <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+              <Stack.Screen name="index" />
               <Stack.Screen name="(app)" />
               <Stack.Screen name="sign-in" />
               <Stack.Screen name="sign-up" />
