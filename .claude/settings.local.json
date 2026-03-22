@@ -165,7 +165,10 @@
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/node_modules -path */tamagui/config* -name *.js)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/node_modules/.bun -path */tamagui/shorthands/v4* -name *.ts)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/node_modules -path *tamagui/shorthands*)",
-      "Bash(grep -r onlyAllowShorthands /Users/majorwookie/Documents/GitHub/YoUnion/ --include=*.ts --include=*.tsx --include=*.json)"
+      "Bash(grep -r onlyAllowShorthands /Users/majorwookie/Documents/GitHub/YoUnion/ --include=*.ts --include=*.tsx --include=*.json)",
+      "Bash(find \"/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)\" -type f -name \"*.tsx\")",
+      "Bash(ls '/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)/company/[ticker]/')",
+      "Bash(git checkout:*)"
     ]
   },
   "outputStyle": "Explanatory"
