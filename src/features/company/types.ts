@@ -82,6 +82,7 @@ export interface CompanyDetailResponse {
 
 // Shapes from the AI summary
 
+/** v1 filing summary — produced by the original single-call prompt */
 export interface FilingSummaryResult {
   executive_summary: string
   key_numbers: Array<{ label: string; value: string; context: string }>
@@ -91,6 +92,26 @@ export interface FilingSummaryResult {
   opportunities: string[]
   /** Short-form: 2-3 sentences on what this means for employees */
   employee_relevance: string
+}
+
+/** v2 company summary — produced by the dedicated company-summary prompt */
+export interface CompanySummaryResult {
+  headline: string
+  company_health: string
+  key_numbers: Array<{ label: string; value: string; context: string }>
+  red_flags: string[]
+  opportunities: string[]
+}
+
+/** v2 employee impact analysis — produced by the dedicated employee-impact prompt */
+export interface EmployeeImpactResult {
+  overall_outlook: string
+  job_security: string
+  compensation_signals: string
+  growth_opportunities: string
+  workforce_geography: string
+  h1b_and_visa_dependency: string
+  watch_items: string[]
 }
 
 export interface FinancialLineItem {
