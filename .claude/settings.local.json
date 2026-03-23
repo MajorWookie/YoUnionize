@@ -168,7 +168,17 @@
       "Bash(grep -r onlyAllowShorthands /Users/majorwookie/Documents/GitHub/YoUnion/ --include=*.ts --include=*.tsx --include=*.json)",
       "Bash(find \"/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)\" -type f -name \"*.tsx\")",
       "Bash(ls '/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)/company/[ticker]/')",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/src/interface/charts -type f -name *.tsx -o -name *.ts)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/src/features/company -type f -name *.tsx -o -name *.ts)",
+      "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/src/interface -maxdepth 1 -type f -name *.tsx -o -name *.ts)",
+      "Bash(wc -l /Users/majorwookie/Documents/GitHub/YoUnion/supabase/functions/*/index.ts)",
+      "Bash(grep -n \"import.*ExecutiveSummaryCard\\\\|import.*CompanySummaryCard\" /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/company/[ticker]/index.tsx)",
+      "Bash(grep -r \"ScrollView\\\\|ScreenContainer\" /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/company/[ticker]/index.tsx)",
+      "Bash(grep -n \"as any\" /Users/majorwookie/Documents/GitHub/YoUnion/src/interface/charts/*.tsx)",
+      "Bash(grep -n \"normalized_name\" /Users/majorwookie/Documents/GitHub/YoUnion/src/database/schema/*.ts)",
+      "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/PLAN-*.md)",
+      "Bash(npx oxlint:*)"
     ]
   },
   "outputStyle": "Explanatory"

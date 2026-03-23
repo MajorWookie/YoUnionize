@@ -16,8 +16,11 @@ import { IncomeStatementSunburst } from '~/features/company/sections/IncomeState
 import { CeoSpotlightCard } from '~/features/company/sections/CeoSpotlightCard'
 import { IngestionPrompt } from '~/features/company/sections/IngestionPrompt'
 import { AskBar } from '~/features/ask/AskBar'
+import { useAuth } from '@union/hooks'
 import type {
   CompanyDetailResponse,
+  CompanySummaryResult,
+  EmployeeImpactResult,
   FilingSummaryResult,
   ExecCompSummary,
 } from '~/features/company/types'
@@ -80,12 +83,6 @@ export default function CompanyDetailScreen() {
 
   const { company, status } = data
 
-  // Extract data from the most recent annual filing summary
-  const annualSummary = data.latestAnnual?.summary as Record<string, unknown> | undefined
-  const execSummary = annualSummary?.executive_summary as FilingSummaryResult | undefined
-  const execCompSummary = (data.latestProxy?.summary as Record<string, unknown>)
-    ?.executive_compensation as ExecCompSummary | undefined
-
   return (
     <ScreenContainer>
       {/* Back button */}
@@ -127,17 +124,62 @@ export default function CompanyDetailScreen() {
 }
 
 function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
+  const { session } = useAuth()
   const annualSummary = data.latestAnnual?.summary as Record<string, unknown> | undefined
   const quarterlySummary = data.latestQuarterly?.summary as Record<string, unknown> | undefined
   const proxySummary = data.latestProxy?.summary as Record<string, unknown> | undefined
 
   // Use the most detailed filing summary available (prefer annual)
   const primarySummary = annualSummary ?? quarterlySummary
-  const execSummaryData = primarySummary?.executive_summary as FilingSummaryResult | undefined
+
+  // Executive summary supports both v1 (FilingSummaryResult) and v2 (CompanySummaryResult)
+  const execSummaryData = primarySummary?.executive_summary as
+    | CompanySummaryResult
+    | FilingSummaryResult
+    | undefined
+
+  // Employee impact (v2 only)
+  const employeeImpact = primarySummary?.employee_impact as EmployeeImpactResult | undefined
 
   // Financial statements come from the most recent filing with XBRL data
   const financialSource = annualSummary ?? quarterlySummary
   const execCompSummary = proxySummary?.executive_compensation as ExecCompSummary | undefined
+
+  // Extract red_flags and opportunities from whichever summary format is present
+  const redFlags = execSummaryData
+    ? 'red_flags' in execSummaryData
+      ? execSummaryData.red_flags
+      : []
+    : []
+  const opportunities = execSummaryData
+    ? 'opportunities' in execSummaryData
+      ? execSummaryData.opportunities
+      : []
+    : []
+
+  // Personalized "What Does This Mean for You?" overlay
+  const filingId = data.latestAnnual?.id ?? data.latestQuarterly?.id
+  const [personalizedContent, setPersonalizedContent] = useState<string | null>(null)
+  const [personalizingLoading, setPersonalizingLoading] = useState(false)
+
+  useEffect(() => {
+    if (!session || !filingId) return
+    setPersonalizingLoading(true)
+    fetchWithRetry('/api/company-personalize', {
+      method: 'POST',
+      body: JSON.stringify({ filing_id: filingId }),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const result = await res.json()
+          setPersonalizedContent(result.content ?? null)
+        }
+      })
+      .catch(() => {
+        // Silent fail — personalization is optional
+      })
+      .finally(() => setPersonalizingLoading(false))
+  }, [session, filingId])
 
   return (
     <YStack gap="$4" pb="$6">
@@ -164,6 +206,32 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
         />
       )}
 
+      {/* Personalized "What Does This Mean for You?" overlay */}
+      {personalizedContent && (
+        <TextSummaryCard
+          title="What Does This Mean for You?"
+          content={personalizedContent}
+          previewLines={6}
+        />
+      )}
+      {personalizingLoading && !personalizedContent && (
+        <Paragraph color="$color8" fontSize={12}>
+          Generating personalized insights...
+        </Paragraph>
+      )}
+
+      {/* Employee Impact (v2) */}
+      {employeeImpact && (
+        <YStack gap="$3">
+          <TextSummaryCard
+            title="What Does This Mean for Employees?"
+            content={formatEmployeeImpact(employeeImpact)}
+            previewLines={6}
+            markdown
+          />
+        </YStack>
+      )}
+
       <Separator />
 
       {/* b. Leadership */}
@@ -187,11 +255,11 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
       )}
 
       {/* e. Risk Factors */}
-      {execSummaryData && (
+      {(redFlags.length > 0 || opportunities.length > 0 || primarySummary?.risk_factors) && (
         <RiskFactorsCard
           riskFactorsSummary={primarySummary?.risk_factors as string | undefined}
-          redFlags={execSummaryData.red_flags}
-          opportunities={execSummaryData.opportunities}
+          redFlags={redFlags}
+          opportunities={opportunities}
           execCompSummary={execCompSummary}
         />
       )}
@@ -257,4 +325,39 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
       )}
     </YStack>
   )
+}
+
+/** Format EmployeeImpactResult into readable markdown */
+function formatEmployeeImpact(impact: EmployeeImpactResult): string {
+  const parts: Array<string> = []
+
+  if (impact.overall_outlook) {
+    parts.push(`**${impact.overall_outlook}**`)
+  }
+
+  if (impact.job_security) {
+    parts.push(`## Job Security\n${impact.job_security}`)
+  }
+
+  if (impact.compensation_signals) {
+    parts.push(`## Compensation & Benefits\n${impact.compensation_signals}`)
+  }
+
+  if (impact.growth_opportunities) {
+    parts.push(`## Growth Opportunities\n${impact.growth_opportunities}`)
+  }
+
+  if (impact.workforce_geography) {
+    parts.push(`## Workforce & Revenue Geography\n${impact.workforce_geography}`)
+  }
+
+  if (impact.h1b_and_visa_dependency) {
+    parts.push(`## H-1B & Visa Dependency\n${impact.h1b_and_visa_dependency}`)
+  }
+
+  if (impact.watch_items?.length > 0) {
+    parts.push(`## Watch Items\n${impact.watch_items.map((item) => `- ${item}`).join('\n')}`)
+  }
+
+  return parts.join('\n\n')
 }
