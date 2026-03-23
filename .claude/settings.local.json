@@ -178,7 +178,9 @@
       "Bash(grep -n \"as any\" /Users/majorwookie/Documents/GitHub/YoUnion/src/interface/charts/*.tsx)",
       "Bash(grep -n \"normalized_name\" /Users/majorwookie/Documents/GitHub/YoUnion/src/database/schema/*.ts)",
       "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/PLAN-*.md)",
-      "Bash(npx oxlint:*)"
+      "Bash(npx oxlint:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)"
     ]
   },
   "outputStyle": "Explanatory"
