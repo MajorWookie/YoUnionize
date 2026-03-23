@@ -154,6 +154,14 @@ export const insiderTrades = pgTable('insider_trades', {
   accessionNumber: text('accession_number'),
   securityTitle: text('security_title'),
   sharesOwnedAfter: numeric('shares_owned_after'),
+  transactionDescription: text('transaction_description'),
+  directOrIndirect: text('direct_or_indirect'),
+  exerciseDate: text('exercise_date'),
+  expirationDate: text('expiration_date'),
+  conversionOrExercisePrice: numeric('conversion_or_exercise_price'),
+  underlyingSecurityTitle: text('underlying_security_title'),
+  underlyingSecurityShares: numeric('underlying_security_shares'),
+  extraData: jsonb('extra_data'),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
 })
 
@@ -262,4 +270,16 @@ export const form8kEvents = pgTable('form_8k_events', {
   itemType: text('item_type').notNull(),
   eventData: jsonb('event_data').notNull(),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
+})
+
+// ── Personalized Summaries ──────────────────────────────────────────
+
+export const personalizedSummaries = pgTable('personalized_summaries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull(),
+  filingId: uuid('filing_id')
+    .notNull()
+    .references(() => filingSummaries.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow(),
 })
