@@ -24,19 +24,20 @@ import { formatFinancial } from '../format'
 
 interface Props {
   summary: Record<string, unknown>
+  periodEnd?: string | null
 }
 
-export function IncomeStatementSunburst({ summary }: Props) {
+export function IncomeStatementSunburst({ summary, periodEnd }: Props) {
   const statement = summary.income_statement as FinancialStatement | undefined
   if (!statement?.items?.length) {
     return null
   }
 
-  return <SunburstContent statement={statement} />
+  return <SunburstContent statement={statement} periodEnd={periodEnd} />
 }
 
-function SunburstContent({ statement }: { statement: FinancialStatement }) {
-  const allYears = useMemo(() => extractSunburstYears(statement), [statement])
+function SunburstContent({ statement, periodEnd }: { statement: FinancialStatement; periodEnd?: string | null }) {
+  const allYears = useMemo(() => extractSunburstYears(statement, periodEnd), [statement, periodEnd])
   const [selectedYearIdx, setSelectedYearIdx] = useState(0)
   const [activeSlice, setActiveSlice] = useState<SunburstSlice | null>(null)
 
