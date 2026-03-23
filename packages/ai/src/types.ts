@@ -47,4 +47,22 @@ export interface AiResponse<T> {
   cached: boolean
 }
 
-export const CURRENT_SUMMARY_VERSION = 1
+export interface CompanySummaryResult {
+  headline: string
+  company_health: string
+  key_numbers: Array<KeyNumber>
+  red_flags: Array<string>
+  opportunities: Array<string>
+}
+
+export interface EmployeeImpactResult {
+  overall_outlook: string
+  job_security: string
+  compensation_signals: string
+  growth_opportunities: string
+  workforce_geography: string
+  h1b_and_visa_dependency: string
+  watch_items: Array<string>
+}
+
+export const CURRENT_SUMMARY_VERSION = 2
