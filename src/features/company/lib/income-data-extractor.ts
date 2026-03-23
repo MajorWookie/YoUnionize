@@ -50,6 +50,7 @@ export interface SunburstYearData {
 
 const REVENUE_COLORS = ['#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af']
 const OPEX_COLOR = '#f59e0b'
+const OPEX_SUB_COLORS = ['#f59e0b', '#d97706', '#b45309', '#92400e', '#fbbf24', '#f97316']
 const OPERATING_INCOME_COLOR = '#9ca3af'
 const INTEREST_EXPENSE_COLOR = '#f87171'
 const NON_OP_POSITIVE_COLOR = '#4ade80'
@@ -249,7 +250,39 @@ function extractForPeriod(
   if (ring2Slices.length < 1) return null
   rings.push({ slices: ring2Slices })
 
-  // ── Ring 3: Income Waterfall (within Operating Income span) ────────
+  // ── Ring 3a: Operating Expenses Breakdown (within OpEx span) ───────
+  if (expenseItems.length >= 2 && opExpVal > 0) {
+    const knownTotal = expenseItems.reduce((s, item) => s + item.value, 0)
+    const remainder = opExpVal - knownTotal
+
+    const opexSubSlices: SunburstSlice[] = expenseItems.map((item, idx) => ({
+      id: `opex-${idx}`,
+      label: item.label,
+      value: item.value,
+      rawValue: item.value,
+      formattedValue: item.formattedValue,
+      percentOfRevenue: item.percentOfRevenue,
+      color: OPEX_SUB_COLORS[idx % OPEX_SUB_COLORS.length],
+      isNegative: false,
+    }))
+
+    if (remainder > 0.5) {
+      opexSubSlices.push({
+        id: 'opex-other',
+        label: 'Other Operating Expenses',
+        value: remainder,
+        rawValue: remainder,
+        formattedValue: formatFinancial(remainder),
+        percentOfRevenue: round((remainder / totalRevenue) * 100),
+        color: OPEX_SUB_COLORS[opexSubSlices.length % OPEX_SUB_COLORS.length],
+        isNegative: false,
+      })
+    }
+
+    rings.push({ slices: opexSubSlices, constrainedToSliceId: 'opex' })
+  }
+
+  // ── Ring 3b: Income Waterfall (within Operating Income span) ───────
   if (opIncVal > 0) {
     const interestExpItem = statement.items.find(
       (i) => categorize(i.label) === 'interest-expense',

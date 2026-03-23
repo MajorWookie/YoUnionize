@@ -90,28 +90,44 @@ interface ComputedArc {
 
 /**
  * Compute arc angles for all slices across all rings.
- * Ring 3 (if constrained) only spans the angular range of its parent slice in Ring 2.
+ * Constrained rings only span the angular range of their parent slice.
+ * Multiple constrained rings share the same visual depth (they occupy
+ * non-overlapping angular ranges from different parent slices).
  */
 function computeArcs(rings: SunburstRing[]): ComputedArc[] {
   const arcs: ComputedArc[] = []
 
-  // First pass: compute Ring 1 and Ring 2 (full circle, 0-360)
+  // Build a layout-index mapping: unconstrained rings get sequential indices,
+  // all constrained rings share one index (the innermost visual ring).
+  const unconstrainedCount = rings.filter((r) => !r.constrainedToSliceId).length
+  const hasConstrained = rings.some((r) => r.constrainedToSliceId)
+  const constrainedLayoutIndex = hasConstrained ? unconstrainedCount : -1
+
+  let unconstrainedIdx = 0
+  const layoutIndexMap = new Map<number, number>()
+  for (let ri = 0; ri < rings.length; ri++) {
+    if (rings[ri].constrainedToSliceId) {
+      layoutIndexMap.set(ri, constrainedLayoutIndex)
+    } else {
+      layoutIndexMap.set(ri, unconstrainedIdx++)
+    }
+  }
+
+  // First pass: compute unconstrained rings (full circle, 0-360)
   const parentArcs = new Map<string, { start: number; end: number }>()
 
   for (let ri = 0; ri < rings.length; ri++) {
     const ring = rings[ri]
-    if (ring.constrainedToSliceId) continue // handle constrained rings in second pass
+    if (ring.constrainedToSliceId) continue
 
     const total = ring.slices.reduce((s, sl) => s + sl.value, 0)
     if (total <= 0) continue
 
-    // Apply minimum arc width: redistribute proportionally
     const minDeg = MIN_ARC_DEG
     const totalGap = ring.slices.length * SLICE_GAP
     const availableDeg = 360 - totalGap
     const rawAngles = ring.slices.map((sl) => (sl.value / total) * availableDeg)
 
-    // Enforce minimum and redistribute
     const adjusted = enforceMinimums(rawAngles, minDeg, availableDeg)
 
     let angle = 0
@@ -122,14 +138,14 @@ function computeArcs(rings: SunburstRing[]): ComputedArc[] {
         slice: ring.slices[si],
         startAngle: start,
         endAngle: end,
-        ringIndex: ri,
+        ringIndex: layoutIndexMap.get(ri) ?? ri,
       })
       parentArcs.set(ring.slices[si].id, { start, end })
       angle = end + SLICE_GAP
     }
   }
 
-  // Second pass: constrained rings (Ring 3)
+  // Second pass: constrained rings (all share the same layout depth)
   for (let ri = 0; ri < rings.length; ri++) {
     const ring = rings[ri]
     if (!ring.constrainedToSliceId) continue
@@ -157,7 +173,7 @@ function computeArcs(rings: SunburstRing[]): ComputedArc[] {
         slice: ring.slices[si],
         startAngle: start,
         endAngle: end,
-        ringIndex: ri,
+        ringIndex: layoutIndexMap.get(ri) ?? ri,
       })
       angle = end + SLICE_GAP
     }
@@ -198,13 +214,18 @@ function enforceMinimums(angles: number[], min: number, budget: number): number[
 
 // ── Ring layout ────────────────────────────────────────────────────────
 
-function computeRingLayouts(ringCount: number, chartRadius: number): RingLayout[] {
+function computeRingLayouts(rings: SunburstRing[], chartRadius: number): RingLayout[] {
+  // Visual ring count: each unconstrained ring = 1, all constrained rings = 1
+  const unconstrainedCount = rings.filter((r) => !r.constrainedToSliceId).length
+  const hasConstrained = rings.some((r) => r.constrainedToSliceId)
+  const visualCount = unconstrainedCount + (hasConstrained ? 1 : 0)
+
   const centerRadius = chartRadius * 0.38
   const ringSpace = chartRadius - centerRadius
-  const ringWidth = ringSpace / ringCount - 3
+  const ringWidth = ringSpace / visualCount - 3
 
   const layouts: RingLayout[] = []
-  for (let i = 0; i < ringCount; i++) {
+  for (let i = 0; i < visualCount; i++) {
     // Ring 0 is outermost, last ring is innermost
     const outerR = chartRadius - i * (ringWidth + 3)
     const innerR = outerR - ringWidth
@@ -230,8 +251,8 @@ export function SunburstChart({
 
   const arcs = useMemo(() => computeArcs(rings), [rings])
   const ringLayouts = useMemo(
-    () => computeRingLayouts(rings.length, chartRadius),
-    [rings.length, chartRadius],
+    () => computeRingLayouts(rings, chartRadius),
+    [rings, chartRadius],
   )
 
   return (
