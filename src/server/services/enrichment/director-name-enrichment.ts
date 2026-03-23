@@ -106,9 +106,9 @@ export async function enrichDirectorNames(
   const whereClause = options?.force
     ? eq(directors.companyId, companyId)
     : and(
-        eq(directors.companyId, companyId),
-        isNull(directors.canonicalName),
-      )
+      eq(directors.companyId, companyId),
+      isNull(directors.canonicalName),
+    )
 
   const rows = await db
     .select({
