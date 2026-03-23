@@ -28,9 +28,29 @@ function emptyToNull(value: unknown): string | null {
 
 const SUFFIX_PATTERN = /\s*,?\s*(Jr\.?|Sr\.?|II|III|IV|V|Esq\.?|Ph\.?D\.?|M\.?D\.?|CPA)\s*$/i
 
-/** Normalize a person's name for deduplication (mirrors @union/helpers normalizeName). */
+/**
+ * Normalize a person's name for deduplication.
+ * Mirrors packages/helpers/src/normalize-name.ts — keep in sync.
+ *
+ * Steps: trim → strip suffixes → collapse whitespace → strip middle initials → lowercase.
+ */
 function normalizeName(name: string): string {
-  return name.trim().replace(SUFFIX_PATTERN, '').trim().toLowerCase()
+  let cleaned = name.trim().replace(SUFFIX_PATTERN, '').trim()
+  cleaned = cleaned.replace(/\s+/g, ' ')
+
+  const tokens = cleaned.split(' ')
+  if (tokens.length > 2) {
+    const filtered = [tokens[0]!]
+    for (let i = 1; i < tokens.length - 1; i++) {
+      if (!/^[A-Za-z]\.?$/.test(tokens[i]!)) {
+        filtered.push(tokens[i]!)
+      }
+    }
+    filtered.push(tokens[tokens.length - 1]!)
+    cleaned = filtered.join(' ')
+  }
+
+  return cleaned.toLowerCase()
 }
 
 /**

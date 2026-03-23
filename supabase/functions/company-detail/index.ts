@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
 import { getDb } from '../_shared/db.ts'
 import {
@@ -16,6 +16,9 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url)
     const ticker = url.searchParams.get('ticker')?.toUpperCase()
+    const requestedYear = url.searchParams.get('fiscal_year')
+      ? Number(url.searchParams.get('fiscal_year'))
+      : null
 
     if (!ticker) return badRequest('ticker query parameter is required')
 
@@ -28,6 +31,18 @@ Deno.serve(async (req) => {
       .limit(1)
 
     if (!company) return notFound(`Company "${ticker}" not found`)
+
+    // Get distinct fiscal years for this company's executive compensation
+    const fiscalYearRows = await db
+      .selectDistinct({ year: executiveCompensation.fiscalYear })
+      .from(executiveCompensation)
+      .where(eq(executiveCompensation.companyId, company.id))
+      .orderBy(desc(executiveCompensation.fiscalYear))
+
+    const availableFiscalYears = fiscalYearRows.map((r) => r.year)
+    const selectedFiscalYear = (requestedYear != null && availableFiscalYears.includes(requestedYear))
+      ? requestedYear
+      : availableFiscalYears[0] ?? null
 
     const [filingsData, execCompData, tradesData, directorsData] = await Promise.all([
       db
@@ -44,12 +59,23 @@ Deno.serve(async (req) => {
         .where(eq(filingSummaries.companyId, company.id))
         .orderBy(desc(filingSummaries.filedAt)),
 
-      db
-        .select()
-        .from(executiveCompensation)
-        .where(eq(executiveCompensation.companyId, company.id))
-        .orderBy(desc(executiveCompensation.totalCompensation))
-        .limit(20),
+      // Filter executives by selected fiscal year (if available)
+      selectedFiscalYear != null
+        ? db
+            .select()
+            .from(executiveCompensation)
+            .where(and(
+              eq(executiveCompensation.companyId, company.id),
+              eq(executiveCompensation.fiscalYear, selectedFiscalYear),
+            ))
+            .orderBy(desc(executiveCompensation.totalCompensation))
+            .limit(20)
+        : db
+            .select()
+            .from(executiveCompensation)
+            .where(eq(executiveCompensation.companyId, company.id))
+            .orderBy(desc(executiveCompensation.totalCompensation))
+            .limit(20),
 
       db
         .select()
@@ -100,8 +126,10 @@ Deno.serve(async (req) => {
         ? { id: latestProxy.id, periodEnd: latestProxy.periodEnd, summary: latestProxy.aiSummary }
         : null,
       recentEvents: recentEvents.map((e) => ({ id: e.id, filedAt: e.filedAt, summary: e.aiSummary })),
+      availableFiscalYears,
+      selectedFiscalYear,
       executives: execCompData.map((e) => ({
-        id: e.id, name: e.executiveName, title: e.title, fiscalYear: e.fiscalYear,
+        id: e.id, name: e.canonicalName ?? e.executiveName, title: e.title, fiscalYear: e.fiscalYear,
         totalCompensation: e.totalCompensation, salary: e.salary, bonus: e.bonus,
         stockAwards: e.stockAwards, optionAwards: e.optionAwards, ceoPayRatio: e.ceoPayRatio,
       })),
@@ -111,7 +139,7 @@ Deno.serve(async (req) => {
         shares: t.shares, pricePerShare: t.pricePerShare, totalValue: t.totalValue,
       })),
       directors: directorsData.map((d) => ({
-        id: d.id, name: d.name, title: d.title,
+        id: d.id, name: d.canonicalName ?? d.name, title: d.title,
         isIndependent: d.isIndependent, committees: d.committees, tenureStart: d.tenureStart,
       })),
     })
