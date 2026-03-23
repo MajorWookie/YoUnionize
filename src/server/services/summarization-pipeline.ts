@@ -9,7 +9,7 @@ import {
 } from '@union/postgres'
 import { CURRENT_SUMMARY_VERSION } from '@union/ai'
 import type { ClaudeClient } from '@union/ai'
-import { pMap, pMapSettled } from '@union/helpers'
+import { pMapSettled } from '@union/helpers'
 import { getAiClient } from '../ai-client'
 import { transformXbrlToStatements } from './xbrl-transformer'
 import type { FinancialStatement } from './xbrl-transformer'
@@ -19,7 +19,7 @@ import type { FinancialStatement } from './xbrl-transformer'
 /** Max filings summarized in parallel per company */
 const FILING_CONCURRENCY = 1
 /** Max Claude section calls in parallel per filing */
-const SECTION_CONCURRENCY = 2
+const SECTION_CONCURRENCY = 3
 /** Max embedding API calls in parallel per filing */
 const EMBEDDING_CONCURRENCY = 6
 
@@ -47,6 +47,7 @@ interface FilingRow {
 const FILING_SECTIONS: Record<string, Array<string>> = {
   '10-K': [
     'executive_summary',
+    'employee_impact',
     'income_statement',
     'balance_sheet',
     'cash_flow',
@@ -59,6 +60,7 @@ const FILING_SECTIONS: Record<string, Array<string>> = {
   ],
   '10-Q': [
     'executive_summary',
+    'employee_impact',
     'income_statement',
     'balance_sheet',
     'cash_flow',
@@ -264,7 +266,27 @@ async function summarizeSectionDispatch(
   }
 
   if (section === 'executive_summary') {
-    const response = await ai.generateFilingSummary({ rawData, filingType, companyName })
+    const response = await ai.generateCompanySummary({ rawData, filingType, companyName })
+    return { data: response.data, usage: response.usage }
+  }
+
+  if (section === 'employee_impact') {
+    const extractedSections = rawData.extractedSections as Record<string, string> | undefined
+    const response = await ai.generateEmployeeImpact({
+      rawData,
+      filingType,
+      companyName,
+      riskFactors: extractedSections?.riskFactors,
+      mdaText: extractedSections?.mdAndA,
+    })
+    return { data: response.data, usage: response.usage }
+  }
+
+  if (section === 'mda') {
+    const extractedSections = rawData.extractedSections as Record<string, string> | undefined
+    const mdaText = extractedSections?.mdAndA
+    if (!mdaText || mdaText.trim().length === 0) return null
+    const response = await ai.summarizeMda({ mdaText, companyName, filingType })
     return { data: response.data, usage: response.usage }
   }
 
@@ -280,7 +302,7 @@ async function summarizeSectionDispatch(
     return { data: response.data, usage: response.usage }
   }
 
-  // Unstructured sections
+  // Unstructured sections (risk_factors, business_overview, legal_proceedings, footnotes, etc.)
   return summarizeUnstructuredSection(section, rawData, companyName, filingType, ai)
 }
 
@@ -487,45 +509,112 @@ async function getEmbeddingContext(
 
 // ─── Text chunking ──────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 500 // ~500 tokens ≈ 2000 chars
-const CHUNK_OVERLAP = 50 // ~50 tokens ≈ 200 chars
-const CHARS_PER_TOKEN = 4 // rough estimate
+const TARGET_CHUNK_TOKENS = 400
+const MAX_CHUNK_TOKENS = 600
+const CHARS_PER_TOKEN = 4
 
 /**
- * Split text into overlapping chunks of ~500 tokens.
- * Returns an array of chunks. Short texts (< CHUNK_SIZE tokens) return a single chunk.
+ * Split text into chunks that respect paragraph boundaries.
+ * Prefers complete paragraphs; only splits within a paragraph
+ * when a single paragraph exceeds MAX_CHUNK_TOKENS.
  */
 export function chunkText(text: string): Array<string> {
-  const maxChars = CHUNK_SIZE * CHARS_PER_TOKEN
-  const overlapChars = CHUNK_OVERLAP * CHARS_PER_TOKEN
+  const maxChars = MAX_CHUNK_TOKENS * CHARS_PER_TOKEN
+  const targetChars = TARGET_CHUNK_TOKENS * CHARS_PER_TOKEN
 
-  if (text.length <= maxChars) return [text]
+  if (text.length <= maxChars) return [text.trim()].filter((c) => c.length > 0)
 
+  const paragraphs = text.split(/\n\n+/).filter((p) => p.trim().length > 0)
   const chunks: Array<string> = []
-  let start = 0
+  let currentParts: Array<string> = []
+  let currentLen = 0
 
-  while (start < text.length) {
-    let end = start + maxChars
+  for (const para of paragraphs) {
+    const paraLen = para.length
 
-    // Try to break at a sentence or paragraph boundary
-    if (end < text.length) {
-      const slice = text.slice(start, end + 200)
-      const breakPoints = [
-        slice.lastIndexOf('\n\n'),
-        slice.lastIndexOf('. '),
-        slice.lastIndexOf('.\n'),
-      ]
-      const best = Math.max(...breakPoints.filter((p) => p > maxChars * 0.5))
-      if (best > 0) {
-        end = start + best + 1
+    // If a single paragraph exceeds max, split it by sentences
+    if (paraLen > maxChars) {
+      if (currentParts.length > 0) {
+        chunks.push(currentParts.join('\n\n').trim())
+        currentParts = []
+        currentLen = 0
       }
+      chunks.push(...splitBySentences(para, targetChars, maxChars))
+      continue
     }
 
-    chunks.push(text.slice(start, Math.min(end, text.length)).trim())
-    start = end - overlapChars
+    // Would adding this paragraph exceed the target?
+    if (currentLen + paraLen > targetChars && currentParts.length > 0) {
+      chunks.push(currentParts.join('\n\n').trim())
+      currentParts = []
+      currentLen = 0
+    }
+
+    currentParts.push(para)
+    currentLen += paraLen
+  }
+
+  if (currentParts.length > 0) {
+    chunks.push(currentParts.join('\n\n').trim())
   }
 
   return chunks.filter((c) => c.length > 0)
+}
+
+function splitBySentences(
+  text: string,
+  targetChars: number,
+  maxChars: number,
+): Array<string> {
+  const sentences = text.match(/[^.!?]+[.!?]+[\s]*/g) ?? [text]
+  const chunks: Array<string> = []
+  let current = ''
+
+  for (const sentence of sentences) {
+    if (current.length + sentence.length > targetChars && current.length > 0) {
+      chunks.push(current.trim())
+      current = ''
+    }
+    current += sentence
+    if (current.length > maxChars) {
+      chunks.push(current.trim())
+      current = ''
+    }
+  }
+  if (current.trim().length > 0) chunks.push(current.trim())
+  return chunks
+}
+
+// ─── Embedding context prefix ───────────────────────────────────────────────
+
+const SECTION_LABELS: Record<string, string> = {
+  executive_summary: 'Company overview and key takeaways',
+  employee_impact: 'Impact on employees',
+  mda: 'Management Discussion and Analysis',
+  risk_factors: 'Risk factors and potential threats',
+  business_overview: 'Business description and operations',
+  legal_proceedings: 'Legal proceedings and regulatory matters',
+  footnotes: 'Financial statement footnotes',
+  event_summary: '8-K material event',
+  executive_compensation: 'Executive compensation analysis',
+  income_statement: 'Income statement financial data',
+  balance_sheet: 'Balance sheet financial data',
+  cash_flow: 'Cash flow statement',
+  shareholders_equity: 'Shareholders equity statement',
+  board_composition: 'Board of directors composition',
+  shareholder_proposals: 'Shareholder proposals',
+}
+
+function buildEmbeddingText(
+  chunk: string,
+  section: string,
+  ctx: EmbeddingContext | undefined,
+): string {
+  const sectionLabel = SECTION_LABELS[section] ?? section
+  const prefix = ctx
+    ? `[${ctx.companyTicker} ${ctx.filingType} | ${sectionLabel}${ctx.periodEnd ? ` | Period: ${ctx.periodEnd}` : ''}]`
+    : `[${sectionLabel}]`
+  return `${prefix}\n${chunk}`
 }
 
 // ─── Embedding generation ───────────────────────────────────────────────────
@@ -566,13 +655,44 @@ async function generateSectionEmbeddings(
     } else if (
       typeof content === 'object' &&
       content !== null &&
+      'headline' in (content as Record<string, unknown>)
+    ) {
+      // CompanySummaryResult (v2)
+      const summary = content as Record<string, unknown>
+      text = [
+        summary.headline,
+        summary.company_health,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+    } else if (
+      typeof content === 'object' &&
+      content !== null &&
       'executive_summary' in (content as Record<string, unknown>)
     ) {
+      // FilingSummaryResult (v1 backward compat)
       const summary = content as Record<string, unknown>
       text = [
         summary.executive_summary,
         summary.plain_language_explanation,
         summary.employee_relevance,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+    } else if (
+      typeof content === 'object' &&
+      content !== null &&
+      'overall_outlook' in (content as Record<string, unknown>)
+    ) {
+      // EmployeeImpactResult
+      const impact = content as Record<string, unknown>
+      text = [
+        impact.overall_outlook,
+        impact.job_security,
+        impact.compensation_signals,
+        impact.growth_opportunities,
+        impact.workforce_geography,
+        impact.h1b_and_visa_dependency,
       ]
         .filter(Boolean)
         .join('\n\n')
@@ -628,7 +748,8 @@ async function generateSectionEmbeddings(
 
       if (existing.length > 0) return
 
-      const vector = await ai.generateEmbedding({ text: job.chunk })
+      const embeddingText = buildEmbeddingText(job.chunk, job.section, ctx)
+      const vector = await ai.generateEmbedding({ text: embeddingText })
 
       await db.insert(embeddings).values({
         sourceType: 'filing_summary',
