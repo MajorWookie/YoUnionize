@@ -75,6 +75,8 @@ export interface CompanyDetailResponse {
   latestQuarterly: FilingSummaryData | null
   latestProxy: { id: string; periodEnd: string | null; summary: Record<string, unknown> } | null
   recentEvents: Array<{ id: string; filedAt: string; summary: Record<string, unknown> }>
+  availableFiscalYears: Array<number>
+  selectedFiscalYear: number | null
   executives: Array<ExecutiveData>
   insiderTrades: Array<InsiderTradeData>
   directors: Array<DirectorData>
