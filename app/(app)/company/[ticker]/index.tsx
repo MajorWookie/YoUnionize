@@ -34,14 +34,16 @@ export default function CompanyDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchDetail = useCallback(async () => {
+  const [fiscalYear, setFiscalYear] = useState<number | null>(null)
+
+  const fetchDetail = useCallback(async (fy?: number | null) => {
     if (!ticker) return
     setLoading(true)
     setError(null)
 
     try {
-      // Fetch company detail directly from DB (company must already exist from search)
-      const res = await fetchWithRetry(`/api/companies/${ticker}/detail`)
+      const yearParam = fy != null ? `?fiscal_year=${fy}` : ''
+      const res = await fetchWithRetry(`/api/companies/${ticker}/detail${yearParam}`)
       if (!res.ok) {
         const errData = await res.json()
         setError(extractErrorMessage(errData))
@@ -51,6 +53,10 @@ export default function CompanyDetailScreen() {
 
       const detail = await res.json()
       setData(detail)
+      // Sync local fiscal year state with what the API selected
+      if (detail.selectedFiscalYear != null) {
+        setFiscalYear(detail.selectedFiscalYear)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error')
     } finally {
@@ -117,13 +123,13 @@ export default function CompanyDetailScreen() {
         // Data ingested but no summaries yet
         <IngestionPrompt ticker={ticker} onComplete={fetchDetail} />
       ) : (
-        <CompanyDashboard data={data} />
+        <CompanyDashboard data={data} onFiscalYearChange={(fy) => fetchDetail(fy)} />
       )}
     </ScreenContainer>
   )
 }
 
-function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
+function CompanyDashboard({ data, onFiscalYearChange }: { data: CompanyDetailResponse; onFiscalYearChange: (year: number) => void }) {
   const { session } = useAuth()
   const annualSummary = data.latestAnnual?.summary as Record<string, unknown> | undefined
   const quarterlySummary = data.latestQuarterly?.summary as Record<string, unknown> | undefined
@@ -235,7 +241,14 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
       <Separator />
 
       {/* b. Leadership */}
-      <LeadershipSection executives={data.executives} directors={data.directors} companyTicker={data.company.ticker} />
+      <LeadershipSection
+        executives={data.executives}
+        directors={data.directors}
+        companyTicker={data.company.ticker}
+        availableFiscalYears={data.availableFiscalYears}
+        selectedFiscalYear={data.selectedFiscalYear}
+        onFiscalYearChange={onFiscalYearChange}
+      />
 
       <Separator />
 

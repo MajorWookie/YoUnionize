@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { Paragraph, XStack, YStack } from 'tamagui'
+import { Button, Paragraph, ScrollView, XStack, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
 import type { ExecutiveData, DirectorData } from '../types'
 import { formatDollars, getInitials } from '../format'
@@ -8,18 +8,29 @@ interface Props {
   executives: Array<ExecutiveData>
   directors: Array<DirectorData>
   companyTicker: string
+  availableFiscalYears?: Array<number>
+  selectedFiscalYear?: number | null
+  onFiscalYearChange?: (year: number) => void
 }
 
-export function LeadershipSection({ executives, directors, companyTicker }: Props) {
+export function LeadershipSection({
+  executives,
+  directors,
+  companyTicker,
+  availableFiscalYears,
+  selectedFiscalYear,
+  onFiscalYearChange,
+}: Props) {
   const router = useRouter()
   if (executives.length === 0 && directors.length === 0) return null
 
-  // Dedupe executives by name (keep highest comp), take top 5
+  // Dedupe executives by lowercased name (API returns canonical names, lowercase is a safety net)
   const seen = new Map<string, ExecutiveData>()
   for (const exec of executives) {
-    const existing = seen.get(exec.name)
+    const key = exec.name.toLowerCase()
+    const existing = seen.get(key)
     if (!existing || exec.totalCompensation > existing.totalCompensation) {
-      seen.set(exec.name, exec)
+      seen.set(key, exec)
     }
   }
   const top5 = [...seen.values()]
@@ -28,9 +39,45 @@ export function LeadershipSection({ executives, directors, companyTicker }: Prop
 
   return (
     <YStack gap="$3">
-      <Paragraph fontWeight="700" fontSize={16}>
-        Leadership
-      </Paragraph>
+      <XStack items="center" justify="space-between">
+        <Paragraph fontWeight="700" fontSize={16}>
+          Leadership
+        </Paragraph>
+        {selectedFiscalYear != null && (
+          <Paragraph color="$color8" fontSize={12}>
+            FY {selectedFiscalYear}
+          </Paragraph>
+        )}
+      </XStack>
+
+      {/* Fiscal year selector */}
+      {availableFiscalYears != null && availableFiscalYears.length > 1 && onFiscalYearChange && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <XStack gap="$2" py="$1">
+            {availableFiscalYears.map((year) => {
+              const isSelected = year === selectedFiscalYear
+              return (
+                <Button
+                  key={year}
+                  size="$2"
+                  bg={isSelected ? '$color9' : '$color4'}
+                  onPress={() => onFiscalYearChange(year)}
+                  rounded="$4"
+                  px="$3"
+                >
+                  <Paragraph
+                    fontSize={13}
+                    fontWeight="600"
+                    color={isSelected ? 'white' : '$color11'}
+                  >
+                    {year}
+                  </Paragraph>
+                </Button>
+              )
+            })}
+          </XStack>
+        </ScrollView>
+      )}
 
       {/* Top Executives */}
       {top5.length > 0 && (
