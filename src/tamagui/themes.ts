@@ -9,8 +9,8 @@
 
 const palette = {
   // Navy
-  navy1: '#0a1628',
-  navy2: '#0f1f3d',
+  navy1: '#14161E',
+  navy2: '#071024',
   navy3: '#152a4f',
   navy4: '#1b3561',
   navy5: '#214073',
@@ -134,8 +134,8 @@ const darkColors = {
   outlineColor: 'rgba(58, 108, 187, 0.5)',
 
   color1: palette.navy1,
-  color2: palette.navy2,
-  color3: palette.navy3,
+  color2: palette.slate10,
+  color3: palette.navy2,
   color4: palette.navy4,
   color5: palette.navy5,
   color6: palette.navy6,

@@ -7,7 +7,7 @@ import { ToastProvider } from '~/interface/feedback/ToastProvider'
 
 export default function RootLayout() {
   const scheme = useColorScheme()
-  const navBg = scheme === 'dark' ? '#0a1628' : '#ffffff'
+  const navBg = scheme === 'dark' ? '#14161E' : '#ffffff'
 
   return (
     <SafeAreaProvider>
