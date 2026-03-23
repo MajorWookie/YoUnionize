@@ -143,6 +143,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 - **Constants**: UPPER_SNAKE_CASE for env vars, camelCase arrays/objects (`orgLevels`, `payFrequencies`)
 
 ### Patterns
+- **Git branching**: Always create a new git branch before starting work on a bug fix or new feature. Never commit bug fixes or feature work directly to `main`. Branch naming: `fix/<description>` for bug fixes, `feat/<description>` for new features.
 - **Dependency versions**: Fix version mismatches by updating versions directly in `package.json` — never use `overrides` or `resolutions` as a workaround. Expo SDK versions must stay aligned with `bundledNativeModules.json` (check the `expo` package or Expo SDK changelog for compatible versions).
 - **Validation**: Valibot schemas co-located in `src/database/validators/`. Every POST/PUT body validated before processing.
 - **API routes**: `withLogging()` wrapper + `classifyError()` for standardized error responses. All protected routes use `ensureAuth()`.
