@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { extractJson } from './extract-json'
 import {
   filingSummarySystemPrompt,
   filingSummaryUserPrompt,
@@ -134,9 +135,7 @@ export class ClaudeClient {
   }
 
   private parseJson<T>(text: string): T {
-    // Strip markdown code fences if present
-    const cleaned = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
-    return JSON.parse(cleaned) as T
+    return extractJson<T>(text)
   }
 
   // ─── Summarize a filing section ─────────────────────────────────────
