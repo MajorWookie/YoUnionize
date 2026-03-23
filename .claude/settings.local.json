@@ -169,6 +169,7 @@
       "Bash(find \"/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)\" -type f -name \"*.tsx\")",
       "Bash(ls '/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)/company/[ticker]/')",
       "Bash(git checkout:*)",
+      "Bash(git commit:*)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/src/interface/charts -type f -name *.tsx -o -name *.ts)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/src/features/company -type f -name *.tsx -o -name *.ts)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/src/interface -maxdepth 1 -type f -name *.tsx -o -name *.ts)",

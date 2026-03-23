@@ -21,7 +21,7 @@ export function RiskFactorsCard({
 
   return (
     <YStack gap="$3">
-      <TextSummaryCard title="Risk Factors" content={riskFactorsSummary}>
+      <TextSummaryCard title="Risk Factors" content={riskFactorsSummary} markdown>
         {redFlags && redFlags.length > 0 && (
           <YStack mt="$3" gap="$2">
             <Paragraph fontWeight="600" color="$negative" fontSize={14}>
