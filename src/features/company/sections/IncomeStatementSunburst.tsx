@@ -140,8 +140,17 @@ function RingLegend({
   activeSliceId: string | null
   onPress: (slice: SunburstSlice | null) => void
 }) {
-  // Show key slices from Ring 2 and Ring 3 (skip Ring 1 revenue sub-items in legend)
-  const legendRings = data.rings.length > 2 ? data.rings.slice(1) : data.rings
+  // Show Ring 2 (OpEx + OpInc) and income waterfall in legend.
+  // Skip: Ring 1 (revenue sub-items) and OpEx sub-ring (visible as arcs + in popover).
+  const unconstrainedRings = data.rings.filter((r) => !r.constrainedToSliceId)
+  const hasRevenueBreakdown = unconstrainedRings.length > 1
+
+  const legendRings = data.rings.filter((r) => {
+    if (r.constrainedToSliceId === 'opex') return false
+    // Skip the revenue sub-items ring (first unconstrained) when it exists
+    if (hasRevenueBreakdown && r === unconstrainedRings[0]) return false
+    return true
+  })
   const legendSlices = legendRings.flatMap((r) => r.slices)
 
   return (

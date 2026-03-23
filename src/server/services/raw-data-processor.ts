@@ -10,7 +10,7 @@ import {
 } from '@union/postgres'
 import { normalizeName } from '@union/helpers'
 import type { CompanyRecord } from './company-lookup'
-import { enrichCompensationNames, enrichDirectorRoles } from './enrichment'
+import { enrichCompensationNames, enrichDirectorRoles, enrichDirectorNames } from './enrichment'
 import { summarizeCompanyFilings } from './summarization-pipeline'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -101,7 +101,12 @@ export async function processRawSecData(
   try {
     await enrichDirectorRoles(company.id)
   } catch (err) {
-    console.info(`[RawDataProcessor] Director enrichment failed: ${err instanceof Error ? err.message : String(err)}`)
+    console.info(`[RawDataProcessor] Director role enrichment failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  try {
+    await enrichDirectorNames(company.id)
+  } catch (err) {
+    console.info(`[RawDataProcessor] Director name enrichment failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 
   // Run summarization on filings that don't have aiSummary yet
