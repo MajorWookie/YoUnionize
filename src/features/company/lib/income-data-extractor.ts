@@ -46,6 +46,24 @@ export interface SunburstYearData {
   rings: SunburstRing[]
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────
+
+const FOUR_DIGIT_YEAR_RE = /\b(19|20)\d{2}\b/
+
+/**
+ * Extract a 4-digit calendar year from a period string.
+ * Handles ISO dates ("2024-09-28"), bare years ("2024"), and other formats.
+ * Returns null if no year can be found.
+ */
+function extractYear(dateStr: string): string | null {
+  // ISO date: "2024-09-28" or "2024-12-31"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr.slice(0, 4)
+  // Any embedded 4-digit year
+  const match = FOUR_DIGIT_YEAR_RE.exec(dateStr)
+  if (match) return match[0]
+  return null
+}
+
 // ── Color palette ──────────────────────────────────────────────────────
 
 const REVENUE_COLORS = ['#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af']
@@ -119,14 +137,22 @@ function categorize(label: string): ItemCategory {
 /**
  * Extract sunburst data for all available years from a financial statement.
  * Returns 1-2 year datasets (current period, and prior period if available).
+ *
+ * @param periodEnd - The filing's period end date (e.g. "2024-09-28"), used as
+ *   a reliable fallback when XBRL period keys don't contain parseable years.
+ *   For non-calendar fiscal years the year from periodEnd naturally represents
+ *   the latter year (e.g. Apple FY ending Sep 2024 → "FY 2024").
  */
-export function extractSunburstYears(statement: FinancialStatement): SunburstYearData[] {
+export function extractSunburstYears(
+  statement: FinancialStatement,
+  periodEnd?: string | null,
+): SunburstYearData[] {
   const years: SunburstYearData[] = []
 
-  const currentYear = extractForPeriod(statement, 'current')
+  const currentYear = extractForPeriod(statement, 'current', periodEnd)
   if (currentYear) years.push(currentYear)
 
-  const priorYear = extractForPeriod(statement, 'prior')
+  const priorYear = extractForPeriod(statement, 'prior', periodEnd)
   if (priorYear) years.push(priorYear)
 
   return years
@@ -135,6 +161,7 @@ export function extractSunburstYears(statement: FinancialStatement): SunburstYea
 function extractForPeriod(
   statement: FinancialStatement,
   period: 'current' | 'prior',
+  periodEnd?: string | null,
 ): SunburstYearData | null {
   const periodDate = period === 'current' ? statement.periodCurrent : statement.periodPrior
   if (!periodDate) return null
@@ -337,7 +364,18 @@ function extractForPeriod(
     }
   }
 
-  const yearStr = periodDate.slice(0, 4)
+  // Resolve the fiscal year: try XBRL period key first, fall back to filing periodEnd
+  let yearStr = extractYear(periodDate)
+  if (!yearStr && period === 'current' && periodEnd) {
+    yearStr = extractYear(periodEnd)
+  }
+  if (!yearStr && period === 'prior' && periodEnd) {
+    const endYear = extractYear(periodEnd)
+    if (endYear) yearStr = String(Number(endYear) - 1)
+  }
+  // Last resort: use raw periodDate (preserves previous behavior)
+  if (!yearStr) yearStr = periodDate.slice(0, 4)
+
   return {
     year: yearStr,
     periodLabel: `FY ${yearStr}`,
