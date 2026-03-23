@@ -12,10 +12,28 @@ import {
   compensationAnalysisUserPrompt,
 } from './prompts/compensation-analysis'
 import { ragAnswerSystemPrompt, ragAnswerUserPrompt } from './prompts/rag-answer'
+import {
+  companySummarySystemPrompt,
+  companySummaryUserPrompt,
+} from './prompts/company-summary'
+import {
+  employeeImpactSystemPrompt,
+  employeeImpactUserPrompt,
+} from './prompts/employee-impact'
+import {
+  mdaSummarySystemPrompt,
+  mdaSummaryUserPrompt,
+} from './prompts/mda-summary'
+import {
+  whatThisMeansSystemPrompt,
+  whatThisMeansUserPrompt,
+} from './prompts/what-this-means'
 import type {
   AiResponse,
   ClaudeClientConfig,
   CompensationAnalysisResult,
+  CompanySummaryResult,
+  EmployeeImpactResult,
   FilingSummaryResult,
   TokenUsage,
 } from './types'
@@ -189,6 +207,100 @@ export class ClaudeClient {
     const data = this.parseJson<CompensationAnalysisResult>(text)
 
     return { data, usage, cached: false }
+  }
+
+  // ─── Company summary (structured health assessment) ────────────────
+
+  async generateCompanySummary(params: {
+    rawData: Record<string, unknown>
+    filingType: string
+    companyName: string
+  }): Promise<AiResponse<CompanySummaryResult>> {
+    const dataStr = truncateForContext(JSON.stringify(params.rawData, null, 2))
+    const systemPrompt = companySummarySystemPrompt()
+    const userPrompt = companySummaryUserPrompt({
+      companyName: params.companyName,
+      filingType: params.filingType,
+      rawData: dataStr,
+    })
+
+    const { text, usage } = await this.chat(systemPrompt, userPrompt)
+    const data = this.parseJson<CompanySummaryResult>(text)
+
+    return { data, usage, cached: false }
+  }
+
+  // ─── Employee impact analysis ─────────────────────────────────────
+
+  async generateEmployeeImpact(params: {
+    rawData: Record<string, unknown>
+    filingType: string
+    companyName: string
+    riskFactors?: string
+    mdaText?: string
+  }): Promise<AiResponse<EmployeeImpactResult>> {
+    const dataStr = truncateForContext(JSON.stringify(params.rawData, null, 2))
+    const systemPrompt = employeeImpactSystemPrompt()
+    const userPrompt = employeeImpactUserPrompt({
+      companyName: params.companyName,
+      filingType: params.filingType,
+      rawData: dataStr,
+      riskFactors: params.riskFactors,
+      mdaText: params.mdaText,
+    })
+
+    const { text, usage } = await this.chat(systemPrompt, userPrompt)
+    const data = this.parseJson<EmployeeImpactResult>(text)
+
+    return { data, usage, cached: false }
+  }
+
+  // ─── MD&A summary (structured markdown) ───────────────────────────
+
+  async summarizeMda(params: {
+    mdaText: string
+    companyName: string
+    filingType: string
+    priorMdaText?: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = mdaSummarySystemPrompt()
+    const userPrompt = mdaSummaryUserPrompt({
+      companyName: params.companyName,
+      filingType: params.filingType,
+      mdaText: params.mdaText,
+      priorMdaText: params.priorMdaText,
+    })
+
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 3072)
+
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Personalized "What This Means" overlay ───────────────────────
+
+  async generateWhatThisMeans(params: {
+    companyName: string
+    filingType: string
+    companySummary: string
+    keyNumbers: string
+    userJobTitle?: string
+    userAnnualPay?: number
+    userIndustry?: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = whatThisMeansSystemPrompt()
+    const userPrompt = whatThisMeansUserPrompt({
+      companyName: params.companyName,
+      filingType: params.filingType,
+      companySummary: params.companySummary,
+      keyNumbers: params.keyNumbers,
+      userJobTitle: params.userJobTitle,
+      userAnnualPay: params.userAnnualPay,
+      userIndustry: params.userIndustry,
+    })
+
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+
+    return { data: text, usage, cached: false }
   }
 
   // ─── Embeddings (Voyage AI) ─────────────────────────────────────────
