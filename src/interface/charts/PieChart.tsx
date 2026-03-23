@@ -4,7 +4,7 @@
  */
 import Svg, { G, Path, Text as SvgText } from 'react-native-svg'
 import { View as RNView } from 'react-native'
-import { Paragraph, View, XStack, YStack } from 'tamagui'
+import { Paragraph, useTheme, View, XStack, YStack } from 'tamagui'
 
 export interface PieSegment {
   label: string
@@ -43,6 +43,7 @@ export function PieChart({
   size = 200,
   strokeWidth = 32,
 }: PieChartProps) {
+  const theme = useTheme()
   const filtered = segments.filter((s) => s.value > 0)
   if (filtered.length === 0) return null
 
@@ -92,7 +93,7 @@ export function PieChart({
                 textAnchor="middle"
                 fontSize={18}
                 fontWeight="700"
-                fill="#e8e8e8"
+                fill={theme.color12?.val ?? '#000'}
               >
                 {centerValue}
               </SvgText>
@@ -102,7 +103,7 @@ export function PieChart({
                   y={cy + 14}
                   textAnchor="middle"
                   fontSize={11}
-                  fill="#999"
+                  fill={theme.color8?.val ?? '#666'}
                 >
                   {centerLabel}
                 </SvgText>
