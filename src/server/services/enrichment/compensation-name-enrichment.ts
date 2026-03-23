@@ -1,5 +1,6 @@
 import { eq, isNull, and } from 'drizzle-orm'
 import { getDb, executiveCompensation } from '@union/postgres'
+import { getCanonicalFirstName } from '@union/helpers'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,17 @@ export function extractLastName(name: string): string {
   const cleaned = name.trim().replace(NAME_SUFFIXES, '')
   const parts = cleaned.split(/\s+/)
   return (parts[parts.length - 1] ?? '').toLowerCase()
+}
+
+/**
+ * Extract the first name from a full name, lowercased.
+ *
+ * "Timothy D. Cook" → "timothy"
+ * "D. Bruce Sewell" → "d."
+ */
+export function extractFirstName(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  return (parts[0] ?? '').toLowerCase()
 }
 
 /**
@@ -133,14 +145,24 @@ export function groupByPerson(
   const result = new Map<string, Array<string>>()
 
   for (const sameLastName of byLastName.values()) {
-    // Sub-group by position overlap
+    // Sub-group by nickname-aware first-name matching + position overlap
     const subGroups: Array<Array<CompRow>> = []
 
     for (const row of sameLastName) {
       let placed = false
+      const rowFirstName = extractFirstName(row.executiveName)
+
       for (const sg of subGroups) {
-        // Check if this row's position overlaps with any member of the sub-group
-        if (sg.some((member) => positionsOverlap(member.title, row.title))) {
+        const memberFirstName = extractFirstName(sg[0]!.executiveName)
+
+        // Nickname-aware first-name comparison (Tim ↔ Timothy)
+        const firstNamesMatch = getCanonicalFirstName(rowFirstName) === getCanonicalFirstName(memberFirstName)
+
+        // Position overlap check (original behavior — preserved)
+        const posMatch = sg.some((member) => positionsOverlap(member.title, row.title))
+
+        // Merge if positions overlap (original) OR first names resolve to the same canonical
+        if (firstNamesMatch || posMatch) {
           sg.push(row)
           placed = true
           break
