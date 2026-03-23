@@ -11,7 +11,7 @@
  */
 import { useMemo } from 'react'
 import Svg, { G, Path, Text as SvgText } from 'react-native-svg'
-import { View } from 'tamagui'
+import { useTheme, View } from 'tamagui'
 import type { SunburstRing, SunburstSlice } from '~/features/company/lib/income-data-extractor'
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -223,6 +223,7 @@ export function SunburstChart({
   activeSliceId,
   onSlicePress,
 }: SunburstChartProps) {
+  const theme = useTheme()
   const cx = size / 2
   const cy = size / 2
   const chartRadius = size / 2 - 4
@@ -257,7 +258,7 @@ export function SunburstChart({
               d={d}
               fill={arc.slice.color}
               fillOpacity={isDimmed ? 0.35 : isActive ? 1 : 0.85}
-              stroke={isActive ? '#ffffff' : '#1a1a2e'}
+              stroke={isActive ? '#ffffff' : theme.color2?.val ?? '#1a1a2e'}
               strokeWidth={isActive ? 2 : 0.8}
               onPress={() => onSlicePress?.(arc.slice, arc.ringIndex)}
             />
@@ -273,7 +274,7 @@ export function SunburstChart({
               textAnchor="middle"
               fontSize={16}
               fontWeight="700"
-              fill="#e8e8e8"
+              fill={theme.color12?.val ?? '#000'}
             >
               {centerValue}
             </SvgText>
@@ -283,7 +284,7 @@ export function SunburstChart({
                 y={cy + 12}
                 textAnchor="middle"
                 fontSize={10}
-                fill="#999"
+                fill={theme.color8?.val ?? '#666'}
               >
                 {centerLabel}
               </SvgText>
