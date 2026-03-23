@@ -1,4 +1,5 @@
 export { ClaudeClient } from './claude'
+export { extractJson } from './extract-json'
 export type {
   ClaudeClientConfig,
   FilingSummaryResult,
