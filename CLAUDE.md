@@ -1,7 +1,7 @@
 # CLAUDE.md — YoUnion
 
-> Last updated: 2026-03-22
-> Last updated by: AI session (CLAUDE.md audit: updated interface module map, fixed missing reference docs, added new company sections, dark mode chart fixes)
+> Last updated: 2026-03-23
+> Last updated by: AI session (specialized AI prompts, personalized summaries feature, insider trade derivative fields, summarization pipeline v2, validator cleanup)
 
 ## Project Overview
 
@@ -19,7 +19,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 - **AI**: Anthropic Claude via @anthropic-ai/sdk 0.39
 - **Embeddings**: Voyage AI (voyage-4-lite for dev, voyage-finance-2 for prod), 1024 dimensions
 - **SEC Data**: sec-api.io (filings, XBRL, company search)
-- **API Layer**: Supabase Edge Functions (Deno runtime, 17 endpoints)
+- **API Layer**: Supabase Edge Functions (Deno runtime, 18 endpoints)
 - **Background Jobs**: PostgreSQL-backed job queue + AWS Lambda workers (SST v3)
 - **Validation**: Valibot 1.0 (NOT Zod)
 - **Linting**: oxlint + oxfmt (NOT ESLint/Prettier)
@@ -60,7 +60,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 │  └─────────────────┘  └──────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────┤
 │     supabase/functions/ (Edge Functions — Deno)          │
-│  17 API endpoints: health, user, companies, ask, etc.    │
+│  18 API endpoints: health, user, companies, ask, etc.    │
 │  _shared/: db, auth, cors, schema, api-utils,            │
 │            sec-fetch, sec-ingest                          │
 ├─────────────────────────────────────────────────────────┤
@@ -87,14 +87,14 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 |-----------|---------------|
 | `app/` | File-based routing (Expo Router). Pages and layouts. **Note:** Legacy `app/api/` routes from One Framework still exist and use the old in-memory job queue — these should be removed (see tech debt). |
 | `app/api/` | ⚠️ **Legacy** — 14 One Framework `+api.ts` routes still present. Superseded by Edge Functions but not yet deleted. Still reference old in-memory job queue. |
-| `supabase/functions/` | 17 Supabase Edge Functions (Deno) — health, user-me, user-profile, user-cost-of-living, companies-lookup, companies-search, companies-search-sec, company-detail, company-fetch, company-ingest (⚠️ legacy — superseded by company-fetch + company-process), company-process, company-summarize, company-summary-status, compensation-fairness, ask, batch-fetch, job-status |
+| `supabase/functions/` | 18 Supabase Edge Functions (Deno) — health, user-me, user-profile, user-cost-of-living, companies-lookup, companies-search, companies-search-sec, company-detail, company-fetch, company-ingest (⚠️ legacy — superseded by company-fetch + company-process), company-process, company-summarize, company-summary-status, company-personalize, compensation-fairness, ask, batch-fetch, job-status |
 | `supabase/functions/_shared/` | Shared Edge Function utilities: db, auth, cors, schema, api-utils, sec-fetch (SEC API call helpers), sec-ingest (lightweight DB insert for directors/compensation) |
-| `src/database/schema/` | Drizzle ORM table definitions (companies, filings, exec comp, directors, insider trades, embeddings, jobs, raw-sec-responses, form-8k-events) |
-| `src/database/validators/` | Valibot schemas for insert validation |
+| `src/database/schema/` | Drizzle ORM table definitions (companies, filings, exec comp, directors, insider trades, personalized summaries, embeddings, jobs, raw-sec-responses, form-8k-events) |
+| `src/database/validators/` | Valibot schemas for insert validation (insider-trades, companies; directors/embeddings/form-8k-events/raw-sec-responses validators removed 2026-03-23) |
 | `supabase/migrations/` | SQL migrations (applied via `supabase db reset`) |
 | `src/features/auth/` | Supabase client creation (server + client) and `ensureAuth()` |
 | `src/features/ask/` | RAG Q&A UI (AskBar component) |
-| `src/features/company/` | Company detail types, formatting utilities, section components (LeadershipSection, CeoSpotlightCard, CompanySummaryCard, TextSummaryCard, IncomeStatementSunburst, IncomeBreakdownChart, FinancialsSection, InsiderTradingSection, RiskFactorsCard, IngestionPrompt), and data extraction utilities |
+| `src/features/company/` | Company detail types (`CompanySummaryResult`, `EmployeeImpactResult`, `FilingSummaryResult`), formatting utilities, section components (LeadershipSection, CeoSpotlightCard, CompanySummaryCard, TextSummaryCard, IncomeStatementSunburst, IncomeBreakdownChart, FinancialsSection, InsiderTradingSection, RiskFactorsCard, IngestionPrompt), and data extraction utilities |
 | `src/features/company/lib/` | Data extraction utilities — `income-data-extractor.ts` (XBRL income statement parser → sunburst chart data) |
 | `src/features/onboarding/` | Constants for user profile (org levels, pay frequencies, CoL categories) |
 | `src/interface/` | Shared UI component library, organized by subdirectory |
@@ -112,7 +112,8 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 | `src/lib/` | Client-side utilities (fetchWithRetry API client) |
 | `src/tamagui/` | Tamagui config, themes, semantic tokens |
 | `src/test/` | Vitest setup and test data factories |
-| `packages/ai/` | Anthropic SDK wrapper, Voyage AI embeddings, prompt templates (filing summary, comp analysis, RAG) |
+| `packages/ai/` | Anthropic SDK wrapper, Voyage AI embeddings, prompt templates (filing summary, comp analysis, RAG, company summary, employee impact, MD&A summary, what-this-means) |
+| `packages/ai/src/prompts/` | Specialized prompt templates — `company-summary.ts` (structured health assessment), `employee-impact.ts` (job security/H-1B signals), `mda-summary.ts` (markdown MD&A breakdown), `what-this-means.ts` (personalized conversational overlay) |
 | `packages/postgres/` | Database connection, vector search functions |
 | `packages/sec-api/` | SEC API client with Valibot-validated responses |
 | `packages/helpers/` | `ensureEnv()`, `normalizeName()`, shared TypeScript types, concurrency utilities (`concurrency.ts`) |
@@ -127,9 +128,10 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 2a. **User taps an executive/director** → navigates to `/company/[ticker]/executive/[id]` → shows full profile with compensation breakdown, committee memberships, qualifications, and dual-role handling.
 3. **Phase 1 — SEC fetch** → `POST /api/companies/[ticker]/fetch` → fetches raw SEC API responses (filings, exec comp, insider trades, directors) → stores verbatim JSON in `raw_sec_responses` table
 4. **Phase 2 — Processing** → `POST /api/companies/[ticker]/process` → reads from `raw_sec_responses` → transforms and inserts into domain tables (filings, executive_compensation, directors, insider_trades) with enrichment (canonical names, roles)
-5. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: extracts sections → Claude generates AI summaries → stores in `filing_summaries.aiSummary` → generates 1024-dim embeddings via Voyage AI (`input_type: 'document'`) → stores in `embeddings` table
-6. **User asks a question** → `POST /api/ask` → embeds question via Voyage AI (`input_type: 'query'`) → vector search on embeddings → retrieves relevant filing context → Claude generates RAG answer with citations
+5. **Summarization triggered** → `POST /api/companies/[ticker]/summarize` → for each unsummarized filing: routes sections to specialized prompts (`executive_summary` → `generateCompanySummary()`, `employee_impact` → `generateEmployeeImpact()`, `mda` → `summarizeMda()`, all others → generic `summarizeSection()`) → stores in `filing_summaries.aiSummary` → generates 1024-dim embeddings via Voyage AI (`input_type: 'document'`) → stores in `embeddings` table
+6. **User asks a question** → `POST /api/ask` → embeds question via Voyage AI (`input_type: 'query'`) → vector search on embeddings (cosine similarity ≥ 0.3) → optional Voyage AI reranking → retrieves relevant filing context → Claude generates RAG answer with citations
 7. **Compensation analysis** → `POST /api/analysis/compensation-fairness` → combines user profile (salary, CoL, org level) with company exec comp data → Claude generates fairness analysis
+8. **Personalized summary** → `POST /api/company-personalize` → requires authenticated user with salary in profile → checks `personalized_summaries` cache → if miss, generates conversational "what this means for you" overlay via Claude Haiku using filing context + user profile → caches result for future requests
 
 ## Conventions
 
@@ -179,8 +181,12 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 
 ### AI/API Patterns
 - Claude API calls centralized in `packages/ai/` — don't scatter API calls across components.
+- **Prompt templates** live in `packages/ai/src/prompts/` — one file per prompt, each exporting system/user prompt functions and param types. All prompts target 8th-grade reading level and define financial terms in parentheses.
+- **Summary versioning**: `CURRENT_SUMMARY_VERSION = 2` in `packages/ai/src/types.ts`. v2 summaries use structured JSON (company-summary, employee-impact) or markdown (mda-summary). `CompanySummaryCard` handles both v1 and v2 formats via a `isV2Summary()` type guard.
+- **ClaudeClient methods**: `summarizeSection()` (v1 generic), `generateCompanySummary()`, `generateEmployeeImpact()`, `summarizeMda()`, `generateWhatThisMeans()`, `analyzeCompensation()`, `generateRagResponse()`. All use exponential backoff retry (5 max retries, handles 429/529).
+- **Personalized summaries** are cached per-user per-filing in `personalized_summaries` table with RLS. The `company-personalize` Edge Function handles generation + caching.
 - Embeddings use Voyage AI (`voyage-4-lite` for dev, `voyage-finance-2` for prod). Always pass `input_type: 'document'` when storing and `input_type: 'query'` when searching — this asymmetric encoding improves retrieval quality.
-- The `/ask` Edge Function calls Voyage AI directly (not through `ClaudeClient`) because Edge Functions run on Deno and can't import the Node-based `@union/ai` package.
+- The `/ask` Edge Function calls Voyage AI directly (not through `ClaudeClient`) because Edge Functions run on Deno and can't import the Node-based `@union/ai` package. Uses cosine similarity threshold (0.3) and optional Voyage AI reranking.
 - Always handle API rate limits explicitly with retry logic and exponential backoff.
 - RAG pipeline components (embedding, retrieval, generation) must be clearly separated — no monolithic "do everything" functions.
 
@@ -267,7 +273,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 - [ ] **Lambda migrate handler is stale** — `src/server/lambda/migrate.ts` imports from `drizzle-orm/node-postgres/migrator` and references `./src/database/migrations` (non-existent). Per ADR-008, migrations are now in `supabase/migrations/`. This handler will fail at deploy. Needs rewrite or removal. Priority: **high**.
 - [ ] **Legacy `app/api/` routes not deleted** — 14 One Framework `+api.ts` files remain in `app/api/`. Per ADR-007, all API logic moved to Edge Functions. These are dead code but confusing. Priority: **medium**.
 - [ ] **SST config references One Framework** — `sst.config.ts` still sets `ONE_SERVER_URL` env var. Should be removed or renamed post-migration. Priority: **low**.
-- [ ] **Duplicate type definitions** — `FinancialLineItem`, `FinancialStatement` defined in both `src/server/services/xbrl-transformer.ts` and `src/features/company/types.ts`. `ExecCompSummary` now also in `src/features/company/types.ts`. Should be extracted to a shared location. Priority: **medium**.
+- [ ] **Duplicate type definitions** — `FinancialLineItem`, `FinancialStatement` defined in both `src/server/services/xbrl-transformer.ts` and `src/features/company/types.ts`. `ExecCompSummary` now also in `src/features/company/types.ts`. `CompanySummaryResult` and `EmployeeImpactResult` defined in both `packages/ai/src/types.ts` and `src/features/company/types.ts`. Should be extracted to a shared location. Priority: **medium**.
 - [ ] **No rate limiting on API endpoints** — RAG queries and compensation analysis are computationally expensive with no throttling. Priority: **high before prod**.
 - [ ] **No structured logging** — All logging via `console.info()` with no request IDs, user context, or JSON structure. Hard to search in production. Priority: **medium**.
 - [ ] **Tamagui v2.0.0-rc.15 is pre-release** — API may change. Monitor for stable release. Priority: **low** (works currently).
@@ -456,6 +462,13 @@ When uncertain, point the developer here rather than guessing.
 - Dark mode chart fixes (2026-03-22) — PieChart and SunburstChart use theme colors for text/stroke; navy color values updated for dark mode; background color handling fixed in layout components
 - CompanySummaryCard renamed from ExecutiveSummaryCard (2026-03-22) — updated references in CompanyDashboard and CeoSpotlightCard
 - Navigation timing fix (2026-03-22) — root navigation state check before routing to discover; refactored routing and authentication handling
+- Specialized AI prompt templates (2026-03-23) — `company-summary` (structured health assessment with headline, key_numbers, red_flags, opportunities), `employee-impact` (job security signals, H-1B/visa dependency, offshoring risks), `mda-summary` (markdown MD&A breakdown with euphemism translation), `what-this-means` (personalized conversational overlay using user profile)
+- Summarization pipeline v2 (2026-03-23) — section routing dispatches to specialized prompts (`executive_summary` → `generateCompanySummary()`, `employee_impact` → `generateEmployeeImpact()`, `mda` → `summarizeMda()`); embedding generation extracts structured fields from v2 results
+- Personalized summaries feature (2026-03-23) — `personalized_summaries` table (per-user cache with RLS), `company-personalize` Edge Function (auth-required, generates "what this means for you" via Claude Haiku with user profile context, caches results)
+- Insider trade derivative fields (2026-03-23) — 7 new columns (`transaction_description`, `direct_or_indirect`, `exercise_date`, `expiration_date`, `conversion_or_exercise_price`, `underlying_security_title`, `underlying_security_shares`) + `extra_data` JSONB overflow; migration `20260322000000_insider_trade_fields.sql`
+- CompanySummaryCard v1/v2 support (2026-03-23) — handles both `FilingSummaryResult` (v1) and `CompanySummaryResult` (v2) formats via `isV2Summary()` type guard
+- Validator cleanup (2026-03-23) — removed unused validator files (`directors.ts`, `embeddings.ts`, `form-8k-events.ts`, `raw-sec-responses.ts`); kept only actively used validators (insider-trades, companies, index)
+- Enhanced RAG `/ask` endpoint (2026-03-23) — cosine similarity filtering (threshold 0.3), Voyage AI reranking support, improved source citation with filing metadata
 
 ### In Progress / Remaining
 - Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)
@@ -464,7 +477,6 @@ When uncertain, point the developer here rather than guessing.
 - User onboarding flow exists (sign-up, profile, cost-of-living)
 - Lambda worker integration for job processing (TODO: wire up SQS trigger)
 - Lambda migrate handler needs rewrite to use Supabase migrations instead of removed Drizzle migrations
-- ~~Valibot key-stripping data loss fix~~ → resolved: insider trade extraction expanded with 7 new columns + `extra_data` overflow (2026-03-22)
 - No production deployment yet — local dev and staging only
 
 ### Reference Docs (root)
