@@ -1,6 +1,6 @@
 /**
  * CEO Spotlight Card — highlights the CEO with a brief AI summary and pay ratio.
- * Sits between the Income Breakdown chart and the Executive Summary section.
+ * Sits between the Income Breakdown chart and the Company Summary section.
  */
 import { Paragraph, XStack, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
