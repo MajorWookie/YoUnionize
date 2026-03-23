@@ -6,7 +6,7 @@ import { CompanyHeader } from '~/interface/layout/CompanyHeader'
 import { LoadingState } from '~/interface/display/LoadingState'
 import { ErrorState } from '~/interface/display/ErrorState'
 import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
-import { ExecutiveSummaryCard } from '~/features/company/sections/ExecutiveSummaryCard'
+import { CompanySummaryCard } from '~/features/company/sections/CompanySummaryCard'
 import { LeadershipSection } from '~/features/company/sections/LeadershipSection'
 import { FinancialsSection } from '~/features/company/sections/FinancialsSection'
 import { TextSummaryCard } from '~/features/company/sections/TextSummaryCard'
@@ -155,9 +155,9 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
 
       <Separator />
 
-      {/* a. Executive Summary */}
+      {/* a. Company Summary */}
       {execSummaryData && (
-        <ExecutiveSummaryCard
+        <CompanySummaryCard
           summary={execSummaryData}
           periodEnd={data.latestAnnual?.periodEnd ?? data.latestQuarterly?.periodEnd ?? null}
           filingType={data.latestAnnual?.filingType ?? data.latestQuarterly?.filingType ?? ''}
