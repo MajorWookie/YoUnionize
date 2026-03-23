@@ -94,7 +94,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 | `supabase/migrations/` | SQL migrations (applied via `supabase db reset`) |
 | `src/features/auth/` | Supabase client creation (server + client) and `ensureAuth()` |
 | `src/features/ask/` | RAG Q&A UI (AskBar component) |
-| `src/features/company/` | Company detail types, formatting utilities, section components (LeadershipSection, CeoSpotlightCard, ExecutiveSummaryCard, TextSummaryCard, IncomeStatementSunburst, IncomeBreakdownChart, IngestionPrompt), and data extraction utilities |
+| `src/features/company/` | Company detail types, formatting utilities, section components (LeadershipSection, CeoSpotlightCard, CompanySummaryCard, TextSummaryCard, IncomeStatementSunburst, IncomeBreakdownChart, IngestionPrompt), and data extraction utilities |
 | `src/features/company/lib/` | Data extraction utilities — `income-data-extractor.ts` (XBRL income statement parser → sunburst chart data) |
 | `src/features/onboarding/` | Constants for user profile (org levels, pay frequencies, CoL categories) |
 | `src/interface/` | Shared UI components (ScreenContainer, ErrorBoundary, ToastProvider) |
@@ -439,7 +439,7 @@ When uncertain, point the developer here rather than guessing.
 - Non-SVG chart components: `BarChart`, `ComparisonBar`, `WaterfallChart`, `FairnessGauge` in `src/interface/charts/` — use `RNView` with inline styles for fill bars (2026-03-21)
 - iOS scroll fix: `ScreenContainer` switched to RN's `ScrollView`, `contentContainerStyle` uses `flexGrow: 1` (not `flex: 1`), inner `YStack` uses `style={{ flexGrow: 1 }}` — resolves inability to scroll on content-heavy screens (2026-03-21)
 - Income data extraction: `src/features/company/lib/income-data-extractor.ts` — XBRL income statement → sunburst visualization data (2026-03-20)
-- Company detail dashboard sections: CeoSpotlightCard, IncomeStatementSunburst, IncomeBreakdownChart (fallback), ExecutiveSummaryCard (with markdown), TextSummaryCard (with markdown support) (2026-03-20)
+- Company detail dashboard sections: CeoSpotlightCard, IncomeStatementSunburst, IncomeBreakdownChart (fallback), CompanySummaryCard (with markdown), TextSummaryCard (with markdown support) (2026-03-20)
 - Markdown rendering: `MarkdownContent` component using `react-native-markdown-display` with Tamagui theme tokens (2026-03-20)
 - Name normalization and dedup: `normalizeName()` helper, `normalized_name` DB columns + dedup indexes on directors and executive_compensation tables (2026-03-20)
 - Expo modules support and privacy information (2026-03-20)

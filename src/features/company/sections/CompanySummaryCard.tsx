@@ -15,7 +15,7 @@ export function ExecutiveSummaryCard({ summary, periodEnd, filingType }: Props) 
     <YStack gap="$3">
       <Card>
         <Paragraph fontWeight="700" fontSize={16} mb="$2">
-          Executive Summary
+          Company Summary
         </Paragraph>
         <Paragraph color="$color8" fontSize={12} mb="$3">
           {filingType} · {periodEnd ? formatDate(periodEnd) : 'Recent filing'}
