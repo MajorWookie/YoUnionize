@@ -275,6 +275,17 @@ async function processInsiderTrading(
   }
 }
 
+/** Fields extracted from each insider transaction — used to separate known fields from extras. */
+const KNOWN_TX_FIELDS = new Set([
+  'transactionDate', 'transactionCode', 'transactionDescription',
+  'sharesTraded', 'pricePerShare', 'pricePerShareFootnoteId',
+  'sharesOwnedAfter', 'directOrIndirect', 'securityTitle',
+  'conversionOrExercisePrice', 'conversionOrExercisePriceFootnoteId',
+  'exerciseDate', 'exerciseDateFootnoteId',
+  'expirationDate', 'expirationDateFootnoteId',
+  'underlyingSecurity',
+])
+
 async function insertTrade(
   db: ReturnType<typeof getDb>,
   company: CompanyRecord,
@@ -300,6 +311,18 @@ async function insertTrade(
 
   const accessionNo = (trade.accessionNo as string) ?? null
 
+  // Derivative-specific fields
+  const underlying = tx.underlyingSecurity as Record<string, unknown> | undefined
+
+  // Collect unmapped fields into extraData overflow
+  const extras: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(tx)) {
+    if (!KNOWN_TX_FIELDS.has(key) && value != null) {
+      extras[key] = value
+    }
+  }
+  const extraData = Object.keys(extras).length > 0 ? extras : null
+
   await db.insert(insiderTrades).values({
     companyId: company.id,
     filerName: ownerName,
@@ -314,6 +337,16 @@ async function insertTrade(
     accessionNumber: accessionNo,
     securityTitle: (tx.securityTitle as string) ?? null,
     sharesOwnedAfter: tx.sharesOwnedAfter != null ? String(tx.sharesOwnedAfter) : null,
+    transactionDescription: (tx.transactionDescription as string) ?? null,
+    directOrIndirect: (tx.directOrIndirect as string) ?? null,
+    exerciseDate: (tx.exerciseDate as string) ?? null,
+    expirationDate: (tx.expirationDate as string) ?? null,
+    conversionOrExercisePrice: tx.conversionOrExercisePrice != null
+      ? String(tx.conversionOrExercisePrice) : null,
+    underlyingSecurityTitle: (underlying?.title as string) ?? null,
+    underlyingSecurityShares: underlying?.shares != null
+      ? String(underlying.shares) : null,
+    extraData,
   }).onConflictDoNothing()
 }
 

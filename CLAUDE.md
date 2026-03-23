@@ -1,7 +1,7 @@
 # CLAUDE.md — YoUnion
 
-> Last updated: 2026-03-21
-> Last updated by: AI session (Tamagui shorthand migration, RNView progress bars, CI type-check now blocking, app version 0.1.4, iOS scroll fix in ScreenContainer)
+> Last updated: 2026-03-22
+> Last updated by: AI session (CLAUDE.md audit: updated interface module map, fixed missing reference docs, added new company sections, dark mode chart fixes)
 
 ## Project Overview
 
@@ -94,12 +94,17 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 | `supabase/migrations/` | SQL migrations (applied via `supabase db reset`) |
 | `src/features/auth/` | Supabase client creation (server + client) and `ensureAuth()` |
 | `src/features/ask/` | RAG Q&A UI (AskBar component) |
-| `src/features/company/` | Company detail types, formatting utilities, section components (LeadershipSection, CeoSpotlightCard, CompanySummaryCard, TextSummaryCard, IncomeStatementSunburst, IncomeBreakdownChart, IngestionPrompt), and data extraction utilities |
+| `src/features/company/` | Company detail types, formatting utilities, section components (LeadershipSection, CeoSpotlightCard, CompanySummaryCard, TextSummaryCard, IncomeStatementSunburst, IncomeBreakdownChart, FinancialsSection, InsiderTradingSection, RiskFactorsCard, IngestionPrompt), and data extraction utilities |
 | `src/features/company/lib/` | Data extraction utilities — `income-data-extractor.ts` (XBRL income statement parser → sunburst chart data) |
 | `src/features/onboarding/` | Constants for user profile (org levels, pay frequencies, CoL categories) |
-| `src/interface/` | Shared UI components (ScreenContainer, ErrorBoundary, ToastProvider) |
+| `src/interface/` | Shared UI component library, organized by subdirectory |
 | `src/interface/charts/` | Chart components — `PieChart.tsx` (donut, SVG), `SunburstChart.tsx` (multi-ring concentric, SVG), `BarChart.tsx` (horizontal bars), `ComparisonBar.tsx` (side-by-side split bar), `WaterfallChart.tsx` (stacked income breakdown), `FairnessGauge.tsx` (score ring) |
-| `src/interface/display/` | Display components — `MarkdownContent.tsx` (cross-platform markdown renderer using Tamagui theme tokens) |
+| `src/interface/display/` | Display components — `Card`, `EmptyState`, `ErrorState`, `LoadingState`, `MarkdownContent` (cross-platform markdown renderer using Tamagui theme tokens), `Stat` |
+| `src/interface/feedback/` | Error handling — `ErrorBoundary`, `ToastProvider` |
+| `src/interface/form/` | Form inputs — `CurrencyInput`, `SelectField`, `TextField` |
+| `src/interface/icons/` | `TabIcons.tsx` / `TabIcons.native.tsx` (platform-split Phosphor tab icons) |
+| `src/interface/layout/` | Layout components — `ScreenContainer` (scroll wrapper), `CompanyHeader` |
+| `src/interface/navigation/` | Tab bar components — `BottomTabBar` (web), `NativeTabBar` (mobile) |
 | `src/server/` | Server-side utilities (api-utils, job-queue, job-queue-db, ai-client, sec-api-client) |
 | `src/server/services/` | Business logic: ingestion pipelines (filing, compensation, directors, insider trading), XBRL transform, summarization, sec-fetcher (Phase 1 raw fetch), raw-data-processor (Phase 2 domain processing) |
 | `src/server/services/enrichment/` | Compensation and director enrichment functions (post-fetch processing) |
@@ -272,7 +277,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 - [ ] **Email confirmations disabled** in Supabase auth config — anyone can sign up with any email. Priority: **high before prod**.
 - [ ] **API client error parsing** — `fetchWithRetry()` assumes JSON error responses; HTML error pages (502) will cause secondary parse failures. Priority: **low**.
 - [ ] **Summarization text chunking** — Hardcoded 4 chars/token ratio is approximate; overlap of 50 tokens may lose context at chunk boundaries. Priority: **low**.
-- [ ] **Valibot `v.object()` silently strips undeclared keys** — SEC API responses contain fields not in our Valibot schemas, which are silently dropped during validation. This causes data loss in `raw_sec_responses` and domain tables. Detailed plan in `PLAN-8K-ITEMS-FIX.md`. Priority: **high**.
+- [x] **~~Insider trade field extraction incomplete~~** — Phase 2 extraction (`raw-data-processor.ts`) only extracted ~8 of ~15 SEC API fields per transaction. Derivative-specific fields (exercise/expiration dates, strike prices, underlying securities) were lost. Fixed (2026-03-22): added 7 new columns + `extra_data` JSONB overflow to `insider_trades`. Dead validator files cleaned up. Note: the original CLAUDE.md description ("Valibot strips keys") was inaccurate — SEC API schemas use `v.looseObject()` correctly; raw data in `raw_sec_responses` was never lost. The loss was in manual field extraction, not Valibot validation.
 - [ ] **`company-ingest` Edge Function is legacy** — Superseded by the 2-phase `company-fetch` + `company-process` per ADR-009. Should be removed alongside legacy `app/api/` cleanup. Priority: **medium**.
 
 ## Environment Setup
@@ -448,6 +453,9 @@ When uncertain, point the developer here rather than guessing.
 - Tamagui shorthand prop migration (2026-03-21) — all UI components now use shorthand props (`mb`, `pb`, `items`, `justify`, `bg`, `rounded`, `text`, `self`, `z`, `minW`, `py`, etc.) throughout `app/` and `src/interface/`
 - CI type-check now blocking (2026-03-21) — removed `continue-on-error: true`; remaining color casts use `as any` with comments
 - App version bumped to 0.1.4 in `app.json`, added `userInterfaceStyle: "automatic"` and EAS OTA update URL
+- Dark mode chart fixes (2026-03-22) — PieChart and SunburstChart use theme colors for text/stroke; navy color values updated for dark mode; background color handling fixed in layout components
+- CompanySummaryCard renamed from ExecutiveSummaryCard (2026-03-22) — updated references in CompanyDashboard and CeoSpotlightCard
+- Navigation timing fix (2026-03-22) — root navigation state check before routing to discover; refactored routing and authentication handling
 
 ### In Progress / Remaining
 - Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)
@@ -456,10 +464,9 @@ When uncertain, point the developer here rather than guessing.
 - User onboarding flow exists (sign-up, profile, cost-of-living)
 - Lambda worker integration for job processing (TODO: wire up SQS trigger)
 - Lambda migrate handler needs rewrite to use Supabase migrations instead of removed Drizzle migrations
-- Valibot key-stripping data loss fix (see `PLAN-8K-ITEMS-FIX.md`)
+- ~~Valibot key-stripping data loss fix~~ → resolved: insider trade extraction expanded with 7 new columns + `extra_data` overflow (2026-03-22)
 - No production deployment yet — local dev and staging only
 
 ### Reference Docs (root)
-- `LLM-BRIEFING.md` — SEC API & ingestion pipeline deep-dive for AI assistants
-- `PLAN-8K-ITEMS-FIX.md` — Draft plan for Valibot schema & pipeline data integrity fixes
 - `SEED.md` — Seed script usage reference
+- `PLAN-REMOTE-IOS-TESTING.md` — Remote iOS testing setup plan
