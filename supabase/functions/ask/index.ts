@@ -9,7 +9,7 @@ import {
   embeddings,
   userProfiles,
 } from '../_shared/schema.ts'
-import { badRequest, externalServiceError, classifyError } from '../_shared/api-utils.ts'
+import { badRequest, classifyError } from '../_shared/api-utils.ts'
 
 interface SourceCitation {
   filingId: string
@@ -19,6 +19,34 @@ interface SourceCitation {
   companyTicker: string
   similarity: number
 }
+
+/** Minimum cosine similarity to consider a vector result relevant */
+const COSINE_SIMILARITY_THRESHOLD = 0.3
+/** Number of initial vector candidates to retrieve before reranking */
+const VECTOR_CANDIDATE_LIMIT = 20
+/** Number of results after reranking */
+const RERANK_TOP_K = 5
+/** Minimum reranker relevance score to keep a result */
+const RERANK_RELEVANCE_THRESHOLD = 0.1
+
+const RAG_SYSTEM_PROMPT = `You are a helpful financial information assistant for YoUnion, a platform that helps employees understand their company's SEC filings and compensation data.
+
+You answer questions using ONLY the provided context from SEC filings and company data. If the context doesn't contain enough information to answer the question, say so honestly — never make up financial data.
+
+Each source is labeled with the company ticker, filing type, section name, and period. Use these labels to cite your sources precisely.
+
+Rules:
+- Write at an 8th-grade reading level
+- Define any financial terms in parentheses when first used
+- Use specific numbers from the context when available
+- Synthesize information across multiple sources to give a complete answer — don't just quote one source at a time
+- If the question is about pay fairness, be balanced but honest
+- Keep answers concise — 2-4 paragraphs max
+- If multiple context sources conflict, note the discrepancy and prefer the most recent filing
+- Always cite which filing or data source your answer comes from when possible
+- If context from different time periods is available, note trends over time
+
+Never give investment advice. You explain filings — you don't recommend buying or selling stock.`
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -76,11 +104,11 @@ Deno.serve(async (req) => {
         const data = await res.json()
         queryEmbedding = data.data?.[0]?.embedding ?? null
       } catch (err) {
-        console.error('[ask] Embedding failed:', err instanceof Error ? err.message : String(err))
+        console.info('[ask] Embedding failed:', err instanceof Error ? err.message : String(err))
       }
     }
 
-    // Step 2: Vector search
+    // Step 2: Vector search — retrieve wider candidate pool
     let vectorResults: Array<{
       sourceId: string
       metadata: Record<string, unknown> | null
@@ -101,24 +129,98 @@ Deno.serve(async (req) => {
         FROM embeddings
         ${whereClause}
         ORDER BY embedding <=> '${vectorStr}'::vector
-        LIMIT 5
+        LIMIT ${VECTOR_CANDIDATE_LIMIT}
       `))
 
-      vectorResults = (results as Array<Record<string, unknown>>).map((row) => ({
-        sourceId: row.source_id as string,
-        metadata: row.metadata as Record<string, unknown> | null,
-        similarity: Number(row.similarity),
-      }))
+      vectorResults = (results as Array<Record<string, unknown>>)
+        .map((row) => ({
+          sourceId: row.source_id as string,
+          metadata: row.metadata as Record<string, unknown> | null,
+          similarity: Number(row.similarity),
+        }))
+        .filter((r) => r.similarity >= COSINE_SIMILARITY_THRESHOLD)
     }
 
-    // Step 3: Retrieve context
+    // Step 2.5: Rerank candidates with Voyage AI
+    if (vectorResults.length > RERANK_TOP_K && voyageKey) {
+      try {
+        const candidateTexts: Array<string> = []
+        const candidateIndices: Array<number> = []
+
+        for (let i = 0; i < vectorResults.length; i++) {
+          const result = vectorResults[i]
+          const [filing] = await db
+            .select({
+              id: filingSummaries.id,
+              aiSummary: filingSummaries.aiSummary,
+            })
+            .from(filingSummaries)
+            .where(eq(filingSummaries.id, result.sourceId))
+            .limit(1)
+
+          if (!filing?.aiSummary) continue
+
+          const metadata = result.metadata ?? {}
+          const section = (metadata.section as string) ?? 'unknown'
+          const summary = filing.aiSummary as Record<string, unknown>
+          const text = extractSectionText(summary[section])
+
+          if (text.length > 0) {
+            candidateTexts.push(text.slice(0, 2000))
+            candidateIndices.push(i)
+          }
+        }
+
+        if (candidateTexts.length > RERANK_TOP_K) {
+          const rerankRes = await fetch('https://api.voyageai.com/v1/rerank', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${voyageKey}`,
+            },
+            body: JSON.stringify({
+              model: 'rerank-2',
+              query: question,
+              documents: candidateTexts,
+              top_k: RERANK_TOP_K,
+            }),
+          })
+
+          if (rerankRes.ok) {
+            const rerankData = await rerankRes.json() as {
+              data: Array<{ index: number; relevance_score: number }>
+            }
+
+            vectorResults = rerankData.data
+              .filter((r) => r.relevance_score > RERANK_RELEVANCE_THRESHOLD)
+              .map((r) => {
+                const originalIdx = candidateIndices[r.index]
+                return {
+                  sourceId: vectorResults[originalIdx].sourceId,
+                  metadata: vectorResults[originalIdx].metadata,
+                  similarity: r.relevance_score,
+                }
+              })
+
+            console.info(`[ask] Reranked ${candidateTexts.length} candidates → ${vectorResults.length} results`)
+          }
+        }
+      } catch (err) {
+        console.info(`[ask] Reranking failed, using vector results: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    // Step 3: Retrieve context — dedup by filing+section (not just filing)
     const contextChunks: Array<string> = []
     const sources: Array<SourceCitation> = []
-    const seenFilings = new Set<string>()
+    const seenKeys = new Set<string>()
 
     for (const result of vectorResults) {
-      if (seenFilings.has(result.sourceId)) continue
-      seenFilings.add(result.sourceId)
+      const metadata = result.metadata ?? {}
+      const section = (metadata.section as string) ?? 'unknown'
+      const dedupKey = `${result.sourceId}:${section}`
+      if (seenKeys.has(dedupKey)) continue
+      seenKeys.add(dedupKey)
 
       const [filing] = await db
         .select({
@@ -133,31 +235,11 @@ Deno.serve(async (req) => {
 
       if (!filing?.aiSummary) continue
 
-      const metadata = result.metadata ?? {}
-      const section = (metadata.section as string) ?? 'unknown'
       const ticker = (metadata.companyTicker as string) ?? companyTicker ?? ''
       const summary = filing.aiSummary as Record<string, unknown>
-      const sectionContent = summary[section]
+      const text = extractSectionText(summary[section])
 
-      if (sectionContent) {
-        let text: string
-        if (typeof sectionContent === 'string') {
-          text = sectionContent
-        } else if (typeof sectionContent === 'object' && sectionContent !== null) {
-          const obj = sectionContent as Record<string, unknown>
-          if (obj.executive_summary) {
-            text = [obj.executive_summary, obj.plain_language_explanation, obj.employee_relevance]
-              .filter(Boolean)
-              .join('\n\n')
-          } else if (obj.analysis) {
-            text = obj.analysis as string
-          } else {
-            text = JSON.stringify(obj, null, 2)
-          }
-        } else {
-          continue
-        }
-
+      if (text.length > 0) {
         contextChunks.push(
           `[${ticker} ${filing.filingType} — ${section}${filing.periodEnd ? ` (${filing.periodEnd})` : ''}]\n${text}`,
         )
@@ -172,7 +254,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 3b: Fallback — direct text retrieval
+    // Step 3b: Fallback — direct text retrieval from recent filings
     if (contextChunks.length === 0 && companyId) {
       const recentFilings = await db
         .select({
@@ -189,9 +271,10 @@ Deno.serve(async (req) => {
       for (const filing of recentFilings) {
         const summary = filing.aiSummary as Record<string, unknown>
         for (const [section, content] of Object.entries(summary)) {
-          if (typeof content === 'string' && content.length > 50) {
+          const text = extractSectionText(content)
+          if (text.length > 50) {
             contextChunks.push(
-              `[${companyTicker ?? ''} ${filing.filingType} — ${section}${filing.periodEnd ? ` (${filing.periodEnd})` : ''}]\n${content}`,
+              `[${companyTicker ?? ''} ${filing.filingType} — ${section}${filing.periodEnd ? ` (${filing.periodEnd})` : ''}]\n${text}`,
             )
             sources.push({
               filingId: filing.id, filingType: filing.filingType, section,
@@ -257,7 +340,7 @@ Deno.serve(async (req) => {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 4096,
-      system: `You are an SEC filings analyst. Answer questions about companies using ONLY the provided filing context. Cite your sources. If the context doesn't contain the answer, say so.`,
+      system: RAG_SYSTEM_PROMPT,
       messages: [{
         role: 'user',
         content: `Context from SEC filings:\n\n${contextWithUser.join('\n\n---\n\n')}\n\nQuestion: ${question}`,
@@ -279,3 +362,45 @@ Deno.serve(async (req) => {
     return classifyError(err)
   }
 })
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Extract readable text from an AI summary section value (handles multiple shapes). */
+function extractSectionText(content: unknown): string {
+  if (content == null) return ''
+
+  if (typeof content === 'string') return content
+
+  if (typeof content === 'object') {
+    const obj = content as Record<string, unknown>
+
+    // CompanySummaryResult (v2)
+    if (obj.headline) {
+      return [obj.headline, obj.company_health].filter(Boolean).join('\n\n')
+    }
+
+    // FilingSummaryResult (v1)
+    if (obj.executive_summary) {
+      return [obj.executive_summary, obj.plain_language_explanation, obj.employee_relevance]
+        .filter(Boolean)
+        .join('\n\n')
+    }
+
+    // EmployeeImpactResult
+    if (obj.overall_outlook) {
+      return [
+        obj.overall_outlook, obj.job_security, obj.compensation_signals,
+        obj.growth_opportunities, obj.workforce_geography, obj.h1b_and_visa_dependency,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+    }
+
+    // ExecCompSummary
+    if (obj.analysis) return obj.analysis as string
+
+    return JSON.stringify(obj, null, 2)
+  }
+
+  return ''
+}
