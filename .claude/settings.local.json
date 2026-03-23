@@ -168,7 +168,8 @@
       "Bash(grep -r onlyAllowShorthands /Users/majorwookie/Documents/GitHub/YoUnion/ --include=*.ts --include=*.tsx --include=*.json)",
       "Bash(find \"/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)\" -type f -name \"*.tsx\")",
       "Bash(ls '/Users/majorwookie/Documents/GitHub/YoUnion/app/\\(app\\)/company/[ticker]/')",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)"
     ]
   },
   "outputStyle": "Explanatory"
