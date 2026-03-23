@@ -202,9 +202,9 @@ export async function enrichCompensationNames(
   const whereClause = options?.force
     ? eq(executiveCompensation.companyId, companyId)
     : and(
-        eq(executiveCompensation.companyId, companyId),
-        isNull(executiveCompensation.canonicalName),
-      )
+      eq(executiveCompensation.companyId, companyId),
+      isNull(executiveCompensation.canonicalName),
+    )
 
   const rows = await db
     .select({

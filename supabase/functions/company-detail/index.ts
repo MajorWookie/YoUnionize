@@ -62,20 +62,20 @@ Deno.serve(async (req) => {
       // Filter executives by selected fiscal year (if available)
       selectedFiscalYear != null
         ? db
-            .select()
-            .from(executiveCompensation)
-            .where(and(
-              eq(executiveCompensation.companyId, company.id),
-              eq(executiveCompensation.fiscalYear, selectedFiscalYear),
-            ))
-            .orderBy(desc(executiveCompensation.totalCompensation))
-            .limit(20)
+          .select()
+          .from(executiveCompensation)
+          .where(and(
+            eq(executiveCompensation.companyId, company.id),
+            eq(executiveCompensation.fiscalYear, selectedFiscalYear),
+          ))
+          .orderBy(desc(executiveCompensation.totalCompensation))
+          .limit(20)
         : db
-            .select()
-            .from(executiveCompensation)
-            .where(eq(executiveCompensation.companyId, company.id))
-            .orderBy(desc(executiveCompensation.totalCompensation))
-            .limit(20),
+          .select()
+          .from(executiveCompensation)
+          .where(eq(executiveCompensation.companyId, company.id))
+          .orderBy(desc(executiveCompensation.totalCompensation))
+          .limit(20),
 
       db
         .select()
