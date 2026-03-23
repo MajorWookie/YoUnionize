@@ -183,6 +183,7 @@
       "Bash(git diff:*)",
       "Bash(git branch:*)",
       "Bash(find /Users/majorwookie/Documents/GitHub/YoUnion/app/\\\\\\(app\\\\\\)/company/[ticker] -type f -name \"*.tsx\" -o -name \"*.ts\")"
+      "Bash(git add:*)"
     ]
   },
   "outputStyle": "Explanatory"
