@@ -190,7 +190,12 @@ function CompanyDashboard({ data }: { data: CompanyDetailResponse }) {
       />
 
       {/* Income Statement sunburst chart */}
-      {financialSource && <IncomeStatementSunburst summary={financialSource} />}
+      {financialSource && (
+        <IncomeStatementSunburst
+          summary={financialSource}
+          periodEnd={data.latestAnnual?.periodEnd ?? data.latestQuarterly?.periodEnd ?? null}
+        />
+      )}
 
       {/* CEO Spotlight */}
       <CeoSpotlightCard executives={data.executives} execCompSummary={execCompSummary} />
