@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /Users/majorwookie/Documents/GitHub/YoUnion/src/database/schema/*.ts)",
+      "Bash(xargs -I{} basename {})",
+      "mcp__claude_ai_Figma__whoami",
+      "mcp__claude_ai_Figma__create_new_file",
+      "mcp__claude_ai_Figma__generate_diagram",
+      "mcp__claude_ai_Figma__use_figma",
+      "Bash(bun test:*)",
+      "Bash(ls -la /Users/majorwookie/Documents/GitHub/YoUnion/*.md)",
+      "Bash(grep -r \"CURRENT_SUMMARY_VERSION\" /Users/majorwookie/Documents/GitHub/YoUnion --include=\"*.ts\" ! -path \"*/node_modules/*\")",
+      "Bash(./scripts/reset-remote.sh)",
+      "Bash(supabase functions:*)",
+      "WebSearch",
+      "WebFetch(domain:xbrl.us)",
+      "WebFetch(domain:www.edgartools.io)",
+      "WebFetch(domain:xbrlview.fasb.org)",
+      "Bash(grep -r 'supabase functions serve' /Users/majorwookie/Documents/GitHub/YoUnion --include=*.ts --include=*.js --include=*.json)",
+      "Bash(xargs cat:*)",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(bunx dotenvx:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "outputStyle": "Explanatory"
+}
