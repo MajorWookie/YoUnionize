@@ -50,6 +50,52 @@ const INCOME_STATEMENT_CONCEPTS: Record<string, string> = {
   ProvisionForLoanLeaseAndCreditLosses: 'Provision for Loan Losses',
   // REIT / real estate
   CorporateExpensesExcludingDepreciationAndAmortization: 'Corporate Expenses (ex D&A)',
+  RealEstateRevenueNet: 'Real Estate Revenue (Net)',
+  OperatingLeasesIncomeStatementLeaseRevenue: 'Lease Revenue',
+  RentalRevenue: 'Rental Revenue',
+  OtherRealEstateRevenue: 'Other Real Estate Revenue',
+  DirectCostsOfLeasedAndRentedPropertyOrEquipment: 'Direct Costs of Leased Property',
+  ImpairmentOfRealEstate: 'Impairment of Real Estate',
+  GainLossOnSaleOfProperties: 'Gain/Loss on Sale of Properties',
+  // Insurance
+  PremiumsEarnedNet: 'Net Premiums Earned',
+  PolicyholderBenefitsAndClaimsIncurredNet: 'Policyholder Benefits & Claims',
+  InsuranceCommissionsAndFees: 'Insurance Commissions & Fees',
+  // Utilities
+  ElectricUtilityRevenue: 'Electric Utility Revenue',
+  RegulatedElectricRevenue: 'Regulated Electric Revenue',
+  // General (common across industries)
+  DepreciationAndAmortization: 'Depreciation & Amortization',
+  GeneralAndAdministrativeExpense: 'General & Administrative',
+  IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest:
+    'Income Before Taxes',
+  IncomeLossFromContinuingOperations: 'Income from Continuing Operations',
+  OtherOperatingIncomeExpenseNet: 'Other Operating Income (Net)',
+  // General (common across S&P 500)
+  CostOfServices: 'Cost of Services',
+  RestructuringCharges: 'Restructuring Charges',
+  AssetImpairmentCharges: 'Asset Impairment Charges',
+  AmortizationOfIntangibleAssets: 'Amortization of Intangible Assets',
+  GoodwillImpairmentLoss: 'Goodwill Impairment',
+  OtherNonoperatingIncomeExpense: 'Other Non-Operating Income/Expense',
+  StockBasedCompensation: 'Stock-Based Compensation',
+  IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments:
+    'Income Before Taxes',
+  // Tech / SaaS
+  SubscriptionRevenue: 'Subscription Revenue',
+  ServiceRevenue: 'Service Revenue',
+  ProductRevenue: 'Product Revenue',
+  LicenseRevenue: 'License Revenue',
+  // Pharma / Biotech
+  LicenseAndServicesRevenue: 'License & Services Revenue',
+  CollaborationRevenue: 'Collaboration Revenue',
+  // Oil & Gas
+  OilAndGasRevenue: 'Oil & Gas Revenue',
+  ExplorationExpense: 'Exploration Expense',
+  // Healthcare
+  PatientServiceRevenue: 'Patient Service Revenue',
+  PremiumRevenue: 'Premium Revenue',
+  HealthCareOrganizationRevenue: 'Healthcare Revenue',
 }
 
 const BALANCE_SHEET_CONCEPTS: Record<string, string> = {
@@ -225,22 +271,48 @@ function extractConceptValues(
   statementData: Record<string, unknown>,
   concept: string,
 ): Record<string, unknown> | null {
+  let raw: unknown = null
+
   // Direct match
   if (statementData[concept] && typeof statementData[concept] === 'object') {
-    return statementData[concept] as Record<string, unknown>
+    raw = statementData[concept]
   }
 
   // Check for us-gaap prefixed keys
-  for (const key of Object.keys(statementData)) {
-    if (key === concept || key.endsWith(`:${concept}`) || key === `us-gaap:${concept}`) {
-      const val = statementData[key]
-      if (val && typeof val === 'object') {
-        return val as Record<string, unknown>
+  if (!raw) {
+    for (const key of Object.keys(statementData)) {
+      if (key === concept || key.endsWith(`:${concept}`) || key === `us-gaap:${concept}`) {
+        const val = statementData[key]
+        if (val && typeof val === 'object') {
+          raw = val
+          break
+        }
       }
     }
   }
 
-  return null
+  if (!raw) return null
+
+  // SEC API returns arrays for concepts with dimensional/segment breakdowns.
+  // Each element has { value, period: { endDate, startDate }, segment? }.
+  // Filter for non-segmented entries (consolidated totals) and build period→value map.
+  if (Array.isArray(raw)) {
+    const result: Record<string, unknown> = {}
+    for (const entry of raw) {
+      if (typeof entry !== 'object' || entry === null) continue
+      const e = entry as Record<string, unknown>
+      // Skip segmented values — only keep consolidated totals
+      if (e.segment) continue
+      const period = e.period as Record<string, string> | undefined
+      const endDate = period?.endDate
+      if (endDate && e.value != null) {
+        result[endDate] = e.value
+      }
+    }
+    return Object.keys(result).length > 0 ? result : null
+  }
+
+  return raw as Record<string, unknown>
 }
 
 function parseNumericValue(value: unknown): number | null {

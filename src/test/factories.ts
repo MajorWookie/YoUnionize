@@ -395,3 +395,193 @@ export function createXbrlData() {
     },
   }
 }
+
+/**
+ * REIT XBRL data factory — simulates a real estate investment trust that uses
+ * non-standard XBRL concepts (no OperatingIncomeLoss, revenue via RealEstateRevenueNet).
+ */
+export function createReitXbrlData() {
+  return {
+    StatementsOfIncome: {
+      RealEstateRevenueNet: {
+        '2024-12-31': 2_000_000_000,
+        '2023-12-31': 1_850_000_000,
+      },
+      RentalRevenue: {
+        '2024-12-31': 1_600_000_000,
+        '2023-12-31': 1_480_000_000,
+      },
+      OtherRealEstateRevenue: {
+        '2024-12-31': 400_000_000,
+        '2023-12-31': 370_000_000,
+      },
+      DirectCostsOfLeasedAndRentedPropertyOrEquipment: {
+        '2024-12-31': 600_000_000,
+        '2023-12-31': 560_000_000,
+      },
+      DepreciationAndAmortization: {
+        '2024-12-31': 500_000_000,
+        '2023-12-31': 470_000_000,
+      },
+      GeneralAndAdministrativeExpense: {
+        '2024-12-31': 150_000_000,
+        '2023-12-31': 140_000_000,
+      },
+      InterestExpense: {
+        '2024-12-31': 200_000_000,
+        '2023-12-31': 190_000_000,
+      },
+      IncomeTaxExpenseBenefit: {
+        '2024-12-31': 50_000_000,
+        '2023-12-31': 45_000_000,
+      },
+      NetIncomeLoss: {
+        '2024-12-31': 500_000_000,
+        '2023-12-31': 445_000_000,
+      },
+    },
+    BalanceSheets: {
+      Assets: {
+        '2024-12-31': 15_000_000_000,
+        '2023-12-31': 14_200_000_000,
+      },
+      Liabilities: {
+        '2024-12-31': 10_000_000_000,
+        '2023-12-31': 9_500_000_000,
+      },
+      StockholdersEquity: {
+        '2024-12-31': 5_000_000_000,
+        '2023-12-31': 4_700_000_000,
+      },
+    },
+  }
+}
+
+/**
+ * Tech/SaaS XBRL data factory — simulates a SaaS company with subscription,
+ * service, and license revenue sub-segments plus stock-based compensation.
+ */
+export function createTechSaasXbrlData() {
+  return {
+    StatementsOfIncome: {
+      RevenueFromContractWithCustomerExcludingAssessedTax: {
+        '2024-12-31': 5_000_000_000,
+        '2023-12-31': 4_200_000_000,
+      },
+      SubscriptionRevenue: {
+        '2024-12-31': 3_500_000_000,
+        '2023-12-31': 2_900_000_000,
+      },
+      ServiceRevenue: {
+        '2024-12-31': 1_000_000_000,
+        '2023-12-31': 900_000_000,
+      },
+      LicenseRevenue: {
+        '2024-12-31': 500_000_000,
+        '2023-12-31': 400_000_000,
+      },
+      CostOfRevenue: {
+        '2024-12-31': 1_500_000_000,
+        '2023-12-31': 1_300_000_000,
+      },
+      ResearchAndDevelopmentExpense: {
+        '2024-12-31': 800_000_000,
+        '2023-12-31': 700_000_000,
+      },
+      SellingGeneralAndAdministrativeExpense: {
+        '2024-12-31': 600_000_000,
+        '2023-12-31': 550_000_000,
+      },
+      StockBasedCompensation: {
+        '2024-12-31': 300_000_000,
+        '2023-12-31': 250_000_000,
+      },
+      OperatingIncomeLoss: {
+        '2024-12-31': 1_800_000_000,
+        '2023-12-31': 1_400_000_000,
+      },
+      InterestExpense: {
+        '2024-12-31': 100_000_000,
+        '2023-12-31': 90_000_000,
+      },
+      IncomeTaxExpenseBenefit: {
+        '2024-12-31': 300_000_000,
+        '2023-12-31': 230_000_000,
+      },
+      NetIncomeLoss: {
+        '2024-12-31': 1_400_000_000,
+        '2023-12-31': 1_080_000_000,
+      },
+    },
+    BalanceSheets: {
+      Assets: {
+        '2024-12-31': 20_000_000_000,
+        '2023-12-31': 18_000_000_000,
+      },
+    },
+  }
+}
+
+/**
+ * Pharma XBRL data factory — simulates a pharma company that uses
+ * "Income Before Taxes" instead of "Operating Income". Tests the
+ * pre-tax-income fallback path.
+ */
+export function createPharmaXbrlData() {
+  return {
+    StatementsOfIncome: {
+      Revenues: {
+        '2024-12-31': 8_000_000_000,
+        '2023-12-31': 7_200_000_000,
+      },
+      CollaborationRevenue: {
+        '2024-12-31': 2_000_000_000,
+        '2023-12-31': 1_800_000_000,
+      },
+      LicenseAndServicesRevenue: {
+        '2024-12-31': 1_500_000_000,
+        '2023-12-31': 1_200_000_000,
+      },
+      CostOfRevenue: {
+        '2024-12-31': 2_500_000_000,
+        '2023-12-31': 2_300_000_000,
+      },
+      ResearchAndDevelopmentExpense: {
+        '2024-12-31': 1_800_000_000,
+        '2023-12-31': 1_600_000_000,
+      },
+      SellingGeneralAndAdministrativeExpense: {
+        '2024-12-31': 1_000_000_000,
+        '2023-12-31': 900_000_000,
+      },
+      RestructuringCharges: {
+        '2024-12-31': 200_000_000,
+        '2023-12-31': 100_000_000,
+      },
+      // No OperatingIncomeLoss — uses pre-tax income instead
+      IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments:
+        {
+          '2024-12-31': 2_200_000_000,
+          '2023-12-31': 2_000_000_000,
+        },
+      InterestExpense: {
+        '2024-12-31': 300_000_000,
+        '2023-12-31': 280_000_000,
+      },
+      IncomeTaxExpenseBenefit: {
+        '2024-12-31': 400_000_000,
+        '2023-12-31': 360_000_000,
+      },
+      NetIncomeLoss: {
+        '2024-12-31': 1_500_000_000,
+        '2023-12-31': 1_360_000_000,
+      },
+    },
+    BalanceSheets: {
+      Assets: {
+        '2024-12-31': 30_000_000_000,
+        '2023-12-31': 28_000_000_000,
+      },
+    },
+  }
+}
