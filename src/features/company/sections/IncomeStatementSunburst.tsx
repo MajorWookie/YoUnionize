@@ -297,9 +297,11 @@ function SlicePopover({
 // ── Fallback Card ──────────────────────────────────────────────────────
 
 function FallbackCard({ statement }: { statement: FinancialStatement }) {
-  const revenue = statement.items.find((i) =>
-    /^(total\s+)?(net\s+)?(revenue|sales)$/i.test(i.label),
-  )
+  const revenuePattern = /^(total\s+)?(net\s+)?(revenue|sales)$|^real\s+estate\s+revenue|^electric\s+utility\s+revenue|^regulated\s+electric\s+revenue|^net\s+premiums\s+earned$|^healthcare\s+revenue$|^patient\s+service\s+revenue$|^oil\s+and\s+gas\s+revenue$|^premium\s+revenue$/i
+  const revenueCandidates = statement.items.filter((i) => revenuePattern.test(i.label))
+  const revenue = revenueCandidates.length > 1
+    ? revenueCandidates.reduce((best, item) => ((item.current ?? 0) > (best.current ?? 0) ? item : best))
+    : revenueCandidates[0]
   const netIncome = statement.items.find((i) =>
     /^net\s+(income|loss|earnings)/i.test(i.label),
   )

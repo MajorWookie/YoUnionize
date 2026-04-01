@@ -87,6 +87,7 @@ type ItemCategory =
   | 'opex-item'
   | 'total-opex'
   | 'operating-income'
+  | 'pre-tax-income'
   | 'interest-expense'
   | 'interest-income'
   | 'tax'
@@ -98,16 +99,22 @@ type ItemCategory =
 function categorize(label: string): ItemCategory {
   const l = label.toLowerCase().trim()
 
-  // Revenue totals
-  if (/^(total\s+)?(net\s+)?(revenue|sales)$/.test(l)) return 'total-revenue'
+  // Revenue totals (standard + REIT, insurance, utilities)
+  if (
+    /^(total\s+)?(net\s+)?(revenue|sales)$|^real\s+estate\s+revenue|^electric\s+utility\s+revenue|^regulated\s+electric\s+revenue|^net\s+premiums\s+earned$|^healthcare\s+revenue$|^patient\s+service\s+revenue$|^oil\s+and\s+gas\s+revenue$|^premium\s+revenue$/.test(
+      l,
+    )
+  )
+    return 'total-revenue'
 
   // Cost items
-  if (/cost\s+of\s+(revenue|goods|sales)/.test(l)) return 'cost-of-revenue'
+  if (/cost\s+of\s+(revenue|goods|sales|services)/.test(l)) return 'cost-of-revenue'
   if (/^gross\s+profit$/.test(l)) return 'gross-profit'
 
   // Operating totals
   if (/^(total\s+)?operating\s+expenses$/.test(l)) return 'total-opex'
   if (/^operating\s+(income|loss)/.test(l)) return 'operating-income'
+  if (/^income\s+before\s+taxes|^income\s+from\s+continuing/.test(l)) return 'pre-tax-income'
 
   // Below-the-line
   if (/^interest\s+expense/.test(l)) return 'interest-expense'
@@ -119,16 +126,17 @@ function categorize(label: string): ItemCategory {
   if (/earnings\s+per\s+share|^eps/i.test(l)) return 'eps'
   if (/shares?\s+outstanding/.test(l)) return 'shares'
 
-  // Operating expense items
+  // Operating expense items (guard: skip if label also contains "revenue" or "income")
   if (
-    /research|development|selling|general|admin|depreciation|amortization|marketing|restructuring|impairment|provision\s+for\s+(credit|loan)/.test(
+    !/revenue|income/.test(l) &&
+    /research|development|selling|general|admin|depreciation|amortization|marketing|restructuring|impairment|provision\s+for\s+(credit|loan)|direct\s+costs|policyholder|benefits.*claims|corporate\s+expenses|stock.based\s+comp|exploration/.test(
       l,
     )
   )
     return 'opex-item'
 
   // Revenue sub-items (banks, diversified companies)
-  if (/revenue|sales|^non-?interest\s+revenue|^investment\s+banking/.test(l)) return 'revenue-sub'
+  if (/revenue|sales|^non-?interest\s+revenue|^investment\s+banking|^rental|^lease\s+revenue|^premiums?\s+earned|^insurance\s+commissions|^subscription|^service\s+revenue|^product\s+revenue|^license|^collaboration/.test(l)) return 'revenue-sub'
 
   return 'other'
 }
@@ -170,11 +178,28 @@ function extractForPeriod(
   const getValue = (item: FinancialLineItem): number | null =>
     period === 'current' ? item.current : item.prior
 
-  // Find anchors
-  const totalRevenueItem = statement.items.find((i) => categorize(i.label) === 'total-revenue')
-  const operatingIncomeItem = statement.items.find(
+  // Find anchors — when multiple items categorize as total-revenue (e.g. REITs
+  // with both "Revenue" sub-segment and "Real Estate Revenue (Net)" aggregate),
+  // pick the one with the largest value for the current period.
+  const totalRevenueCandidates = statement.items.filter((i) => categorize(i.label) === 'total-revenue')
+  const totalRevenueItem = totalRevenueCandidates.length > 1
+    ? totalRevenueCandidates.reduce<FinancialLineItem | null>((best, item) => {
+        const val = getValue(item) ?? 0
+        const bestVal = best ? (getValue(best) ?? 0) : -1
+        return val > bestVal ? item : best
+      }, null)
+    : totalRevenueCandidates[0] ?? null
+  // Prefer true operating income; fall back to pre-tax income (post-interest)
+  let operatingIncomeItem = statement.items.find(
     (i) => categorize(i.label) === 'operating-income',
   )
+  let anchorIsPreTax = false
+  if (!operatingIncomeItem) {
+    operatingIncomeItem = statement.items.find(
+      (i) => categorize(i.label) === 'pre-tax-income',
+    )
+    anchorIsPreTax = true
+  }
   const netIncomeItem = statement.items.find((i) => categorize(i.label) === 'net-income')
 
   const totalRevenue = getValue(totalRevenueItem ?? { label: '', current: null, prior: null, change: null, changePercent: null })
@@ -183,7 +208,7 @@ function extractForPeriod(
   const operatingIncome = getValue(operatingIncomeItem ?? { label: '', current: null, prior: null, change: null, changePercent: null })
   const netIncome = getValue(netIncomeItem ?? { label: '', current: null, prior: null, change: null, changePercent: null })
 
-  // Need at least Operating Income or Net Income to build anything useful
+  // Need at least Operating/Pre-Tax Income or Net Income to build anything useful
   if (operatingIncome == null && netIncome == null) return null
 
   const rings: SunburstRing[] = []
@@ -252,7 +277,7 @@ function extractForPeriod(
   if (opIncVal > 0) {
     ring2Slices.push({
       id: 'operating-income',
-      label: 'Operating Income',
+      label: anchorIsPreTax ? 'Income Before Taxes' : 'Operating Income',
       value: opIncVal,
       rawValue: opIncVal,
       formattedValue: formatFinancial(opIncVal),
@@ -264,7 +289,7 @@ function extractForPeriod(
     // Operating loss: entire revenue is consumed by expenses (and then some)
     ring2Slices.push({
       id: 'operating-income',
-      label: 'Operating Loss',
+      label: anchorIsPreTax ? 'Loss Before Taxes' : 'Operating Loss',
       value: Math.abs(opIncVal),
       rawValue: opIncVal,
       formattedValue: formatFinancial(opIncVal),
@@ -316,11 +341,14 @@ function extractForPeriod(
     )
     const taxItem = statement.items.find((i) => categorize(i.label) === 'tax')
 
-    const interest = Math.abs(getValue(interestExpItem ?? { label: '', current: null, prior: null, change: null, changePercent: null }) ?? 0)
+    // When anchor is pre-tax income, interest is already deducted — skip it
+    const interest = anchorIsPreTax
+      ? 0
+      : Math.abs(getValue(interestExpItem ?? { label: '', current: null, prior: null, change: null, changePercent: null }) ?? 0)
     const tax = Math.abs(getValue(taxItem ?? { label: '', current: null, prior: null, change: null, changePercent: null }) ?? 0)
     const ni = netIncome ?? 0
 
-    // Non-operating = Operating Income - Interest - Tax - Net Income
+    // Residual: items between the anchor and net income not explicitly captured
     const nonOp = opIncVal - interest - tax - ni
 
     const ring3Slices: SunburstSlice[] = []
