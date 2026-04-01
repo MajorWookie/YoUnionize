@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "drizzle-orm": "npm:drizzle-orm@0.40",
+    "drizzle-orm/postgres-js": "npm:drizzle-orm@0.40/postgres-js",
+    "drizzle-orm/pg-core": "npm:drizzle-orm@0.40/pg-core",
+    "postgres": "npm:postgres@3.4",
+    "valibot": "npm:valibot@1.0",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk@0.39"
+  },
+  "compilerOptions": {
+    "strict": true
+  }
+}
