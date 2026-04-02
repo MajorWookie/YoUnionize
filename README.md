@@ -331,6 +331,10 @@ These are retained for backwards compatibility but not required for new setups:
 | `VITE_SUPABASE_URL` | `EXPO_PUBLIC_SUPABASE_URL` |
 | `VITE_SUPABASE_KEY` | `EXPO_PUBLIC_SUPABASE_KEY` |
 
+## Design
+
+- [Figma — UI Screens & Components](https://www.figma.com/design/sOaLnijKNhnXQ9uq6sdcno/YoUnion-%E2%80%94-UI-Screens---Components?m=auto&t=wcLayY2d4xtX48si-1)
+
 ## Documentation
 
 | Document | Description |
