@@ -19,7 +19,9 @@
       "Bash(grep -r 'supabase functions serve' /Users/majorwookie/Documents/GitHub/YoUnion --include=*.ts --include=*.js --include=*.json)",
       "Bash(xargs cat:*)",
       "mcp__claude_ai_Supabase__execute_sql",
-      "Bash(bunx dotenvx:*)"
+      "Bash(bunx dotenvx:*)",
+      "Bash(git diff:*)",
+      "Bash(git rm:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
