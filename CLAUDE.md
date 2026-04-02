@@ -17,11 +17,11 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 - **Embeddings**: Voyage AI (voyage-4-lite for dev, voyage-finance-2 for prod), 1024 dimensions
 - **SEC Data**: sec-api.io (filings, XBRL, company search)
 - **API Layer**: Supabase Edge Functions (Deno runtime, 18 endpoints)
-- **Background Jobs**: PostgreSQL-backed job queue + AWS Lambda workers (SST v3)
+- **Background Jobs**: PostgreSQL-backed job queue
 - **Validation**: Valibot 1.0 (NOT Zod)
 - **Linting**: oxlint + oxfmt (NOT ESLint/Prettier)
 - **Testing**: Vitest (unit), Playwright (E2E — scaffolded, not active)
-- **Deployment**: SST v3 on AWS (static SPA + Lambda) + Supabase Edge Functions
+- **Deployment**: Supabase Edge Functions
 - **Charts**: react-native-svg (custom SVG-based PieChart, SunburstChart); React Native `View` for inline bar fills
 - **Markdown**: react-native-markdown-display 7.x
 - **Icons**: Phosphor (phosphor-react for web, phosphor-react-native for mobile)
@@ -54,10 +54,6 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 │  @union/helpers   — Shared utilities (ensureEnv, types,   │
 │                     concurrency, normalizeName, nicknames)│
 │  @union/hooks     — React hooks (useAuth, useDebounce)    │
-├─────────────────────────────────────────────────────────┤
-│  src/server/lambda/ — AWS Lambda workers (SST v3)         │
-│  - ingestion.handler  (long-running SEC + AI jobs)        │
-│  - migrate.handler    (⚠️ STALE — refs removed Drizzle migrations) │
 └─────────────────────────────────────────────────────────┘
          │                    │                  │
     Supabase Auth      PostgreSQL + pgvector    SEC API
@@ -154,7 +150,7 @@ Documented in `docs/adrs/`. Key active decisions: Tamagui (not web-only UI libs)
 - **Tamagui `flexGrow`**: Not a shorthand prop. Use `style={{ flexGrow: 1 }}` escape hatch. Similarly, use RN's `ScrollView` instead of Tamagui's for `contentContainerStyle`.
 - **Tamagui TS2322 type errors**: Use `color as any` for dynamic color strings. Cast responsive components to `any` when shorthands inside `$gtMd` fail. Add explaining comments.
 - **Ingestion logic duplication**: `_shared/sec-ingest.ts` mirrors column mappings from `directors-ingestion.ts` and `compensation-ingestion.ts`. Keep both in sync.
-- **Edge Function timeouts**: 150s (free) / 400s (Pro). Long-running ops (summarization) must use Lambda workers.
+- **Edge Function timeouts**: 150s (free) / 400s (Pro). Long-running ops (summarization) should be run via the seed script or broken into smaller batches.
 - **Expo Router**: Uses `useLocalSearchParams<T>()` (not `useParams`). Entry point must be `"main": "expo-router/entry"` in `package.json`.
 
 ## Version Verification
@@ -191,8 +187,6 @@ Setup instructions in `README.md`. Tech debt tracked in `docs/TECH-DEBT.md`.
 
 ### In Progress / Remaining
 - Job queue partially migrated to PostgreSQL `jobs` table (Edge Functions use DB queue; legacy routes still use in-memory)
-- Lambda worker integration for job processing (TODO: wire up SQS trigger)
-- Lambda migrate handler needs rewrite (refs removed Drizzle migrations)
 - No production deployment yet — local dev and staging only
 
 ### Reference Docs

@@ -25,11 +25,11 @@ Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI
 | Embeddings | Voyage AI (voyage-4-lite dev / voyage-finance-2 prod) |
 | SEC Data | sec-api.io |
 | API Layer | Supabase Edge Functions (Deno, 18 endpoints) |
-| Background Jobs | PostgreSQL job queue + AWS Lambda workers |
+| Background Jobs | PostgreSQL job queue |
 | Validation | Valibot 1.0 |
 | Linting | oxlint + oxfmt |
 | Testing | Vitest (unit), Playwright (E2E scaffold) |
-| Deployment | SST v3 on AWS (ECS + Lambda) + Supabase Edge Functions |
+| Deployment | Supabase Edge Functions |
 | Charts | react-native-svg (custom PieChart, SunburstChart) |
 
 ## Prerequisites
@@ -83,18 +83,33 @@ This resets the local database and replays all migrations from `supabase/migrati
 
 ### 5. Seed data (optional)
 
+> **Cost Warning:** Seeding uses paid APIs that will incur charges. Review the estimates below before running.
+
+| Scenario | sec-api.io | Claude (Haiku 4.5) | Voyage AI | Est. Total |
+|----------|-----------|-------------------|-----------|------------|
+| 1 company, 1 year, no AI | ~10 calls | — | — | ~$0 (free tier may cover) |
+| 1 company, 1 year, with AI | ~10 calls | ~$0.30–0.60 | < $0.01 | ~$0.50–1.00 |
+| 1 company, 5 years, with AI | ~50 calls | ~$1–2 | < $0.05 | ~$1–2 |
+| 30 companies, 5 years, with AI | ~1,500 calls | ~$15–30 | ~$0.50 | ~$15–30 |
+
+- **sec-api.io** — Free tier allows 100 API calls. Full 30-company seed requires a paid plan (~$49/month). A single company with `--years=1` may fit within the free tier.
+- **Anthropic Claude** — Summarization uses Claude Haiku 4.5 ($0.80/M input tokens, $4/M output tokens). Cost scales with filing count and section length.
+- **Voyage AI** — Embeddings are very inexpensive (~$0.02/M tokens). Optional — falls back to local Ollama if `VOYAGE_API_KEY` is unset.
+
+**Recommendation:** Start with a single company and limited history to verify your setup before committing to a larger seed:
+
 ```bash
-# Full pipeline — SEC data + AI summaries (slow, needs all API keys)
+# Cheapest: single company, 1 year, data only (no AI costs)
+bun run seed -- --tickers=AAPL --years=1 --skip-summarization
+
+# Single company with AI summarization (~$0.50)
+bun run seed -- --tickers=AAPL --years=1
+
+# Full pipeline — SEC data + AI summaries (see cost table above)
 bun run seed
 
 # Data only, no AI summarization (faster, needs SEC_API_KEY only)
 bun run seed:no-ai
-
-# Single company
-bun run seed -- --tickers=AAPL
-
-# Limited history (1 year instead of default 5)
-bun run seed -- --tickers=AAPL --years=1
 ```
 
 See [SEED.md](SEED.md) for all options, default tickers, and troubleshooting.
@@ -172,10 +187,6 @@ bun run android
 |---------|-------------|
 | `bun run build:web` | Build web app (Expo export) |
 | `bun run deploy:functions` | Deploy Edge Functions to Supabase |
-| `bun run sst:dev` | SST dev mode (local) |
-| `bun run sst:deploy` | Deploy to AWS via SST |
-| `bun run sst:remove` | Tear down AWS infrastructure |
-| `bun run sst:secrets` | Manage SST secrets |
 
 ## Project Structure
 
@@ -246,21 +257,6 @@ bun run deploy:functions
 
 Deploys all functions in `supabase/functions/` to your linked Supabase project.
 
-### AWS (SST v3)
-
-Infrastructure is managed by [SST v3](https://sst.dev) (`sst.config.ts`):
-
-- **ECS Fargate** — Web app container (port 3000, CloudFront CDN)
-- **Lambda: IngestionWorker** — Long-running SEC + AI jobs (15-min timeout)
-- **Lambda: DatabaseMigrator** — Runs migrations on deploy
-- **VPC + NAT** — Lambda egress to Supabase
-
-```bash
-bun run sst:dev       # Local SST dev
-bun run sst:deploy    # Deploy to staging/production
-bun run sst:remove    # Tear down resources
-```
-
 ### EAS (Mobile Builds)
 
 ```bash
@@ -275,8 +271,6 @@ Build profiles (development, preview, production) are configured in `eas.json`.
 | Workflow | Trigger | What it does |
 |----------|---------|-------------|
 | `ci.yml` | Pull requests to `main` | Lint, typecheck, unit tests |
-| `deploy-staging.yml` | Push to `main` | Auto-deploy to staging |
-| `deploy-production.yml` | Manual trigger | Deploy to production (requires "deploy" confirmation) |
 
 ## Testing
 
