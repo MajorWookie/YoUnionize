@@ -21,7 +21,11 @@
       "mcp__claude_ai_Supabase__execute_sql",
       "Bash(bunx dotenvx:*)",
       "Bash(git diff:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "mcp__claude_ai_Figma__get_metadata",
+      "mcp__claude_ai_Figma__get_screenshot",
+      "Bash(xargs ls:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ]
   },
   "enableAllProjectMcpServers": true,
