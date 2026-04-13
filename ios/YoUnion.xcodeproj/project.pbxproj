@@ -22,7 +22,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = YoUnion/Info.plist; sourceTree = "<group>"; };
 		243DCEF2730AC967777D89EF /* Pods-YoUnion.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.debug.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.debug.xcconfig"; sourceTree = "<group>"; };
 		4FA43777CC9E6E068660606B /* Pods-YoUnion.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YoUnion.release.xcconfig"; path = "Target Support Files/Pods-YoUnion/Pods-YoUnion.release.xcconfig"; sourceTree = "<group>"; };
-		55743FE209DCF333A8A64407 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = YoUnion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		55743FE209DCF333A8A64407 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = YoUnion/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8BE50DCFFFE283A8EC88C9FB /* libPods-YoUnion.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-YoUnion.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = YoUnion/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
@@ -120,7 +120,6 @@
 				243DCEF2730AC967777D89EF /* Pods-YoUnion.debug.xcconfig */,
 				4FA43777CC9E6E068660606B /* Pods-YoUnion.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -349,6 +348,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = YoUnion/YoUnion.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FV525G8KP2;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -385,6 +385,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = YoUnion/YoUnion.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FV525G8KP2;
 				INFOPLIST_FILE = YoUnion/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
