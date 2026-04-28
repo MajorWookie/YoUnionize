@@ -17,6 +17,7 @@ import { inArray } from 'drizzle-orm'
 import { getDb, companies } from '@union/postgres'
 import { pMapSettled } from '@union/helpers'
 import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
+import { startHeartbeat, stopHeartbeat, startPhase, endPhase } from './lib/progress'
 
 const COMPANY_CONCURRENCY = 2
 
@@ -64,6 +65,7 @@ async function main() {
   console.info(`[Summarize-All] ═══════════════════════════════════════════════════\n`)
 
   const totalStart = Date.now()
+  startHeartbeat({ label: '[Summarize-All]', intervalMs: 5000 })
   let totalSummarized = 0
   let totalFilings = 0
   let totalErrors = 0
@@ -75,6 +77,7 @@ async function main() {
     async (c) => {
       const start = Date.now()
       console.info(`[Summarize-All] ─── ${c.ticker} (${c.name}) ───`)
+      startPhase(c.ticker, 'AI summarization + Voyage embeddings')
       try {
         const r = await summarizeCompanyFilings(c.id, c.name)
         const dur = formatDuration(Date.now() - start)
@@ -87,15 +90,19 @@ async function main() {
             console.info(`[Summarize-All] [${c.ticker}]   - ${e}`)
           }
         }
+        endPhase(c.ticker)
         return r
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         console.info(`[Summarize-All] ✗ ${c.ticker} FAILED: ${msg}`)
+        endPhase(c.ticker)
         throw err
       }
     },
     COMPANY_CONCURRENCY,
   )
+
+  stopHeartbeat()
 
   for (const entry of settled) {
     if (entry.status === 'fulfilled') {
