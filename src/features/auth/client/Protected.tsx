@@ -1,7 +1,7 @@
 import { Redirect } from 'expo-router'
 import type { ReactNode } from 'react'
 import { Spinner, YStack } from 'tamagui'
-import { useAuth } from '@union/hooks'
+import { useAuth } from '@younionize/hooks'
 
 export function Protected({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth()

@@ -6,7 +6,7 @@ import {
   executiveCompensation,
   insiderTrades,
   directors,
-} from '@union/postgres'
+} from '@younionize/postgres'
 import { withLogging, badRequest, notFound, classifyError } from '~/server/api-utils'
 
 const handlers = withLogging('/api/companies/[ticker]/detail', {

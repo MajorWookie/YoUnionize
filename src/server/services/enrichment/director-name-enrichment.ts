@@ -1,6 +1,6 @@
 import { eq, isNull, and } from 'drizzle-orm'
-import { getDb, directors } from '@union/postgres'
-import { getCanonicalFirstName } from '@union/helpers'
+import { getDb, directors } from '@younionize/postgres'
+import { getCanonicalFirstName } from '@younionize/helpers'
 import {
   extractLastName,
   pickCanonical,
