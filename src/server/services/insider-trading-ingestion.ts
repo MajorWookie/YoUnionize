@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { getDb, insiderTrades } from '@union/postgres'
+import { getDb, insiderTrades } from '@younionize/postgres'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 

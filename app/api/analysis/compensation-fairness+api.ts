@@ -7,7 +7,7 @@ import {
   executiveCompensation,
   filingSummaries,
   compensationAnalyses,
-} from '@union/postgres'
+} from '@younionize/postgres'
 import { ensureAuth } from '~/features/auth/server/ensureAuth'
 import { getAiClient } from '~/server/ai-client'
 import {

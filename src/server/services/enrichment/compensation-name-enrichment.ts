@@ -1,6 +1,6 @@
 import { eq, isNull, and } from 'drizzle-orm'
-import { getDb, executiveCompensation } from '@union/postgres'
-import { getCanonicalFirstName } from '@union/helpers'
+import { getDb, executiveCompensation } from '@younionize/postgres'
+import { getCanonicalFirstName } from '@younionize/helpers'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

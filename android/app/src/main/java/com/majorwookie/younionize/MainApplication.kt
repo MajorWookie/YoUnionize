@@ -1,4 +1,4 @@
-package com.majorwookie.younion
+package com.majorwookie.younionize
 
 import android.app.Application
 import android.content.res.Configuration

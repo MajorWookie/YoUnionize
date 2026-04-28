@@ -1,4 +1,4 @@
--- Initial schema: all public tables for YoUnion app
+-- Initial schema: all public tables for Younionize app
 -- Source of truth: src/database/schema/*.ts
 
 -- Enable pgvector extension for embeddings (public schema for remote compatibility)

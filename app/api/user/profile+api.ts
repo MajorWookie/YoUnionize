@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import * as v from 'valibot'
-import { getDb, userProfiles } from '@union/postgres'
+import { getDb, userProfiles } from '@younionize/postgres'
 import { ensureAuth } from '~/features/auth/server/ensureAuth'
 import { withLogging, validationError, classifyError } from '~/server/api-utils'
 

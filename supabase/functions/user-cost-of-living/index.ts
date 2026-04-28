@@ -25,7 +25,7 @@ const UpdateCostOfLivingSchema = v.object({
 })
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors()
+  if (req.method === 'OPTIONS') return handleCors(req)
 
   try {
     const session = await ensureAuth(req)

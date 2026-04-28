@@ -5,7 +5,7 @@ import {
   filingSummaries,
   userProfiles,
   findSimilarEmbeddings,
-} from '@union/postgres'
+} from '@younionize/postgres'
 import { getAiClient } from '~/server/ai-client'
 import { lookupCompany } from '~/server/services/company-lookup'
 import {
