@@ -23,17 +23,21 @@ Deno.serve(async (req) => {
 
     if (!company) return notFound(`No company found for ticker "${ticker}"`)
 
-    // Get summary status counts
+    // Get summary status counts. A filing counts as summarized if either the
+    // AI baseline or a human edit exists.
     const allFilings = await db
       .select({
         id: filingSummaries.id,
         aiSummary: filingSummaries.aiSummary,
+        humanSummary: filingSummaries.humanSummary,
       })
       .from(filingSummaries)
       .where(eq(filingSummaries.companyId, company.id))
 
     const totalFilings = allFilings.length
-    const summarizedFilings = allFilings.filter((f) => f.aiSummary != null).length
+    const summarizedFilings = allFilings.filter(
+      (f) => f.aiSummary != null || f.humanSummary != null,
+    ).length
     const pendingFilings = totalFilings - summarizedFilings
 
     return jsonResponse({

@@ -70,6 +70,7 @@ const handlers = withLogging('/api/analysis/compensation-fairness', {
       const [latestFiling] = await db
         .select({
           aiSummary: filingSummaries.aiSummary,
+          humanSummary: filingSummaries.humanSummary,
           filingType: filingSummaries.filingType,
         })
         .from(filingSummaries)
@@ -117,8 +118,9 @@ const handlers = withLogging('/api/analysis/compensation-fairness', {
         industry: company.industry,
       }
 
-      if (latestFiling?.aiSummary) {
-        const summary = latestFiling.aiSummary as Record<string, unknown>
+      const summarySource = latestFiling?.humanSummary ?? latestFiling?.aiSummary
+      if (summarySource) {
+        const summary = summarySource as Record<string, unknown>
         // Include key_numbers and executive_summary for context
         const execSummary = summary.executive_summary as Record<string, unknown> | undefined
         if (execSummary?.key_numbers) {
