@@ -30,7 +30,11 @@ export async function lookupCompany(tickerOrName: string): Promise<CompanyRecord
     throw new Error(`No company found for "${tickerOrName}"`)
   }
 
-  const match = mappings[0]
+  // Prefer an exact ticker match. SEC's mapping endpoint can return historical
+  // or unrelated tickers (e.g. "VZ" → AVZAQ/Aviza Technology), and silently
+  // taking mappings[0] turns a wrong-match into corrupted data.
+  const match =
+    mappings.find((m) => m.ticker?.toUpperCase() === input) ?? mappings[0]
   if (!match.ticker || !match.cik) {
     throw new Error(`Incomplete data for "${tickerOrName}": missing ticker or CIK`)
   }

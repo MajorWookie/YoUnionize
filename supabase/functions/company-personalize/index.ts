@@ -58,12 +58,14 @@ Deno.serve(async (req) => {
         filingType: filingSummaries.filingType,
         companyId: filingSummaries.companyId,
         aiSummary: filingSummaries.aiSummary,
+        humanSummary: filingSummaries.humanSummary,
       })
       .from(filingSummaries)
       .where(eq(filingSummaries.id, filingId))
       .limit(1)
 
-    if (!filing?.aiSummary) return notFound('Filing summary not found')
+    const summarySource = filing?.humanSummary ?? filing?.aiSummary
+    if (!filing || !summarySource) return notFound('Filing summary not found')
 
     // Get company name
     const [company] = await db
@@ -73,7 +75,7 @@ Deno.serve(async (req) => {
       .limit(1)
 
     const companyName = company?.name ?? 'this company'
-    const summary = filing.aiSummary as Record<string, unknown>
+    const summary = summarySource as Record<string, unknown>
     const execSummary = summary.executive_summary as Record<string, unknown> | string | undefined
 
     // Build summary text for the prompt

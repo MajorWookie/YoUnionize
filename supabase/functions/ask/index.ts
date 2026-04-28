@@ -1,4 +1,4 @@
-import { eq, desc, and, isNotNull, sql } from 'drizzle-orm'
+import { eq, desc, and, isNotNull, or, sql } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
@@ -153,16 +153,18 @@ Deno.serve(async (req) => {
             .select({
               id: filingSummaries.id,
               aiSummary: filingSummaries.aiSummary,
+              humanSummary: filingSummaries.humanSummary,
             })
             .from(filingSummaries)
             .where(eq(filingSummaries.id, result.sourceId))
             .limit(1)
 
-          if (!filing?.aiSummary) continue
+          const summarySource = filing?.humanSummary ?? filing?.aiSummary
+          if (!summarySource) continue
 
           const metadata = result.metadata ?? {}
           const section = (metadata.section as string) ?? 'unknown'
-          const summary = filing.aiSummary as Record<string, unknown>
+          const summary = summarySource as Record<string, unknown>
           const text = extractSectionText(summary[section])
 
           if (text.length > 0) {
@@ -228,15 +230,17 @@ Deno.serve(async (req) => {
           filingType: filingSummaries.filingType,
           periodEnd: filingSummaries.periodEnd,
           aiSummary: filingSummaries.aiSummary,
+          humanSummary: filingSummaries.humanSummary,
         })
         .from(filingSummaries)
         .where(eq(filingSummaries.id, result.sourceId))
         .limit(1)
 
-      if (!filing?.aiSummary) continue
+      const summarySource = filing?.humanSummary ?? filing?.aiSummary
+      if (!filing || !summarySource) continue
 
       const ticker = (metadata.companyTicker as string) ?? companyTicker ?? ''
-      const summary = filing.aiSummary as Record<string, unknown>
+      const summary = summarySource as Record<string, unknown>
       const text = extractSectionText(summary[section])
 
       if (text.length > 0) {
@@ -262,14 +266,23 @@ Deno.serve(async (req) => {
           filingType: filingSummaries.filingType,
           periodEnd: filingSummaries.periodEnd,
           aiSummary: filingSummaries.aiSummary,
+          humanSummary: filingSummaries.humanSummary,
         })
         .from(filingSummaries)
-        .where(and(eq(filingSummaries.companyId, companyId), isNotNull(filingSummaries.aiSummary)))
+        .where(
+          and(
+            eq(filingSummaries.companyId, companyId),
+            or(
+              isNotNull(filingSummaries.aiSummary),
+              isNotNull(filingSummaries.humanSummary),
+            ),
+          ),
+        )
         .orderBy(desc(filingSummaries.filedAt))
         .limit(3)
 
       for (const filing of recentFilings) {
-        const summary = filing.aiSummary as Record<string, unknown>
+        const summary = (filing.humanSummary ?? filing.aiSummary) as Record<string, unknown>
         for (const [section, content] of Object.entries(summary)) {
           const text = extractSectionText(content)
           if (text.length > 50) {

@@ -78,7 +78,11 @@ Deno.serve(async (req) => {
       .limit(10)
 
     const [latestFiling] = await db
-      .select({ aiSummary: filingSummaries.aiSummary, filingType: filingSummaries.filingType })
+      .select({
+        aiSummary: filingSummaries.aiSummary,
+        humanSummary: filingSummaries.humanSummary,
+        filingType: filingSummaries.filingType,
+      })
       .from(filingSummaries)
       .where(eq(filingSummaries.companyId, company.id))
       .orderBy(desc(filingSummaries.filedAt))
@@ -105,8 +109,9 @@ Deno.serve(async (req) => {
       sector: company.sector, industry: company.industry,
     }
 
-    if (latestFiling?.aiSummary) {
-      const summary = latestFiling.aiSummary as Record<string, unknown>
+    const summarySource = latestFiling?.humanSummary ?? latestFiling?.aiSummary
+    if (summarySource) {
+      const summary = summarySource as Record<string, unknown>
       const execSummary = summary.executive_summary as Record<string, unknown> | undefined
       if (execSummary?.key_numbers) companyFinancials.key_numbers = execSummary.key_numbers
       if (execSummary?.employee_relevance) companyFinancials.employee_relevance = execSummary.employee_relevance

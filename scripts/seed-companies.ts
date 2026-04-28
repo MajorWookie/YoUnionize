@@ -94,6 +94,7 @@ async function ingestFilingsForSeed(company: CompanyRecord): Promise<{
   const cikQuery = `cik:${company.cik}`
 
   console.info(`[Seed] Fetching filings for ${company.ticker} (CIK: ${company.cik})`)
+  startPhase(company.ticker, 'fetching SEC filings (10-K / DEF 14A / 8-K)')
 
   // Fetch all filing types in parallel
   const [tenKResult, defResult, eightKResult] = await Promise.all([
@@ -127,7 +128,13 @@ async function ingestFilingsForSeed(company: CompanyRecord): Promise<{
     `[Seed]   Found: ${tenKResult.filings.length} 10-Ks, ${defResult.filings.length} DEF 14As, ${eightKResult.filings.length} 8-Ks`,
   )
 
+  let processedCount = 0
   for (const { filing, filingType } of allFilings) {
+    processedCount++
+    startPhase(
+      company.ticker,
+      `ingesting filing ${processedCount}/${allFilings.length} (${filingType})`,
+    )
     try {
       // Check for existing record (idempotency)
       const existing = await db
@@ -256,6 +263,7 @@ async function seedCompany(ticker: string, index: number, total: number): Promis
   const companyStart = Date.now()
 
   console.info(`[Seed] ─── ${ticker} (${index + 1}/${total}) ─────────────────────────`)
+  startPhase(ticker, 'looking up company (ticker → CIK)')
 
   try {
     // 1. Look up company (resolve ticker → CIK, upsert DB)
@@ -263,6 +271,7 @@ async function seedCompany(ticker: string, index: number, total: number): Promis
     console.info(`[Seed] Company: ${company.name} (CIK: ${company.cik})`)
 
     // 2. Run ingestion pipelines in parallel
+    startPhase(ticker, 'ingesting filings + comp + trades + directors (parallel)')
     const [filingResult, compResult, tradeResult, dirResult] = await Promise.allSettled([
       ingestFilingsForSeed(company),
       ingestCompensation(company),
@@ -299,6 +308,7 @@ async function seedCompany(ticker: string, index: number, total: number): Promis
     // 3. Run AI summarization + embeddings
     if (!skipSummarization) {
       console.info(`[Seed] [${ticker}] Summarizing filings...`)
+      startPhase(ticker, 'AI summarization + Voyage embeddings')
       const summaryResult = await summarizeCompanyFilings(company.id, company.name)
       console.info(
         `[Seed] [${ticker}] Summarized: ${summaryResult.summarized}/${summaryResult.total} ` +
@@ -311,6 +321,7 @@ async function seedCompany(ticker: string, index: number, total: number): Promis
 
     const duration = Date.now() - companyStart
     console.info(`[Seed] ✓ ${ticker} complete (${formatDuration(duration)})`)
+    endPhase(ticker)
 
     return {
       ticker,
@@ -325,6 +336,7 @@ async function seedCompany(ticker: string, index: number, total: number): Promis
     const duration = Date.now() - companyStart
     const msg = err instanceof Error ? err.message : String(err)
     console.info(`[Seed] ✗ ${ticker} FAILED: ${msg}`)
+    endPhase(ticker)
     return {
       ticker,
       success: false,
@@ -357,6 +369,7 @@ async function main() {
   console.info(`[Seed] ═══════════════════════════════════════════════════\n`)
 
   const totalStart = Date.now()
+  startHeartbeat({ label: '[Seed]', intervalMs: 5000 })
 
   // Process companies with bounded concurrency
   const settled = await pMapSettled(
@@ -364,6 +377,8 @@ async function main() {
     (ticker, index) => seedCompany(ticker, index, tickers.length),
     SEED_CONFIG.companyConcurrency,
   )
+
+  stopHeartbeat()
 
   const results: Array<CompanyResult> = settled.map((entry, i) => {
     if (entry.status === 'fulfilled') return entry.value

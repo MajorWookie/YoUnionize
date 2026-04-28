@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, lt, or } from 'drizzle-orm'
 import {
   getDb,
   companies,
@@ -38,8 +38,9 @@ interface FilingRow {
   filingType: string
   accessionNumber: string
   rawData: Record<string, unknown>
+  rawDataOverride: Record<string, unknown> | null
   aiSummary: unknown
-  summaryVersion: number | null
+  summaryVersion: number
 }
 
 // ─── Sections per filing type ───────────────────────────────────────────────
@@ -109,13 +110,17 @@ export async function summarizeCompanyFilings(
     tokenUsage: { inputTokens: 0, outputTokens: 0 },
   }
 
-  // Query unsummarized filings
+  // Query filings that need (re-)summarization. We pick up anything below the
+  // current version (covers schema-default rows + stale prior versions) plus
+  // the explicit -1 retry sentinel. Using `<` instead of `= 0` also keeps the
+  // pipeline correct across future CURRENT_SUMMARY_VERSION bumps.
   const filings = await db
     .select({
       id: filingSummaries.id,
       filingType: filingSummaries.filingType,
       accessionNumber: filingSummaries.accessionNumber,
       rawData: filingSummaries.rawData,
+      rawDataOverride: filingSummaries.rawDataOverride,
       aiSummary: filingSummaries.aiSummary,
       summaryVersion: filingSummaries.summaryVersion,
     })
@@ -123,7 +128,10 @@ export async function summarizeCompanyFilings(
     .where(
       and(
         eq(filingSummaries.companyId, companyId),
-        isNull(filingSummaries.aiSummary),
+        or(
+          lt(filingSummaries.summaryVersion, CURRENT_SUMMARY_VERSION),
+          eq(filingSummaries.summaryVersion, -1),
+        ),
       ),
     )
 
@@ -177,7 +185,8 @@ async function summarizeSingleFiling(
   ai: ClaudeClient,
 ): Promise<{ inputTokens: number; outputTokens: number }> {
   const db = getDb()
-  const rawData = filing.rawData as Record<string, unknown>
+  // Read precedence: human override (if present) wins over the SEC raw payload.
+  const rawData = (filing.rawDataOverride ?? filing.rawData) as Record<string, unknown>
   const sections = FILING_SECTIONS[filing.filingType] ?? ['executive_summary']
   const aiSummary: Record<string, unknown> = {}
   let inputTokens = 0
@@ -203,13 +212,25 @@ async function summarizeSingleFiling(
     }
   }
 
-  // Process AI sections with bounded concurrency
+  // Process AI sections with bounded concurrency. pMapSettled never throws on
+  // per-section failure (those become 'rejected' entries); a throw here means
+  // the concurrency primitive itself failed.
   const sectionResults = await pMapSettled(
     aiSections,
     async (section) => summarizeSectionDispatch(section, companyId, companyName, rawData, filing.filingType, ai),
     SECTION_CONCURRENCY,
-  )
+  ).catch(async (err: unknown) => {
+    await db
+      .update(filingSummaries)
+      .set({
+        summaryVersion: -1,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(filingSummaries.id, filing.id))
+    throw err
+  })
 
+  let successfulSections = 0
   for (let i = 0; i < aiSections.length; i++) {
     const section = aiSections[i]
     const entry = sectionResults[i]
@@ -217,6 +238,7 @@ async function summarizeSingleFiling(
       aiSummary[section] = entry.value.data
       inputTokens += entry.value.usage.inputTokens
       outputTokens += entry.value.usage.outputTokens
+      successfulSections++
     } else if (entry.status === 'rejected') {
       const msg = `Section "${section}": ${entry.reason instanceof Error ? entry.reason.message : String(entry.reason)}`
       console.info(`[Summarize] Skipping — ${msg}`)
@@ -224,12 +246,31 @@ async function summarizeSingleFiling(
     }
   }
 
-  // Update the filing record
+  // If every AI section failed, treat the run as a failed re-run: leave the
+  // prior ai_summary intact (so a stale summary is still visible) and flag
+  // summary_version = -1 for the next pass to retry.
+  if (aiSections.length > 0 && successfulSections === 0) {
+    console.info(
+      `[Summarize] All sections failed for ${filing.accessionNumber} — flagging for retry`,
+    )
+    await db
+      .update(filingSummaries)
+      .set({
+        summaryVersion: -1,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(filingSummaries.id, filing.id))
+    return { inputTokens, outputTokens }
+  }
+
+  // Successful run: write the new summary and reset provenance to ai_generated.
   await db
     .update(filingSummaries)
     .set({
       aiSummary,
       summaryVersion: CURRENT_SUMMARY_VERSION,
+      summarizationStatus: 'ai_generated',
+      summarizationUpdatedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(filingSummaries.id, filing.id))
