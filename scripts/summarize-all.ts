@@ -14,8 +14,8 @@
  */
 
 import { inArray } from 'drizzle-orm'
-import { getDb, companies } from '@union/postgres'
-import { pMapSettled } from '@union/helpers'
+import { getDb, companies } from '@younionize/postgres'
+import { pMapSettled } from '@younionize/helpers'
 import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
 import { startHeartbeat, stopHeartbeat, startPhase, endPhase } from './lib/progress'
 

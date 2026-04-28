@@ -5,6 +5,7 @@ import {
   userCostOfLiving,
   companies,
   filingSummaries,
+  filingSections,
   executiveCompensation,
   insiderTrades,
   directors,
@@ -50,6 +51,14 @@ export const filingSummariesRelations = relations(filingSummaries, ({ one, many 
     references: [companies.id],
   }),
   executiveCompensation: many(executiveCompensation),
+  sections: many(filingSections),
+}))
+
+export const filingSectionsRelations = relations(filingSections, ({ one }) => ({
+  filing: one(filingSummaries, {
+    fields: [filingSections.filingId],
+    references: [filingSummaries.id],
+  }),
 }))
 
 export const executiveCompensationRelations = relations(executiveCompensation, ({ one }) => ({

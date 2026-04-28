@@ -16,7 +16,7 @@ import { IncomeStatementSunburst } from '~/features/company/sections/IncomeState
 import { CeoSpotlightCard } from '~/features/company/sections/CeoSpotlightCard'
 import { IngestionPrompt } from '~/features/company/sections/IngestionPrompt'
 import { AskBar } from '~/features/ask/AskBar'
-import { useAuth } from '@union/hooks'
+import { useAuth } from '@younionize/hooks'
 import type {
   CompanyDetailResponse,
   CompanySummaryResult,

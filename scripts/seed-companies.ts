@@ -20,8 +20,8 @@
  */
 
 import { eq } from 'drizzle-orm'
-import { getDb, filingSummaries } from '@union/postgres'
-import { pMapSettled } from '@union/helpers'
+import { getDb, filingSummaries, filingSections } from '@younionize/postgres'
+import { pMapSettled } from '@younionize/helpers'
 import { getSecApiClient } from '../src/server/sec-api-client'
 import { lookupCompany } from '../src/server/services/company-lookup'
 import { ingestCompensation } from '../src/server/services/compensation-ingestion'
@@ -29,8 +29,8 @@ import { ingestInsiderTrading } from '../src/server/services/insider-trading-ing
 import { ingestDirectors } from '../src/server/services/directors-ingestion'
 import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
 import type { CompanyRecord } from '../src/server/services/company-lookup'
-import type { Filing } from '@union/sec-api'
-import { TenKSection } from '@union/sec-api'
+import type { Filing } from '@younionize/sec-api'
+import { getSectionItemsForFilingType } from '@younionize/sec-api'
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -141,27 +141,31 @@ async function ingestFilingsForSeed(company: CompanyRecord): Promise<{
         continue
       }
 
-      // Build raw_data with extracted content
+      // Build raw_data (filing metadata + optional XBRL).
+      // Section text now lives in the filing_sections table, populated below.
       const rawData: Record<string, unknown> = { ...filing }
 
-      if ((filingType === '10-K' || filingType === 'DEF 14A') && filing.linkToFilingDetails) {
-        const [xbrl, sections] = await Promise.all([
-          filingType === '10-K' ? safeXbrl(filing) : Promise.resolve(null),
-          extractSections(filing, filingType),
-        ])
+      if (filingType === '10-K' && filing.linkToFilingDetails) {
+        const xbrl = await safeXbrl(filing)
         if (xbrl) rawData.xbrlData = xbrl
-        if (sections) rawData.extractedSections = sections
       }
 
-      await db.insert(filingSummaries).values({
-        companyId: company.id,
-        filingType,
-        periodEnd: filing.periodOfReport ?? null,
-        filedAt: filing.filedAt,
-        accessionNumber: filing.accessionNo,
-        rawData,
-        aiSummary: null,
-      })
+      const [inserted] = await db
+        .insert(filingSummaries)
+        .values({
+          companyId: company.id,
+          filingType,
+          periodEnd: filing.periodOfReport ?? null,
+          filedAt: filing.filedAt,
+          accessionNumber: filing.accessionNo,
+          rawData,
+          aiSummary: null,
+        })
+        .returning({ id: filingSummaries.id })
+
+      if (filing.linkToFilingDetails) {
+        await extractSectionsToTable(filing, filingType, inserted.id)
+      }
 
       result.ingested++
       console.info(`[Seed]   ✓ ${filingType} ${filing.periodOfReport ?? filing.filedAt} (${filing.accessionNo})`)
@@ -191,45 +195,60 @@ async function safeXbrl(filing: Filing): Promise<unknown | null> {
   }
 }
 
-async function extractSections(
+async function extractSectionsToTable(
   filing: Filing,
   filingType: string,
-): Promise<Record<string, string> | null> {
+  filingId: string,
+): Promise<void> {
   const client = getSecApiClient()
-  if (!filing.linkToFilingDetails) return null
-
-  const sections: Record<string, string> = {}
+  const db = getDb()
   const url = filing.linkToFilingDetails
+  if (!url) return
 
-  const sectionItems =
-    filingType === '10-K'
-      ? [
-        { key: 'businessOverview', item: TenKSection.BUSINESS_OVERVIEW },
-        { key: 'riskFactors', item: TenKSection.RISK_FACTORS },
-        { key: 'mdAndA', item: TenKSection.MD_AND_A },
-        { key: 'legalProceedings', item: TenKSection.LEGAL_PROCEEDINGS },
-      ]
-      : filingType === 'DEF 14A'
-        ? [
-          { key: 'executiveCompensation', item: 'part1item7' as const },
-          { key: 'proxy', item: 'part1item1' as const },
-        ]
-        : []
+  const sectionItems = getSectionItemsForFilingType(filingType)
+  if (sectionItems.length === 0) return
 
   const results = await Promise.allSettled(
-    sectionItems.map(async ({ key, item }) => {
-      const text = await client.extractSection(url, item)
-      return { key, text }
+    sectionItems.map(async (item) => {
+      const text = await client.extractSection(url, item.code)
+      return { item, text }
     }),
   )
 
-  for (const settledResult of results) {
-    if (settledResult.status === 'fulfilled' && settledResult.value.text) {
-      sections[settledResult.value.key] = settledResult.value.text
-    }
-  }
+  for (let i = 0; i < results.length; i++) {
+    const item = sectionItems[i]
+    const settled = results[i]
 
-  return Object.keys(sections).length > 0 ? sections : null
+    let fetchStatus: 'success' | 'empty' | 'error'
+    let text: string | null
+    let fetchError: string | null = null
+
+    if (settled.status === 'rejected') {
+      fetchStatus = 'error'
+      text = null
+      fetchError = settled.reason instanceof Error ? settled.reason.message : String(settled.reason)
+    } else if (!settled.value.text || settled.value.text.length === 0) {
+      fetchStatus = 'empty'
+      text = null
+    } else {
+      fetchStatus = 'success'
+      text = settled.value.text
+    }
+
+    await db
+      .insert(filingSections)
+      .values({
+        filingId,
+        sectionCode: item.code,
+        text,
+        fetchStatus,
+        fetchError,
+      })
+      .onConflictDoUpdate({
+        target: [filingSections.filingId, filingSections.sectionCode],
+        set: { text, fetchStatus, fetchError, extractedAt: new Date().toISOString() },
+      })
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

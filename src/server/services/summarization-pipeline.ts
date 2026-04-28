@@ -4,15 +4,21 @@ import {
   getDb,
   companies,
   filingSummaries,
+  filingSections,
   embeddings,
   executiveCompensation,
-} from '@union/postgres'
-import { CURRENT_SUMMARY_VERSION } from '@union/ai'
-import type { ClaudeClient } from '@union/ai'
-import { pMapSettled } from '@union/helpers'
+} from '@younionize/postgres'
+import { CURRENT_SUMMARY_VERSION } from '@younionize/ai'
+import type { ClaudeClient } from '@younionize/ai'
+import { pMapSettled } from '@younionize/helpers'
+import { getSectionFriendlyName } from '@younionize/sec-api'
 import { getAiClient } from '../ai-client'
 import { transformXbrlToStatements } from './xbrl-transformer'
 import type { FinancialStatement } from './xbrl-transformer'
+import {
+  getPipelineSectionText,
+  type SectionMap,
+} from './summarization-section-lookup'
 
 // ─── Concurrency limits ──────────────────────────────────────────────────────
 
@@ -81,11 +87,24 @@ const STRUCTURED_SECTIONS = new Set([
   'shareholders_equity',
 ])
 
-const SECTION_TO_RAW_KEY: Record<string, string> = {
-  mda: 'mdAndA',
-  risk_factors: 'riskFactors',
-  business_overview: 'businessOverview',
-  legal_proceedings: 'legalProceedings',
+async function loadFilingSections(filingId: string): Promise<SectionMap> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      sectionCode: filingSections.sectionCode,
+      text: filingSections.text,
+      fetchStatus: filingSections.fetchStatus,
+    })
+    .from(filingSections)
+    .where(eq(filingSections.filingId, filingId))
+
+  const map: SectionMap = new Map()
+  for (const row of rows) {
+    if (row.fetchStatus === 'success' && row.text) {
+      map.set(row.sectionCode, row.text)
+    }
+  }
+  return map
 }
 
 // ─── Main pipeline ─────────────────────────────────────────────────────────
@@ -187,6 +206,11 @@ async function summarizeSingleFiling(
     `[Summarize] ${filing.filingType} ${filing.accessionNumber} — ${sections.length} sections`,
   )
 
+  // Pre-fetch all section text for this filing once, so the section
+  // dispatcher and its delegates can read from an in-memory map instead
+  // of issuing N parallel DB queries.
+  const sectionMap = await loadFilingSections(filing.id)
+
   // Separate sync (XBRL) sections from async (AI) sections
   const aiSections: Array<string> = []
   for (const section of sections) {
@@ -206,7 +230,8 @@ async function summarizeSingleFiling(
   // Process AI sections with bounded concurrency
   const sectionResults = await pMapSettled(
     aiSections,
-    async (section) => summarizeSectionDispatch(section, companyId, companyName, rawData, filing.filingType, ai),
+    async (section) =>
+      summarizeSectionDispatch(section, companyId, companyName, rawData, sectionMap, filing.filingType, ai),
     SECTION_CONCURRENCY,
   )
 
@@ -257,11 +282,12 @@ async function summarizeSectionDispatch(
   companyId: string,
   companyName: string,
   rawData: Record<string, unknown>,
+  sectionMap: SectionMap,
   filingType: string,
   ai: ClaudeClient,
 ): Promise<SectionResult | null> {
   if (section === 'executive_compensation') {
-    const data = await summarizeExecutiveCompensation(companyId, companyName, rawData, ai)
+    const data = await summarizeExecutiveCompensation(companyId, companyName, sectionMap, filingType, ai)
     return { data: data.result, usage: data.usage }
   }
 
@@ -271,27 +297,25 @@ async function summarizeSectionDispatch(
   }
 
   if (section === 'employee_impact') {
-    const extractedSections = rawData.extractedSections as Record<string, string> | undefined
     const response = await ai.generateEmployeeImpact({
       rawData,
       filingType,
       companyName,
-      riskFactors: extractedSections?.riskFactors,
-      mdaText: extractedSections?.mdAndA,
+      riskFactors: getPipelineSectionText(sectionMap, 'risk_factors', filingType) ?? undefined,
+      mdaText: getPipelineSectionText(sectionMap, 'mda', filingType) ?? undefined,
     })
     return { data: response.data, usage: response.usage }
   }
 
   if (section === 'mda') {
-    const extractedSections = rawData.extractedSections as Record<string, string> | undefined
-    const mdaText = extractedSections?.mdAndA
+    const mdaText = getPipelineSectionText(sectionMap, 'mda', filingType)
     if (!mdaText || mdaText.trim().length === 0) return null
     const response = await ai.summarizeMda({ mdaText, companyName, filingType })
     return { data: response.data, usage: response.usage }
   }
 
   if (section === 'event_summary') {
-    const sectionText = buildEightKContext(rawData)
+    const sectionText = buildEightKContext(rawData, sectionMap)
     if (!sectionText) return null
     const response = await ai.summarizeSection({
       section: sectionText,
@@ -303,44 +327,40 @@ async function summarizeSectionDispatch(
   }
 
   // Unstructured sections (risk_factors, business_overview, legal_proceedings, footnotes, etc.)
-  return summarizeUnstructuredSection(section, rawData, companyName, filingType, ai)
+  return summarizeUnstructuredSection(section, sectionMap, companyName, filingType, ai)
 }
 
 // ─── Unstructured section summarization ─────────────────────────────────────
 
+// Maps pipeline section names to the sectionType label expected by ClaudeClient.
+// These labels are part of the Claude prompt template contract — they are
+// camelCase by historical convention and must not change without coordinating
+// with prompts in @union/ai.
+const PIPELINE_TO_PROMPT_LABEL: Record<string, string> = {
+  mda: 'mdAndA',
+  risk_factors: 'riskFactors',
+  business_overview: 'businessOverview',
+  legal_proceedings: 'legalProceedings',
+  footnotes: 'financialStatements',
+  board_composition: 'businessOverview',
+  shareholder_proposals: 'legalProceedings',
+}
+
 async function summarizeUnstructuredSection(
   section: string,
-  rawData: Record<string, unknown>,
+  sectionMap: SectionMap,
   companyName: string,
   filingType: string,
   ai: ClaudeClient,
 ): Promise<SectionResult | null> {
-  const extractedSections = rawData.extractedSections as
-    | Record<string, string>
-    | undefined
-
-  // Map section name to raw data key
-  const rawKey = SECTION_TO_RAW_KEY[section] ?? section
-  const sectionText = extractedSections?.[rawKey]
-
+  const sectionText = getPipelineSectionText(sectionMap, section, filingType)
   if (!sectionText || sectionText.trim().length === 0) {
     return null
   }
 
-  // Map pipeline section names to ClaudeClient section types
-  const sectionTypeMap: Record<string, string> = {
-    mda: 'mdAndA',
-    risk_factors: 'riskFactors',
-    business_overview: 'businessOverview',
-    legal_proceedings: 'legalProceedings',
-    footnotes: 'financialStatements',
-    board_composition: 'businessOverview',
-    shareholder_proposals: 'legalProceedings',
-  }
-
   const response = await ai.summarizeSection({
     section: sectionText,
-    sectionType: sectionTypeMap[section] ?? section,
+    sectionType: PIPELINE_TO_PROMPT_LABEL[section] ?? section,
     companyName,
     filingType,
   })
@@ -366,7 +386,8 @@ interface ExecCompSummary {
 async function summarizeExecutiveCompensation(
   companyId: string,
   companyName: string,
-  rawData: Record<string, unknown>,
+  sectionMap: SectionMap,
+  filingType: string,
   ai: ClaudeClient,
 ): Promise<{ result: ExecCompSummary; usage: { inputTokens: number; outputTokens: number } }> {
   const db = getDb()
@@ -396,23 +417,23 @@ async function summarizeExecutiveCompensation(
   const ceoPayRatio =
     compData.find((e) => e.ceoPayRatio != null)?.ceoPayRatio ?? null
 
-  // Check if employee compensation is mentioned as a risk factor
-  const extractedSections = rawData.extractedSections as
-    | Record<string, string>
-    | undefined
-  const riskFactorsText = extractedSections?.riskFactors ?? ''
+  // Risk-factor regex check — only meaningful for filings that carry a
+  // Risk Factors item. DEF 14A doesn't, so this returns false there.
+  const riskFactorsText = getPipelineSectionText(sectionMap, 'risk_factors', filingType) ?? ''
   const employeeCompAsRiskFactor =
     /employee.{0,30}compensation|talent.{0,20}retention|labor.{0,20}cost|wage.{0,20}pressure/i.test(
       riskFactorsText,
     )
 
-  // Generate AI analysis of the proxy statement if we have section text
-  let analysis: string | null = null
+  // Prefer the proxy statement's full executive-compensation section, then
+  // fall back to its proxy item, then to a 10-K's executive_compensation
+  // item. Each is read directly by SEC code from the in-memory map.
   const proxyText =
-    extractedSections?.executiveCompensation ??
-    extractedSections?.proxy ??
+    getPipelineSectionText(sectionMap, 'executive_compensation', filingType) ??
+    getPipelineSectionText(sectionMap, 'proxy', filingType) ??
     null
 
+  let analysis: string | null = null
   if (proxyText || compData.length > 0) {
     try {
       const contextText = proxyText ?? JSON.stringify(top5, null, 2)
@@ -437,7 +458,10 @@ async function summarizeExecutiveCompensation(
 
 // ─── 8-K context builder ───────────────────────────────────────────────────
 
-function buildEightKContext(rawData: Record<string, unknown>): string | null {
+function buildEightKContext(
+  rawData: Record<string, unknown>,
+  sectionMap: SectionMap,
+): string | null {
   const parts: Array<string> = []
 
   if (rawData.description) {
@@ -448,15 +472,13 @@ function buildEightKContext(rawData: Record<string, unknown>): string | null {
     parts.push(`Form type: ${rawData.formType}`)
   }
 
-  // Include any extracted section text
-  const extracted = rawData.extractedSections as
-    | Record<string, string>
-    | undefined
-  if (extracted) {
-    for (const [key, text] of Object.entries(extracted)) {
-      if (text && text.trim().length > 0) {
-        parts.push(`${key}:\n${text}`)
-      }
+  // Include extracted section text from filing_sections, labelled with the
+  // friendly enum name (e.g. 'DIRECTOR_OFFICER_CHANGES') so Claude has
+  // human-readable context instead of opaque codes like '5-2'.
+  for (const [code, text] of sectionMap) {
+    if (text && text.trim().length > 0) {
+      const label = getSectionFriendlyName(code, '8-K')
+      parts.push(`${label}:\n${text}`)
     }
   }
 

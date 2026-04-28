@@ -239,6 +239,20 @@ export const jobs = pgTable('jobs', {
   completedAt: timestamp('completed_at', { mode: 'string' }),
 })
 
+// ── Filing Sections ────────────────────────────────────────────────────
+
+export const filingSections = pgTable('filing_sections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  filingId: uuid('filing_id')
+    .notNull()
+    .references(() => filingSummaries.id, { onDelete: 'cascade' }),
+  sectionCode: text('section_code').notNull(),
+  text: text('text'),
+  fetchStatus: text('fetch_status').notNull().default('success'),
+  fetchError: text('fetch_error'),
+  extractedAt: timestamp('extracted_at', { mode: 'string' }).defaultNow().notNull(),
+})
+
 // ── Raw SEC Responses ──────────────────────────────────────────────────
 
 export const rawSecResponses = pgTable('raw_sec_responses', {

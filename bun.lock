@@ -10,11 +10,11 @@
         "@react-navigation/bottom-tabs": "^7.15.5",
         "@supabase/supabase-js": "^2.99.2",
         "@tamagui/config": "^2.0.0-rc.15",
-        "@union/ai": "workspace:*",
-        "@union/helpers": "workspace:*",
-        "@union/hooks": "workspace:*",
-        "@union/postgres": "workspace:*",
-        "@union/sec-api": "workspace:*",
+        "@younionize/ai": "workspace:*",
+        "@younionize/helpers": "workspace:*",
+        "@younionize/hooks": "workspace:*",
+        "@younionize/postgres": "workspace:*",
+        "@younionize/sec-api": "workspace:*",
         "drizzle-orm": "^0.40.0",
         "expo": "~54.0.22",
         "expo-dev-client": "~6.0.20",
@@ -54,11 +54,11 @@
       },
     },
     "app": {
-      "name": "@union/app",
+      "name": "@younionize/app",
       "version": "0.1.0",
     },
     "packages/ai": {
-      "name": "@union/ai",
+      "name": "@younionize/ai",
       "version": "0.1.0",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.39.0",
@@ -69,7 +69,7 @@
       },
     },
     "packages/helpers": {
-      "name": "@union/helpers",
+      "name": "@younionize/helpers",
       "version": "0.1.0",
       "devDependencies": {
         "oxfmt": "^0.16.0",
@@ -77,7 +77,7 @@
       },
     },
     "packages/hooks": {
-      "name": "@union/hooks",
+      "name": "@younionize/hooks",
       "version": "0.1.0",
       "dependencies": {
         "@supabase/supabase-js": "*",
@@ -93,7 +93,7 @@
       },
     },
     "packages/postgres": {
-      "name": "@union/postgres",
+      "name": "@younionize/postgres",
       "version": "0.1.0",
       "dependencies": {
         "drizzle-orm": "^0.40.0",
@@ -105,7 +105,7 @@
       },
     },
     "packages/sec-api": {
-      "name": "@union/sec-api",
+      "name": "@younionize/sec-api",
       "version": "0.1.0",
       "dependencies": {
         "valibot": "^1.0.0",
@@ -977,18 +977,6 @@
 
     "@ungap/structured-clone": ["@ungap/structured-clone@1.3.0", "", {}, "sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g=="],
 
-    "@union/ai": ["@union/ai@workspace:packages/ai"],
-
-    "@union/app": ["@union/app@workspace:app"],
-
-    "@union/helpers": ["@union/helpers@workspace:packages/helpers"],
-
-    "@union/hooks": ["@union/hooks@workspace:packages/hooks"],
-
-    "@union/postgres": ["@union/postgres@workspace:packages/postgres"],
-
-    "@union/sec-api": ["@union/sec-api@workspace:packages/sec-api"],
-
     "@urql/core": ["@urql/core@5.2.0", "", { "dependencies": { "@0no-co/graphql.web": "^1.0.13", "wonka": "^6.3.2" } }, "sha512-/n0ieD0mvvDnVAXEQgX/7qJiVcvYvNkOHeBvkwtylfjydar123caCXcl58PXFY11oU1oquJocVXHxLAbtv4x1A=="],
 
     "@urql/exchange-retry": ["@urql/exchange-retry@1.3.2", "", { "dependencies": { "@urql/core": "^5.1.2", "wonka": "^6.3.2" } }, "sha512-TQMCz2pFJMfpNxmSfX1VSfTjwUIFx/mL+p1bnfM1xjjdla7Z+KnGMW/EhFbpckp3LyWAH4PgOsMwOMnIN+MBFg=="],
@@ -1010,6 +998,18 @@
     "@vscode/sudo-prompt": ["@vscode/sudo-prompt@9.3.2", "", {}, "sha512-gcXoCN00METUNFeQOFJ+C9xUI0DKB+0EGMVg7wbVYRHBw2Eq3fKisDZOkRdOz3kqXRKOENMfShPOmypw1/8nOw=="],
 
     "@xmldom/xmldom": ["@xmldom/xmldom@0.8.11", "", {}, "sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw=="],
+
+    "@younionize/ai": ["@younionize/ai@workspace:packages/ai"],
+
+    "@younionize/app": ["@younionize/app@workspace:app"],
+
+    "@younionize/helpers": ["@younionize/helpers@workspace:packages/helpers"],
+
+    "@younionize/hooks": ["@younionize/hooks@workspace:packages/hooks"],
+
+    "@younionize/postgres": ["@younionize/postgres@workspace:packages/postgres"],
+
+    "@younionize/sec-api": ["@younionize/sec-api@workspace:packages/sec-api"],
 
     "abort-controller": ["abort-controller@3.0.0", "", { "dependencies": { "event-target-shim": "^5.0.0" } }, "sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg=="],
 
@@ -2349,7 +2349,7 @@
 
     "@supabase/realtime-js/ws": ["ws@8.19.0", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg=="],
 
-    "@union/hooks/@types/react": ["@types/react@19.2.14", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w=="],
+    "@younionize/hooks/@types/react": ["@types/react@19.2.14", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w=="],
 
     "accepts/negotiator": ["negotiator@0.6.3", "", {}, "sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg=="],
 

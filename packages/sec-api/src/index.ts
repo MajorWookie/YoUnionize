@@ -5,6 +5,7 @@ export {
   TenKSection,
   TenQSection,
   EightKSection,
+  Def14aSection,
   SEC_API_BASE_URL,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
@@ -14,6 +15,13 @@ export type {
   ElasticsearchQuery,
   SectionItem,
 } from './sec-api.constants'
+export {
+  getSectionItemsForFilingType,
+  legacyKeyToSectionCode,
+  sectionCodeToLegacyKey,
+  getSectionFriendlyName,
+} from './sections'
+export type { SectionItemInfo } from './sections'
 export type {
   SecApiClientConfig,
   Filing,
