@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { getDb, companies } from '@union/postgres'
+import { getDb, companies } from '@younionize/postgres'
 import { getSecApiClient } from '../sec-api-client'
 
 export interface CompanyRecord {

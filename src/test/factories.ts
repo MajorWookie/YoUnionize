@@ -2,8 +2,8 @@
  * Test data factories for creating typed mock objects.
  */
 
-import type { Filing, FilingQueryResponse, CompanyMapping, ExecutiveCompensationResponse, InsiderTradingResponse, DirectorsResponse } from '@union/sec-api'
-import type { FilingSummaryResult, CompensationAnalysisResult, AiResponse, TokenUsage } from '@union/ai'
+import type { Filing, FilingQueryResponse, CompanyMapping, ExecutiveCompensationResponse, InsiderTradingResponse, DirectorsResponse } from '@younionize/sec-api'
+import type { FilingSummaryResult, CompensationAnalysisResult, AiResponse, TokenUsage } from '@younionize/ai'
 
 // ── Counters for unique IDs ─────────────────────────────────────────────
 

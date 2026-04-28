@@ -1,6 +1,6 @@
 # Remote iOS Testing — Free Sideload + EAS Update + Hosted Supabase
 
-> Goal: Test YoUnion on a physical iPhone from anywhere. No active laptop connection needed. No Apple Developer Program ($99). Just open the app and use it.
+> Goal: Test Younionize on a physical iPhone from anywhere. No active laptop connection needed. No Apple Developer Program ($99). Just open the app and use it.
 
 ---
 
@@ -28,7 +28,7 @@
 ┌──────────────────────────────────────────────────────────────┐
 │  TESTING (from anywhere, no laptop needed)                   │
 │                                                              │
-│  Open YoUnion on your iPhone                                 │
+│  Open Younionize on your iPhone                                 │
 │  • App downloads latest JS bundle from Expo CDN              │
 │  • All API calls go to hosted Supabase                       │
 │  • Works on any network — WiFi, cellular, anywhere           │
@@ -68,16 +68,16 @@ Add both plugins and configure updates:
 ```json
 {
   "expo": {
-    "name": "YoUnion",
-    "slug": "younion",
-    "scheme": "younion",
+    "name": "Younionize",
+    "slug": "younionize",
+    "scheme": "younionize",
     "version": "0.1.0",
     "platforms": ["ios", "android", "web"],
     "ios": {
-      "bundleIdentifier": "com.majorwookie.younion"
+      "bundleIdentifier": "com.majorwookie.younionize"
     },
     "android": {
-      "package": "com.majorwookie.younion"
+      "package": "com.majorwookie.younionize"
     },
     "web": {
       "bundler": "metro",
@@ -179,8 +179,8 @@ npx expo prebuild --platform ios --clean
 
 ### 2.3 Configure signing in Xcode
 
-1. Open **`ios/YoUnion.xcworkspace`** in Xcode (not `.xcodeproj`)
-2. Select the **YoUnion** target
+1. Open **`ios/Younionize.xcworkspace`** in Xcode (not `.xcodeproj`)
+2. Select the **Younionize** target
 3. Go to **Signing & Capabilities** tab
 4. Check **Automatically manage signing**
 5. Set **Team** to your Personal Team (your Apple ID)
@@ -361,7 +361,7 @@ eas login
 eas build:configure            # creates eas.json
 eas update:configure           # registers project, sets update URL
 npx expo prebuild --platform ios --clean
-# Open ios/YoUnion.xcworkspace → set signing → connect phone → ⌘R
+# Open ios/Younionize.xcworkspace → set signing → connect phone → ⌘R
 
 # === PUSH CODE CHANGES (from your desk, ~30 sec) ===
 dotenvx run -f .env.remote -- eas update --branch development --message "what changed"
