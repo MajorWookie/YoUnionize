@@ -53,6 +53,7 @@ Deno.serve(async (req) => {
           filedAt: filingSummaries.filedAt,
           accessionNumber: filingSummaries.accessionNumber,
           aiSummary: filingSummaries.aiSummary,
+          humanSummary: filingSummaries.humanSummary,
           summaryVersion: filingSummaries.summaryVersion,
         })
         .from(filingSummaries)
@@ -90,15 +91,20 @@ Deno.serve(async (req) => {
         .where(eq(directors.companyId, company.id)),
     ])
 
-    const latestAnnual = filingsData.find((f) => f.filingType === '10-K' && f.aiSummary != null)
-    const latestQuarterly = filingsData.find((f) => f.filingType === '10-Q' && f.aiSummary != null)
-    const latestProxy = filingsData.find((f) => f.filingType === 'DEF 14A' && f.aiSummary != null)
+    const hasSummary = (f: { aiSummary: unknown; humanSummary: unknown }) =>
+      f.aiSummary != null || f.humanSummary != null
+    const summaryOf = (f: { aiSummary: unknown; humanSummary: unknown }) =>
+      f.humanSummary ?? f.aiSummary
+
+    const latestAnnual = filingsData.find((f) => f.filingType === '10-K' && hasSummary(f))
+    const latestQuarterly = filingsData.find((f) => f.filingType === '10-Q' && hasSummary(f))
+    const latestProxy = filingsData.find((f) => f.filingType === 'DEF 14A' && hasSummary(f))
     const recentEvents = filingsData
-      .filter((f) => f.filingType === '8-K' && f.aiSummary != null)
+      .filter((f) => f.filingType === '8-K' && hasSummary(f))
       .slice(0, 5)
 
     const totalFilings = filingsData.length
-    const summarizedFilings = filingsData.filter((f) => f.aiSummary != null).length
+    const summarizedFilings = filingsData.filter(hasSummary).length
 
     return jsonResponse({
       company: {
@@ -117,15 +123,15 @@ Deno.serve(async (req) => {
         pendingFilings: totalFilings - summarizedFilings,
       },
       latestAnnual: latestAnnual
-        ? { id: latestAnnual.id, filingType: latestAnnual.filingType, periodEnd: latestAnnual.periodEnd, filedAt: latestAnnual.filedAt, summary: latestAnnual.aiSummary }
+        ? { id: latestAnnual.id, filingType: latestAnnual.filingType, periodEnd: latestAnnual.periodEnd, filedAt: latestAnnual.filedAt, summary: summaryOf(latestAnnual) }
         : null,
       latestQuarterly: latestQuarterly
-        ? { id: latestQuarterly.id, filingType: latestQuarterly.filingType, periodEnd: latestQuarterly.periodEnd, filedAt: latestQuarterly.filedAt, summary: latestQuarterly.aiSummary }
+        ? { id: latestQuarterly.id, filingType: latestQuarterly.filingType, periodEnd: latestQuarterly.periodEnd, filedAt: latestQuarterly.filedAt, summary: summaryOf(latestQuarterly) }
         : null,
       latestProxy: latestProxy
-        ? { id: latestProxy.id, periodEnd: latestProxy.periodEnd, summary: latestProxy.aiSummary }
+        ? { id: latestProxy.id, periodEnd: latestProxy.periodEnd, summary: summaryOf(latestProxy) }
         : null,
-      recentEvents: recentEvents.map((e) => ({ id: e.id, filedAt: e.filedAt, summary: e.aiSummary })),
+      recentEvents: recentEvents.map((e) => ({ id: e.id, filedAt: e.filedAt, summary: summaryOf(e) })),
       availableFiscalYears,
       selectedFiscalYear,
       executives: execCompData.map((e) => ({
