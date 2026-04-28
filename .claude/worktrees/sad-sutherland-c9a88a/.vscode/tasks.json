@@ -1,0 +1,136 @@
+`{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev",
+      "type": "shell",
+      "command": "bun run dev",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "bun run build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase:start",
+      "type": "shell",
+      "command": "bun run supabase:start",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase:stop",
+      "type": "shell",
+      "command": "bun run supabase:stop",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase:reset",
+      "type": "shell",
+      "command": "bun run supabase:reset",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase:status",
+      "type": "shell",
+      "command": "bun run supabase:status",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase:generate",
+      "type": "shell",
+      "command": "bun run supabase:generate",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase:migrate",
+      "type": "shell",
+      "command": "bun run supabase:migrate",
+      "problemMatcher": []
+    },
+    {
+      "label": "supabase:studio",
+      "type": "shell",
+      "command": "bun run supabase:studio",
+      "problemMatcher": []
+    },
+    {
+      "label": "sst:dev",
+      "type": "shell",
+      "command": "bun run sst:dev",
+      "problemMatcher": []
+    },
+    {
+      "label": "sst:deploy",
+      "type": "shell",
+      "command": "bun run sst:deploy",
+      "problemMatcher": []
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "bun run lint",
+      "problemMatcher": []
+    },
+    {
+      "label": "lint:fix",
+      "type": "shell",
+      "command": "bun run lint:fix",
+      "problemMatcher": []
+    },
+    {
+      "label": "typecheck",
+      "type": "shell",
+      "command": "bun run typecheck",
+      "problemMatcher": []
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "bun run test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "test:unit",
+      "type": "shell",
+      "command": "bun run test:unit",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "test:e2e",
+      "type": "shell",
+      "command": "bun run test:e2e",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "check:all",
+      "type": "shell",
+      "command": "bun run check:all",
+      "problemMatcher": []
+    },
+    {
+      "label": "prebuild",
+      "type": "shell",
+      "command": "bun run prebuild",
+      "problemMatcher": []
+    },
+    {
+      "label": "ios",
+      "type": "shell",
+      "command": "bun run ios",
+      "problemMatcher": []
+    },
+    {
+      "label": "pod-install",
+      "type": "shell",
+      "command": "bun run pod-install",
+      "problemMatcher": []
+    }
+  ]
+}
