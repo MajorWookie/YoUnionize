@@ -34,7 +34,15 @@
       "Bash(git restore *)",
       "Bash(supabase status *)",
       "Bash(supabase db *)",
-      "Bash(PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c \"\\\\d filing_sections\")"
+      "Bash(PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c \"\\\\d filing_sections\")",
+      "Bash(xargs -I {} bun run -e \"const f=Bun.file\\('{}'\\);const t=await f.text\\(\\);await Bun.write\\('{}',t.replace\\(/'@union\\\\//g,\\\\\"'@younionize/\\\\\"\\)\\);\")",
+      "Bash(xargs sed *)",
+      "Bash(bun install *)",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(git commit --amend -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'Normalize SEC filing sections into filing_sections table' --body ' *)",
+      "Bash(supabase projects *)"
     ]
   },
   "enableAllProjectMcpServers": true,
