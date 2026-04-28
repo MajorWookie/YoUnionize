@@ -115,13 +115,17 @@ CREATE POLICY "personalized_summaries_delete_own" ON "personalized_summaries"
 -- Public SEC-derived tables (read-only for authenticated users)
 -- ============================================================
 
--- companies already has RLS enabled (no policies). Add read policy.
+-- companies: enable RLS and add read policy. (Earlier migration enabled RLS,
+-- but the dashboard later toggled it off; re-asserting here so a fresh
+-- db reset reproduces the intended state.)
+ALTER TABLE "companies" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "companies_select_authenticated" ON "companies";
 CREATE POLICY "companies_select_authenticated" ON "companies"
   FOR SELECT TO authenticated
   USING (true);
 
--- filing_summaries already has RLS enabled (no policies). Add read policy.
+-- filing_summaries: same situation as companies.
+ALTER TABLE "filing_summaries" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "filing_summaries_select_authenticated" ON "filing_summaries";
 CREATE POLICY "filing_summaries_select_authenticated" ON "filing_summaries"
   FOR SELECT TO authenticated
