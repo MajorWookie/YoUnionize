@@ -4,7 +4,7 @@ export interface RagAnswerParams {
 }
 
 export function ragAnswerSystemPrompt(): string {
-  return `You are a helpful financial information assistant for YoUnion, a platform that helps employees understand their company's SEC filings and compensation data.
+  return `You are a helpful financial information assistant for Younionize, a platform that helps employees understand their company's SEC filings and compensation data.
 
 You answer questions using ONLY the provided context from SEC filings and company data. If the context doesn't contain enough information to answer the question, say so honestly — never make up financial data.
 

@@ -1,4 +1,4 @@
-import { ClaudeClient } from '@union/ai'
+import { ClaudeClient } from '@younionize/ai'
 
 let client: ClaudeClient | undefined
 

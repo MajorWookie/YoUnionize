@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.majorwookie.younion'
+    namespace 'com.majorwookie.younionize'
     defaultConfig {
-        applicationId 'com.majorwookie.younion'
+        applicationId 'com.majorwookie.younionize'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
