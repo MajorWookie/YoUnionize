@@ -41,7 +41,8 @@
     "check:all": "oxlint src app packages && tsc --noEmit; vitest run",
     "android": "npx expo run:android",
     "seed": "bun run scripts/seed-companies.ts",
-    "seed:no-ai": "bun run scripts/seed-companies.ts --skip-summarization"
+    "seed:no-ai": "bun run scripts/seed-companies.ts --skip-summarization",
+    "review": "bun run scripts/review/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
