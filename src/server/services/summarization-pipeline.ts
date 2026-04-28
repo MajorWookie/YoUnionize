@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { and, eq, or } from 'drizzle-orm'
+import { and, eq, lt, or } from 'drizzle-orm'
 import {
   getDb,
   companies,
@@ -110,9 +110,10 @@ export async function summarizeCompanyFilings(
     tokenUsage: { inputTokens: 0, outputTokens: 0 },
   }
 
-  // Query filings that need (re-)summarization.
-  //   summary_version = 0  → never summarized, or raw_data_override forced a re-run
-  //   summary_version = -1 → previous re-run failed, retry on next pass
+  // Query filings that need (re-)summarization. We pick up anything below the
+  // current version (covers schema-default rows + stale prior versions) plus
+  // the explicit -1 retry sentinel. Using `<` instead of `= 0` also keeps the
+  // pipeline correct across future CURRENT_SUMMARY_VERSION bumps.
   const filings = await db
     .select({
       id: filingSummaries.id,
@@ -128,7 +129,7 @@ export async function summarizeCompanyFilings(
       and(
         eq(filingSummaries.companyId, companyId),
         or(
-          eq(filingSummaries.summaryVersion, 0),
+          lt(filingSummaries.summaryVersion, CURRENT_SUMMARY_VERSION),
           eq(filingSummaries.summaryVersion, -1),
         ),
       ),
