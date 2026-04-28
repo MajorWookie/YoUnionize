@@ -1,6 +1,6 @@
 import { lookupCompany } from '~/server/services/company-lookup'
 import { summarizeCompanyFilings } from '~/server/services/summarization-pipeline'
-import { enqueueJob } from '~/server/job-queue'
+import { enqueueAndRun } from '~/server/job-queue-db'
 import { withLogging, badRequest, classifyError } from '~/server/api-utils'
 
 const handlers = withLogging('/api/companies/[ticker]/summarize', {
@@ -16,14 +16,18 @@ const handlers = withLogging('/api/companies/[ticker]/summarize', {
 
       const company = await lookupCompany(ticker)
 
-      const jobId = enqueueJob(async () => {
-        console.info(`[Summarize] Starting summarization for ${company.ticker} (${company.name})`)
-        const result = await summarizeCompanyFilings(company.id, company.name)
-        console.info(
-          `[Summarize] Completed for ${company.ticker}: ${result.summarized}/${result.total} filings`,
-        )
-        return result
-      })
+      const jobId = await enqueueAndRun(
+        'summarize',
+        { ticker: company.ticker, companyId: company.id },
+        async () => {
+          console.info(`[Summarize] Starting summarization for ${company.ticker} (${company.name})`)
+          const result = await summarizeCompanyFilings(company.id, company.name)
+          console.info(
+            `[Summarize] Completed for ${company.ticker}: ${result.summarized}/${result.total} filings`,
+          )
+          return result
+        },
+      )
 
       return Response.json({
         jobId,

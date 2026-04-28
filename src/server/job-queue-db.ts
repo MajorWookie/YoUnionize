@@ -3,7 +3,7 @@ import { getDb } from '@younionize/postgres'
 import { jobs } from '../database/schema/jobs'
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed'
-export type JobType = 'ingest' | 'summarize'
+export type JobType = 'ingest' | 'summarize' | 'fetch' | 'process' | 'retry'
 
 export interface Job {
   id: string
@@ -87,6 +87,38 @@ export async function failJob(id: string, error: string): Promise<void> {
       completedAt: sql`now()`,
     })
     .where(eq(jobs.id, id))
+}
+
+/**
+ * Enqueue a job AND run it in-process. The job row is the durable record
+ * (poll via getJob); the fire-and-forget background task does the actual
+ * work and updates the row's status, result, and error.
+ *
+ * This combines the persistence of the DB-backed queue with the immediate
+ * execution semantics of the older in-memory queue. Use it for routes
+ * that want to return a jobId quickly while doing real work in the
+ * background, without standing up a separate worker.
+ */
+export async function enqueueAndRun<T>(
+  type: JobType,
+  payload: Record<string, unknown>,
+  task: () => Promise<T>,
+): Promise<string> {
+  const id = await enqueueJob(type, payload)
+
+  void (async () => {
+    await claimJob(id)
+    try {
+      const result = await task()
+      await completeJob(id, result as unknown)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.info(`[JobQueue] Job ${id} failed:`, msg)
+      await failJob(id, msg)
+    }
+  })()
+
+  return id
 }
 
 /** List pending jobs, optionally filtered by type. */
