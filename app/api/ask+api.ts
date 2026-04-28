@@ -1,11 +1,11 @@
-import { eq, desc, and, isNotNull } from 'drizzle-orm'
+import { eq, desc, and, isNotNull, or } from 'drizzle-orm'
 import {
   getDb,
   companies,
   filingSummaries,
   userProfiles,
   findSimilarEmbeddings,
-} from '@union/postgres'
+} from '@younionize/postgres'
 import { getAiClient } from '~/server/ai-client'
 import { lookupCompany } from '~/server/services/company-lookup'
 import {
@@ -114,20 +114,22 @@ const handlers = withLogging('/api/ask', {
               filingType: filingSummaries.filingType,
               periodEnd: filingSummaries.periodEnd,
               aiSummary: filingSummaries.aiSummary,
+              humanSummary: filingSummaries.humanSummary,
               companyId: filingSummaries.companyId,
             })
             .from(filingSummaries)
             .where(eq(filingSummaries.id, result.sourceId))
             .limit(1)
 
-          if (!filing?.aiSummary) continue
+          // Display precedence: human edit wins over AI baseline.
+          const summarySource = filing?.humanSummary ?? filing?.aiSummary
+          if (!summarySource) continue
 
           const metadata = result.metadata ?? {}
           const section = (metadata.section as string) ?? 'unknown'
           const ticker = (metadata.companyTicker as string) ?? companyTicker ?? ''
 
-          // Get the section content from the AI summary
-          const summary = filing.aiSummary as Record<string, unknown>
+          const summary = summarySource as Record<string, unknown>
           const sectionContent = summary[section]
 
           if (sectionContent) {
@@ -177,19 +179,23 @@ const handlers = withLogging('/api/ask', {
             filingType: filingSummaries.filingType,
             periodEnd: filingSummaries.periodEnd,
             aiSummary: filingSummaries.aiSummary,
+            humanSummary: filingSummaries.humanSummary,
           })
           .from(filingSummaries)
           .where(
             and(
               eq(filingSummaries.companyId, companyId),
-              isNotNull(filingSummaries.aiSummary),
+              or(
+                isNotNull(filingSummaries.aiSummary),
+                isNotNull(filingSummaries.humanSummary),
+              ),
             ),
           )
           .orderBy(desc(filingSummaries.filedAt))
           .limit(3)
 
         for (const filing of recentFilings) {
-          const summary = filing.aiSummary as Record<string, unknown>
+          const summary = (filing.humanSummary ?? filing.aiSummary) as Record<string, unknown>
           for (const [section, content] of Object.entries(summary)) {
             if (typeof content === 'string' && content.length > 50) {
               contextChunks.push(

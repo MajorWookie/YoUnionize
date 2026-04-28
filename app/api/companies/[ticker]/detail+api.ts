@@ -6,7 +6,7 @@ import {
   executiveCompensation,
   insiderTrades,
   directors,
-} from '@union/postgres'
+} from '@younionize/postgres'
 import { withLogging, badRequest, notFound, classifyError } from '~/server/api-utils'
 
 const handlers = withLogging('/api/companies/[ticker]/detail', {
@@ -44,6 +44,7 @@ const handlers = withLogging('/api/companies/[ticker]/detail', {
               filedAt: filingSummaries.filedAt,
               accessionNumber: filingSummaries.accessionNumber,
               aiSummary: filingSummaries.aiSummary,
+              humanSummary: filingSummaries.humanSummary,
               summaryVersion: filingSummaries.summaryVersion,
             })
             .from(filingSummaries)
@@ -70,29 +71,37 @@ const handlers = withLogging('/api/companies/[ticker]/detail', {
             .where(eq(directors.companyId, company.id)),
         ])
 
+      // A filing has a summary if either the AI baseline or a human edit exists.
+      const hasSummary = (f: { aiSummary: unknown; humanSummary: unknown }) =>
+        f.aiSummary != null || f.humanSummary != null
+
+      // Display precedence: human edit wins; AI baseline is the fallback.
+      const summaryOf = (f: { aiSummary: unknown; humanSummary: unknown }) =>
+        f.humanSummary ?? f.aiSummary
+
       // Find the most recent 10-K with a summary for the main dashboard
       const latestAnnual = filingsData.find(
-        (f) => f.filingType === '10-K' && f.aiSummary != null,
+        (f) => f.filingType === '10-K' && hasSummary(f),
       )
 
       // Find the most recent 10-Q with a summary
       const latestQuarterly = filingsData.find(
-        (f) => f.filingType === '10-Q' && f.aiSummary != null,
+        (f) => f.filingType === '10-Q' && hasSummary(f),
       )
 
       // Find the most recent DEF 14A with a summary
       const latestProxy = filingsData.find(
-        (f) => f.filingType === 'DEF 14A' && f.aiSummary != null,
+        (f) => f.filingType === 'DEF 14A' && hasSummary(f),
       )
 
       // Recent 8-K events
       const recentEvents = filingsData
-        .filter((f) => f.filingType === '8-K' && f.aiSummary != null)
+        .filter((f) => f.filingType === '8-K' && hasSummary(f))
         .slice(0, 5)
 
       // Summary stats
       const totalFilings = filingsData.length
-      const summarizedFilings = filingsData.filter((f) => f.aiSummary != null).length
+      const summarizedFilings = filingsData.filter(hasSummary).length
 
       return Response.json({
         company: {
@@ -116,7 +125,7 @@ const handlers = withLogging('/api/companies/[ticker]/detail', {
               filingType: latestAnnual.filingType,
               periodEnd: latestAnnual.periodEnd,
               filedAt: latestAnnual.filedAt,
-              summary: latestAnnual.aiSummary,
+              summary: summaryOf(latestAnnual),
             }
           : null,
         latestQuarterly: latestQuarterly
@@ -125,20 +134,20 @@ const handlers = withLogging('/api/companies/[ticker]/detail', {
               filingType: latestQuarterly.filingType,
               periodEnd: latestQuarterly.periodEnd,
               filedAt: latestQuarterly.filedAt,
-              summary: latestQuarterly.aiSummary,
+              summary: summaryOf(latestQuarterly),
             }
           : null,
         latestProxy: latestProxy
           ? {
               id: latestProxy.id,
               periodEnd: latestProxy.periodEnd,
-              summary: latestProxy.aiSummary,
+              summary: summaryOf(latestProxy),
             }
           : null,
         recentEvents: recentEvents.map((e) => ({
           id: e.id,
           filedAt: e.filedAt,
-          summary: e.aiSummary,
+          summary: summaryOf(e),
         })),
         executives: execCompData.map((e) => ({
           id: e.id,

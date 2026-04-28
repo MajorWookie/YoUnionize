@@ -1,0 +1,36 @@
+Younionize — Cross-platform SEC filing analysis with AI-powered summarization
+Copyright (C) 2026 Adrian Anderson
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
+details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+────────────────────────────────────────────────────────────────────────────────
+Why AGPL-3.0?
+
+Younionize is open source: anyone may use, study, modify, and contribute to it.
+The AGPL-3.0 adds one specific protection on top of the GPL: if someone runs a
+modified version of Younionize as a hosted service that users interact with over
+a network, they must publish their modifications under the same license.
+
+In practical terms, this means:
+
+  - Contributors and self-hosters: nothing to worry about. Use it, fork it,
+    run it on your own servers, modify it for your own needs.
+  - Companies that want to host a competing version of Younionize: you may do
+    so, but your changes must also be released under AGPL-3.0 — you cannot
+    take the code, improve it privately, and offer the improved product as
+    a closed-source SaaS.
+
+The AGPL is OSI-approved and is used by projects such as Mastodon, Nextcloud,
+Plausible, and Grafana (originally) for the same reason: open source by intent,
+with one specific guard against the SaaS-loophole free rider problem.
