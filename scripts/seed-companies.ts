@@ -31,6 +31,7 @@ import { summarizeCompanyFilings } from '../src/server/services/summarization-pi
 import type { CompanyRecord } from '../src/server/services/company-lookup'
 import type { Filing } from '@younionize/sec-api'
 import { TenKSection } from '@younionize/sec-api'
+import { startHeartbeat, stopHeartbeat, startPhase, endPhase } from './lib/progress'
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
