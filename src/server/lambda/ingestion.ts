@@ -1,95 +1,15 @@
 /**
- * Lambda handler for background filing ingestion.
+ * Lambda handlers for background SEC data ingestion.
  *
- * Supports three modes:
- * - Legacy `handler`: Interleaved fetch+process (deprecated, kept for backward compat)
  * - `fetchHandler`: Phase 1 — fetch ALL SEC data and store raw responses
  * - `processHandler`: Phase 2 — transform raw responses into domain tables + summarize
  * - `fetchBatchHandler`: Enqueue individual fetch jobs for multiple companies
  */
 
-import { eq } from 'drizzle-orm'
 import { getDb, jobs } from '@union/postgres'
 import { lookupCompany, getCompanyByTicker } from '../services/company-lookup'
-import { ingestFilings } from '../services/filing-ingestion'
-import { ingestCompensation } from '../services/compensation-ingestion'
-import { ingestInsiderTrading } from '../services/insider-trading-ingestion'
-import { ingestDirectors } from '../services/directors-ingestion'
-import { summarizeCompanyFilings } from '../services/summarization-pipeline'
 import { fetchAllSecData } from '../services/sec-fetcher'
 import { processRawSecData } from '../services/raw-data-processor'
-
-interface IngestionEvent {
-  ticker: string
-  skipSummarization?: boolean
-}
-
-export async function handler(event: IngestionEvent) {
-  const { ticker, skipSummarization } = event
-
-  if (!ticker) {
-    throw new Error('Missing required field: ticker')
-  }
-
-  console.info(`[Lambda:Ingestion] Starting for ${ticker}`)
-
-  // 1. Look up company (creates DB record if needed)
-  const company = await lookupCompany(ticker)
-  console.info(`[Lambda:Ingestion] Company: ${company.name} (${company.ticker})`)
-
-  // 2. Run all ingestion pipelines in parallel
-  const [filings, compensation, insiderTrading, directors] = await Promise.allSettled([
-    ingestFilings(company),
-    ingestCompensation(company),
-    ingestInsiderTrading(company),
-    ingestDirectors(company),
-  ])
-
-  const ingestionSummary = {
-    filings:
-      filings.status === 'fulfilled'
-        ? filings.value
-        : { error: filings.reason?.message },
-    compensation:
-      compensation.status === 'fulfilled'
-        ? compensation.value
-        : { error: compensation.reason?.message },
-    insiderTrading:
-      insiderTrading.status === 'fulfilled'
-        ? insiderTrading.value
-        : { error: insiderTrading.reason?.message },
-    directors:
-      directors.status === 'fulfilled'
-        ? directors.value
-        : { error: directors.reason?.message },
-  }
-
-  console.info(`[Lambda:Ingestion] Ingestion complete:`, JSON.stringify(ingestionSummary))
-
-  // 3. Run AI summarization if not skipped
-  let summarizationResult = null
-  if (!skipSummarization) {
-    try {
-      summarizationResult = await summarizeCompanyFilings(company.id, company.name)
-      console.info(
-        `[Lambda:Ingestion] Summarization complete: ${summarizationResult.summarized}/${summarizationResult.total}`,
-      )
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      console.info(`[Lambda:Ingestion] Summarization failed: ${msg}`)
-      summarizationResult = { error: msg }
-    }
-  }
-
-  return {
-    statusCode: 200,
-    body: {
-      company: { ticker: company.ticker, name: company.name },
-      ingestion: ingestionSummary,
-      summarization: summarizationResult,
-    },
-  }
-}
 
 // ─── Phase 1: Fetch Handler ──────────────────────────────────────────────
 

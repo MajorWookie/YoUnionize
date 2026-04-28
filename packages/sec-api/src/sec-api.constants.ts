@@ -89,8 +89,16 @@ export const EightKSection = {
 
 export type EightKSection = (typeof EightKSection)[keyof typeof EightKSection]
 
+/** DEF 14A (proxy statement) section item codes */
+export const Def14aSection = {
+  PROXY: 'part1item1',
+  EXECUTIVE_COMPENSATION: 'part1item7',
+} as const
+
+export type Def14aSection = (typeof Def14aSection)[keyof typeof Def14aSection]
+
 /** All section item types */
-export type SectionItem = TenKSection | TenQSection | EightKSection
+export type SectionItem = TenKSection | TenQSection | EightKSection | Def14aSection
 
 /** SEC API base URLs */
 export const SEC_API_BASE_URL = 'https://api.sec-api.io'

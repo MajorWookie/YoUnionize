@@ -3,6 +3,7 @@ import {
   getDb,
   rawSecResponses,
   filingSummaries,
+  filingSections,
   executiveCompensation,
   insiderTrades,
   directors,
@@ -12,6 +13,7 @@ import { normalizeName } from '@union/helpers'
 import type { CompanyRecord } from './company-lookup'
 import { enrichCompensationNames, enrichDirectorRoles, enrichDirectorNames } from './enrichment'
 import { summarizeCompanyFilings } from './summarization-pipeline'
+import { deriveSectionStatus, parseSectionSubKey } from './raw-data-processor-helpers'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -132,7 +134,13 @@ export async function processRawSecData(
 async function processRow(
   db: ReturnType<typeof getDb>,
   company: CompanyRecord,
-  row: { endpoint: string; subKey: string | null; rawResponse: unknown },
+  row: {
+    endpoint: string
+    subKey: string | null
+    rawResponse: unknown
+    fetchStatus: string
+    fetchError: string | null
+  },
 ): Promise<void> {
   const data = row.rawResponse as Record<string, unknown>
 
@@ -156,7 +164,7 @@ async function processRow(
       await processXbrl(db, company, row.subKey, data)
       break
     case 'sections':
-      await processSections(db, company, row.subKey, data)
+      await processSections(db, company, row.subKey, data, row.fetchStatus, row.fetchError)
       break
   }
 }
@@ -510,19 +518,15 @@ async function processSections(
   company: CompanyRecord,
   subKey: string | null,
   data: Record<string, unknown>,
+  fetchStatus: string,
+  fetchError: string | null,
 ): Promise<void> {
-  if (!subKey) return
+  const parsed = parseSectionSubKey(subKey)
+  if (!parsed) return
+  const { accessionNo, sectionCode } = parsed
 
-  // subKey format: "{accessionNo}:{sectionCode}"
-  const [accessionNo, sectionCode] = subKey.split(':')
-  if (!accessionNo || !sectionCode) return
-
-  const text = data.text as string | undefined
-  if (!text) return
-
-  // Attach section text to the filing's rawData.extractedSections
   const [filing] = await db
-    .select({ id: filingSummaries.id, rawData: filingSummaries.rawData })
+    .select({ id: filingSummaries.id })
     .from(filingSummaries)
     .where(
       and(
@@ -534,15 +538,28 @@ async function processSections(
 
   if (!filing) return
 
-  const existingRawData = (filing.rawData ?? {}) as Record<string, unknown>
-  const sections = (existingRawData.extractedSections ?? {}) as Record<string, string>
-  sections[sectionCode] = text
-  existingRawData.extractedSections = sections
+  const text = (data.text as string | undefined) ?? null
+  const sectionStatus = deriveSectionStatus(fetchStatus, text)
+  const persistedText = sectionStatus === 'success' ? text : null
 
   await db
-    .update(filingSummaries)
-    .set({ rawData: existingRawData })
-    .where(eq(filingSummaries.id, filing.id))
+    .insert(filingSections)
+    .values({
+      filingId: filing.id,
+      sectionCode,
+      text: persistedText,
+      fetchStatus: sectionStatus,
+      fetchError,
+    })
+    .onConflictDoUpdate({
+      target: [filingSections.filingId, filingSections.sectionCode],
+      set: {
+        text: persistedText,
+        fetchStatus: sectionStatus,
+        fetchError,
+        extractedAt: new Date().toISOString(),
+      },
+    })
 }
 
 function buildFilingUrl(accessionNo: string): string {

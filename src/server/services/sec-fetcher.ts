@@ -1,7 +1,7 @@
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { getDb, rawSecResponses, companies } from '@union/postgres'
-import { TenKSection, TenQSection, EightKSection } from '@union/sec-api'
-import type { Filing, SectionItem } from '@union/sec-api'
+import { getSectionItemsForFilingType } from '@union/sec-api'
+import type { Filing, SectionItemInfo } from '@union/sec-api'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 
@@ -101,13 +101,14 @@ export async function fetchAllSecData(company: CompanyRecord): Promise<FetchResu
     await upsertRawResponse(db, company.id, 'form_8k', null, null, errorMessage(form8kResult.reason))
   }
 
-  // Fetch per-filing enrichments (XBRL + sections) for 10-K and 10-Q filings
-  const enrichableFilings = allFilings.filter(
+  // Fetch per-filing enrichments (XBRL + sections).
+  // XBRL is only meaningful for 10-K/10-Q (financial filings). Section
+  // extraction runs for every supported filing type — 10-K, 10-Q, 8-K, DEF 14A.
+  const xbrlFilings = allFilings.filter(
     (f) => (f.formType === '10-K' || f.formType === '10-Q') && f.linkToFilingDetails,
   )
 
-  for (const filing of enrichableFilings) {
-    // XBRL
+  for (const filing of xbrlFilings) {
     try {
       const xbrl = await client.xbrlToJson({ htmUrl: filing.linkToFilingDetails! })
       await upsertRawResponse(db, company.id, 'xbrl', filing.accessionNo, xbrl)
@@ -117,46 +118,41 @@ export async function fetchAllSecData(company: CompanyRecord): Promise<FetchResu
       await upsertRawResponse(db, company.id, 'xbrl', filing.accessionNo, null, 'XBRL extraction failed')
       result.endpoints.xbrl.failed++
     }
-
-    // Sections — extract ALL available sections based on filing type
-    const sectionItems = getSectionItems(filing.formType)
-    const sectionResults = await Promise.allSettled(
-      sectionItems.map(async (item) => {
-        const text = await client.extractSection(filing.linkToFilingDetails!, item.code)
-        return { item, text }
-      }),
-    )
-
-    for (const sectionResult of sectionResults) {
-      const subKey = `${filing.accessionNo}:${sectionResult.status === 'fulfilled' ? sectionResult.value.item.code : 'unknown'}`
-      if (sectionResult.status === 'fulfilled' && sectionResult.value.text) {
-        await upsertRawResponse(db, company.id, 'sections', subKey, { text: sectionResult.value.text })
-        result.endpoints.sections.succeeded++
-      } else {
-        result.endpoints.sections.failed++
-      }
-    }
   }
 
-  // Also extract sections for 8-K filings
-  const eightKFilings = allFilings.filter(
-    (f) => f.formType === '8-K' && f.linkToFilingDetails,
+  const sectionFilings = allFilings.filter(
+    (f) => f.linkToFilingDetails && getSectionItemsForFilingType(f.formType).length > 0,
   )
-  for (const filing of eightKFilings) {
-    const sectionItems = getSectionItems('8-K')
+
+  for (const filing of sectionFilings) {
+    const sectionItems = getSectionItemsForFilingType(filing.formType)
     const sectionResults = await Promise.allSettled(
-      sectionItems.map(async (item) => {
+      sectionItems.map(async (item: SectionItemInfo) => {
         const text = await client.extractSection(filing.linkToFilingDetails!, item.code)
         return { item, text }
       }),
     )
 
-    for (const sectionResult of sectionResults) {
+    // Iterate by index so each rejection retains its `item` context — the prior
+    // implementation lost section identity on failure and recorded the subKey
+    // as 'unknown', making errors un-debuggable.
+    for (let i = 0; i < sectionResults.length; i++) {
+      const item = sectionItems[i]
+      const sectionResult = sectionResults[i]
+      const subKey = `${filing.accessionNo}:${item.code}`
+
       if (sectionResult.status === 'fulfilled' && sectionResult.value.text) {
-        const subKey = `${filing.accessionNo}:${sectionResult.value.item.code}`
         await upsertRawResponse(db, company.id, 'sections', subKey, { text: sectionResult.value.text })
         result.endpoints.sections.succeeded++
+      } else if (sectionResult.status === 'fulfilled') {
+        // Empty extraction — record an explicit empty row so processSections
+        // can mark fetch_status='empty' downstream.
+        await upsertRawResponse(db, company.id, 'sections', subKey, { text: '' })
+        result.endpoints.sections.succeeded++
       } else {
+        const errMsg = errorMessage(sectionResult.reason)
+        console.info(`[SecFetcher] Section ${item.name} (${item.code}) failed for ${filing.accessionNo}: ${errMsg}`)
+        await upsertRawResponse(db, company.id, 'sections', subKey, null, errMsg)
         result.endpoints.sections.failed++
       }
     }
@@ -268,26 +264,6 @@ async function fetchForm8K(
     size: '50',
     sort: [{ filedAt: { order: 'desc' } }],
   })
-}
-
-// ─── Helper: Section item codes by filing type ─────────────────────────
-
-interface SectionItemInfo {
-  code: SectionItem
-  name: string
-}
-
-function getSectionItems(filingType: string): Array<SectionItemInfo> {
-  switch (filingType) {
-    case '10-K':
-      return (Object.entries(TenKSection) as Array<[string, SectionItem]>).map(([name, code]) => ({ code, name }))
-    case '10-Q':
-      return (Object.entries(TenQSection) as Array<[string, SectionItem]>).map(([name, code]) => ({ code, name }))
-    case '8-K':
-      return (Object.entries(EightKSection) as Array<[string, SectionItem]>).map(([name, code]) => ({ code, name }))
-    default:
-      return []
-  }
 }
 
 // ─── Helper: Upsert raw response ──────────────────────────────────────

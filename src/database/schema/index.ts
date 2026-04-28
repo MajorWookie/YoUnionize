@@ -1,6 +1,7 @@
 export * from './users'
 export * from './companies'
 export * from './filings'
+export * from './filing-sections'
 export * from './executive-compensation'
 export * from './insider-trades'
 export * from './directors'

@@ -25,7 +25,16 @@
       "mcp__claude_ai_Figma__get_metadata",
       "mcp__claude_ai_Figma__get_screenshot",
       "Bash(xargs ls:*)",
-      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git checkout *)",
+      "Bash(bun run *)",
+      "Bash(git stash *)",
+      "Bash(git restore *)",
+      "Bash(supabase status *)",
+      "Bash(supabase db *)",
+      "Bash(PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c \"\\\\d filing_sections\")"
     ]
   },
   "enableAllProjectMcpServers": true,
