@@ -1,0 +1,5 @@
+[install]
+# workspace configuration is handled via package.json "workspaces" field
+
+[install.scopes]
+# add private registry scopes here if needed
