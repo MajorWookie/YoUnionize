@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { Button, H2, Input, Paragraph, Spinner, XStack, YStack } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useAuth } from '@younionize/hooks'
+import { useAuth } from '@union/hooks'
 
 export default function SignInPage() {
   const router = useRouter()

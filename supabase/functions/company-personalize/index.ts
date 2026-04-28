@@ -12,7 +12,7 @@ import {
 import { badRequest, notFound, classifyError } from '../_shared/api-utils.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const session = await ensureAuth(req)
@@ -58,14 +58,12 @@ Deno.serve(async (req) => {
         filingType: filingSummaries.filingType,
         companyId: filingSummaries.companyId,
         aiSummary: filingSummaries.aiSummary,
-        humanSummary: filingSummaries.humanSummary,
       })
       .from(filingSummaries)
       .where(eq(filingSummaries.id, filingId))
       .limit(1)
 
-    const summarySource = filing?.humanSummary ?? filing?.aiSummary
-    if (!filing || !summarySource) return notFound('Filing summary not found')
+    if (!filing?.aiSummary) return notFound('Filing summary not found')
 
     // Get company name
     const [company] = await db
@@ -75,7 +73,7 @@ Deno.serve(async (req) => {
       .limit(1)
 
     const companyName = company?.name ?? 'this company'
-    const summary = summarySource as Record<string, unknown>
+    const summary = filing.aiSummary as Record<string, unknown>
     const execSummary = summary.executive_summary as Record<string, unknown> | string | undefined
 
     // Build summary text for the prompt

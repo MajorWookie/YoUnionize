@@ -1,6 +1,6 @@
-# Younionize
+# YoUnion
 
-Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. Younionize ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
+Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. YoUnion ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
 
 ## Features
 
@@ -29,8 +29,7 @@ Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI
 | Validation | Valibot 1.0 |
 | Linting | oxlint + oxfmt |
 | Testing | Vitest (unit), Playwright (E2E scaffold) |
-| Hosting (Web) | Netlify ([younionize.me](https://younionize.me)) |
-| Hosting (API) | Supabase Edge Functions |
+| Deployment | Supabase Edge Functions |
 | Charts | react-native-svg (custom PieChart, SunburstChart) |
 
 ## Prerequisites
@@ -54,7 +53,7 @@ Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url> && cd Younionize
+git clone <repo-url> && cd YoUnion
 bun install
 ```
 
@@ -192,7 +191,7 @@ bun run android
 ## Project Structure
 
 ```
-Younionize/
+YoUnion/
 ├── app/                    # Expo Router file-based routes
 │   ├── _layout.tsx         #   Root layout
 │   ├── index.tsx           #   Home / Discover screen
@@ -211,11 +210,11 @@ Younionize/
 │   ├── tamagui/            # Theme config + tokens
 │   └── test/               # Vitest setup + factories
 ├── packages/               # Workspace packages
-│   ├── ai/                 #   @younionize/ai — Claude + Voyage + prompts
-│   ├── helpers/            #   @younionize/helpers — ensureEnv, normalizeName
-│   ├── hooks/              #   @younionize/hooks — useAuth, useDebounce
-│   ├── postgres/           #   @younionize/postgres — Drizzle DB client
-│   └── sec-api/            #   @younionize/sec-api — SEC API client
+│   ├── ai/                 #   @union/ai — Claude + Voyage + prompts
+│   ├── helpers/            #   @union/helpers — ensureEnv, normalizeName
+│   ├── hooks/              #   @union/hooks — useAuth, useDebounce
+│   ├── postgres/           #   @union/postgres — Drizzle DB client
+│   └── sec-api/            #   @union/sec-api — SEC API client
 ├── supabase/
 │   ├── functions/          # 18 Edge Functions (Deno runtime)
 │   │   ├── _shared/        #   Shared: db, auth, cors, schema
@@ -234,7 +233,7 @@ Younionize/
 
 ## Edge Functions
 
-Younionize's API layer runs on [Supabase Edge Functions](https://supabase.com/docs/guides/functions) (Deno runtime). There are 18 endpoints covering health checks, user management, company data, SEC ingestion, AI summarization, RAG Q&A, and compensation analysis.
+YoUnion's API layer runs on [Supabase Edge Functions](https://supabase.com/docs/guides/functions) (Deno runtime). There are 18 endpoints covering health checks, user management, company data, SEC ingestion, AI summarization, RAG Q&A, and compensation analysis.
 
 ```bash
 # Run locally (requires local Supabase running)
@@ -250,32 +249,13 @@ Local Edge Functions are available at `http://127.0.0.1:54321/functions/v1/{func
 
 ## Deployment
 
-The web app is hosted on Netlify at [younionize.me](https://younionize.me); the API runs on Supabase Edge Functions; mobile builds go through EAS.
-
-### Web (Netlify)
-
-The Netlify project is `younionize` on the `betterhuman-applications` team. Netlify configuration lives in [netlify.toml](netlify.toml) — build command, publish directory (`dist/`), SPA `/*` rewrite to `/index.html`, and security headers.
-
-**One-time setup steps** (do these once after the rename PR merges):
-
-1. **Connect the GitHub repo to the Netlify project** in the [Netlify dashboard](https://app.netlify.com/projects/younionize) → Site configuration → Build & deploy → Link repository → select `MajorWookie/YoUnion`, branch `main`. Auto-deploy on push.
-2. **Set production environment variables** (Site configuration → Environment variables). Only `EXPO_PUBLIC_*` vars are needed — server-only secrets stay in Supabase:
-   - `EXPO_PUBLIC_SUPABASE_URL` — your hosted Supabase project URL
-   - `EXPO_PUBLIC_SUPABASE_KEY` — your hosted Supabase publishable key
-3. **Attach the custom domain `younionize.me`** (Site configuration → Domain management → Add custom domain). Netlify will issue a Let's Encrypt cert automatically. Set `younionize.me` as the primary domain so `www.younionize.me` redirects to it.
-4. **Add Supabase Auth redirect URLs** (Supabase dashboard → Authentication → URL Configuration → Redirect URLs):
-   - `https://younionize.me/**`
-   - `https://www.younionize.me/**`
-
-Once these are set, every push to `main` deploys automatically. Manual deploys: `git push` or via the Netlify dashboard "Trigger deploy" button.
-
 ### Supabase Edge Functions
 
 ```bash
 bun run deploy:functions
 ```
 
-Deploys all functions in `supabase/functions/` to your linked Supabase project. CORS is locked to the Netlify production origins plus localhost via `supabase/functions/_shared/cors.ts`.
+Deploys all functions in `supabase/functions/` to your linked Supabase project.
 
 ### EAS (Mobile Builds)
 
@@ -353,7 +333,7 @@ These are retained for backwards compatibility but not required for new setups:
 
 ## Design
 
-- [Figma — UI Screens & Components](https://www.figma.com/design/sOaLnijKNhnXQ9uq6sdcno/Younionize-%E2%80%94-UI-Screens---Components?m=auto&t=wcLayY2d4xtX48si-1)
+- [Figma — UI Screens & Components](https://www.figma.com/design/sOaLnijKNhnXQ9uq6sdcno/YoUnion-%E2%80%94-UI-Screens---Components?m=auto&t=wcLayY2d4xtX48si-1)
 
 ## Documentation
 
@@ -368,11 +348,4 @@ These are retained for backwards compatibility but not required for new setups:
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
-
-You are free to use, study, modify, and redistribute Younionize. If you run a
-modified version as a hosted service that users interact with over a network,
-you must publish your modifications under the same license. See [COPYRIGHT](COPYRIGHT)
-for the rationale.
-
-Copyright © 2026 Adrian Anderson.
+Private — not open source.

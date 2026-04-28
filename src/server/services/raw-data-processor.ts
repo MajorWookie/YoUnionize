@@ -7,8 +7,8 @@ import {
   insiderTrades,
   directors,
   form8kEvents,
-} from '@younionize/postgres'
-import { normalizeName } from '@younionize/helpers'
+} from '@union/postgres'
+import { normalizeName } from '@union/helpers'
 import type { CompanyRecord } from './company-lookup'
 import { enrichCompensationNames, enrichDirectorRoles, enrichDirectorNames } from './enrichment'
 import { summarizeCompanyFilings } from './summarization-pipeline'

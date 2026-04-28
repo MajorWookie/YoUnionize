@@ -7,7 +7,7 @@ import { badRequest, classifyError } from '../_shared/api-utils.ts'
 const SEC_API_BASE = 'https://api.sec-api.io'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const url = new URL(req.url)

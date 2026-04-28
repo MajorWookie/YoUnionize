@@ -6,7 +6,7 @@ import { userProfiles, userCostOfLiving } from '../_shared/schema.ts'
 import { classifyError } from '../_shared/api-utils.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const session = await ensureAuth(req)

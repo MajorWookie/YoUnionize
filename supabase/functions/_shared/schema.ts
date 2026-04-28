@@ -94,16 +94,8 @@ export const filingSummaries = pgTable(
     filedAt: timestamp('filed_at', { mode: 'string' }).notNull(),
     accessionNumber: text('accession_number').notNull().unique(),
     rawData: jsonb('raw_data').notNull(),
-    rawDataOverride: jsonb('raw_data_override'),
     aiSummary: jsonb('ai_summary'),
-    humanSummary: jsonb('human_summary'),
-    summaryVersion: integer('summary_version').notNull().default(1),
-    summarizationStatus: text('summarization_status').notNull().default('ai_generated'),
-    summarizationUpdatedAt: timestamp('summarization_updated_at', { mode: 'string' })
-      .notNull()
-      .defaultNow(),
-    summarizationUpdatedBy: uuid('summarization_updated_by'),
-    optimisticLockVersion: integer('optimistic_lock_version').notNull().default(0),
+    summaryVersion: integer('summary_version').default(1),
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
   },
@@ -113,23 +105,8 @@ export const filingSummaries = pgTable(
       table.filingType,
       table.periodEnd,
     ),
-    index('filing_summaries_review_status_idx').on(
-      table.summarizationStatus,
-      table.summarizationUpdatedAt,
-    ),
-    index('filing_summaries_review_company_idx').on(
-      table.companyId,
-      table.summarizationStatus,
-      table.summarizationUpdatedAt,
-    ),
   ],
 )
-
-export type SummarizationStatus =
-  | 'ai_generated'
-  | 'human_verified'
-  | 'human_edited'
-  | 'human_authored'
 
 // ── Executive Compensation ──────────────────────────────────────────────
 

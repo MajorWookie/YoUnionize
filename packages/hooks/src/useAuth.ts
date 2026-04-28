@@ -7,7 +7,7 @@ const DEV_SKIP_AUTH = true
 
 const DEV_TEST_USER = {
   id: '00000000-0000-0000-0000-000000000000',
-  email: 'testuser@younionize.dev',
+  email: 'testuser@younion.dev',
   name: 'Test User',
 } as const
 

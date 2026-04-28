@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Younionize",
-    "slug": "younionize",
-    "scheme": "younionize",
+    "name": "YoUnion",
+    "slug": "younion",
+    "scheme": "younion",
     "version": "0.1.6",
     "platforms": [
       "ios",
@@ -11,10 +11,10 @@
     ],
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.majorwookie.younionize"
+      "bundleIdentifier": "com.majorwookie.younion"
     },
     "android": {
-      "package": "com.majorwookie.younionize"
+      "package": "com.majorwookie.younion"
     },
     "web": {
       "bundler": "metro",

@@ -372,7 +372,7 @@ describe('ClaudeClient', () => {
       expect(result.data).toContain('$394 billion')
 
       const call = getMockCreate().mock.calls[0][0]
-      expect(call.system).toContain('Younionize')
+      expect(call.system).toContain('YoUnion')
       expect(call.system).toContain('SEC filings')
       expect(call.messages[0].content).toContain('[Source 1]')
       expect(call.messages[0].content).toContain('[Source 2]')

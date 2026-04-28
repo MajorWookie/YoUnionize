@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Input, Paragraph, XStack, YStack } from 'tamagui'
-import { useDebounce } from '@younionize/hooks'
+import { useDebounce } from '@union/hooks'
 import { fetchWithRetry } from '~/lib/api-client'
 import { Card } from '~/interface/display/Card'
 

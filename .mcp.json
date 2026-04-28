@@ -2,7 +2,7 @@
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=${SUPABASE_PROJECT_REF}"
+      "url": "https://mcp.supabase.com/mcp?project_ref=lnbenbqgicgbjlxshgpq"
     },
     "github": {
       "type": "stdio",
@@ -12,7 +12,7 @@
         "@modelcontextprotocol/server-github"
       ],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "REDACTED_GITHUB_PAT"
       }
     }
   }

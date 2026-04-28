@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { getDb, executiveCompensation } from '@younionize/postgres'
-import { normalizeName } from '@younionize/helpers'
+import { getDb, executiveCompensation } from '@union/postgres'
+import { normalizeName } from '@union/helpers'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 

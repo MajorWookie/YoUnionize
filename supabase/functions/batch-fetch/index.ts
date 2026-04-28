@@ -11,7 +11,7 @@ import { badRequest, classifyError } from '../_shared/api-utils.ts'
  * Body: { "tickers": ["AAPL", "MSFT", "NVDA"] }
  */
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const body = await req.json()

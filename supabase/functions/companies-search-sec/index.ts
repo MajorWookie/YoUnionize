@@ -14,7 +14,7 @@ import { companies } from '../_shared/schema.ts'
 import { searchCompaniesSec } from '../_shared/sec-fetch.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const url = new URL(req.url)

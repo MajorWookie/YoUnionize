@@ -1,6 +1,6 @@
 import { Redirect, useRouter } from 'expo-router'
 import { Button, H1, Paragraph, Spinner, YStack } from 'tamagui'
-import { useAuth } from '@younionize/hooks'
+import { useAuth } from '@union/hooks'
 
 export default function HomePage() {
   const router = useRouter()
@@ -20,7 +20,7 @@ export default function HomePage() {
 
   return (
     <YStack flex={1} items="center" justify="center" p="$4" gap="$4">
-      <H1>Younionize</H1>
+      <H1>YoUnion</H1>
       <Paragraph color="$color8">
         Understand your company. Know your worth.
       </Paragraph>

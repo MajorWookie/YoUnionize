@@ -143,9 +143,9 @@ describe('compensation-analysis prompts', () => {
 })
 
 describe('rag-answer prompts', () => {
-  it('system prompt sets Younionize context', () => {
+  it('system prompt sets YoUnion context', () => {
     const prompt = ragAnswerSystemPrompt()
-    expect(prompt).toContain('Younionize')
+    expect(prompt).toContain('YoUnion')
     expect(prompt).toContain('SEC filings')
     expect(prompt).toContain('never make up financial data')
   })

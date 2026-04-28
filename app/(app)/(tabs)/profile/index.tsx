@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@younionize/hooks'
+import { useAuth } from '@union/hooks'
 import { Button, H2, H4, Paragraph, Separator, Spinner, YStack } from 'tamagui'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { Card } from '~/interface/display/Card'
@@ -343,9 +343,9 @@ export default function ProfileScreen() {
 
       {/* About */}
       <Card mb="$4" gap="$2">
-        <Paragraph fontWeight="600">About Younionize</Paragraph>
+        <Paragraph fontWeight="600">About YoUnion</Paragraph>
         <Paragraph color="$color8" fontSize={13} lineHeight={20}>
-          Younionize helps employees understand their compensation in context. We analyze
+          YoUnion helps employees understand their compensation in context. We analyze
           public SEC filings — executive pay, financial performance, risk factors — and
           use AI to translate complex financial documents into plain language so you can
           make informed decisions about your career and pay.

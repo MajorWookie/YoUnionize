@@ -11,7 +11,7 @@ import { badRequest, classifyError } from '../_shared/api-utils.ts'
  * Usage: POST /functions/v1/company-process?ticker=AAPL
  */
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const url = new URL(req.url)

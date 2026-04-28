@@ -11,7 +11,7 @@ import {
 import { badRequest, notFound, classifyError } from '../_shared/api-utils.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const url = new URL(req.url)
@@ -53,7 +53,6 @@ Deno.serve(async (req) => {
           filedAt: filingSummaries.filedAt,
           accessionNumber: filingSummaries.accessionNumber,
           aiSummary: filingSummaries.aiSummary,
-          humanSummary: filingSummaries.humanSummary,
           summaryVersion: filingSummaries.summaryVersion,
         })
         .from(filingSummaries)
@@ -91,20 +90,15 @@ Deno.serve(async (req) => {
         .where(eq(directors.companyId, company.id)),
     ])
 
-    const hasSummary = (f: { aiSummary: unknown; humanSummary: unknown }) =>
-      f.aiSummary != null || f.humanSummary != null
-    const summaryOf = (f: { aiSummary: unknown; humanSummary: unknown }) =>
-      f.humanSummary ?? f.aiSummary
-
-    const latestAnnual = filingsData.find((f) => f.filingType === '10-K' && hasSummary(f))
-    const latestQuarterly = filingsData.find((f) => f.filingType === '10-Q' && hasSummary(f))
-    const latestProxy = filingsData.find((f) => f.filingType === 'DEF 14A' && hasSummary(f))
+    const latestAnnual = filingsData.find((f) => f.filingType === '10-K' && f.aiSummary != null)
+    const latestQuarterly = filingsData.find((f) => f.filingType === '10-Q' && f.aiSummary != null)
+    const latestProxy = filingsData.find((f) => f.filingType === 'DEF 14A' && f.aiSummary != null)
     const recentEvents = filingsData
-      .filter((f) => f.filingType === '8-K' && hasSummary(f))
+      .filter((f) => f.filingType === '8-K' && f.aiSummary != null)
       .slice(0, 5)
 
     const totalFilings = filingsData.length
-    const summarizedFilings = filingsData.filter(hasSummary).length
+    const summarizedFilings = filingsData.filter((f) => f.aiSummary != null).length
 
     return jsonResponse({
       company: {
@@ -123,15 +117,15 @@ Deno.serve(async (req) => {
         pendingFilings: totalFilings - summarizedFilings,
       },
       latestAnnual: latestAnnual
-        ? { id: latestAnnual.id, filingType: latestAnnual.filingType, periodEnd: latestAnnual.periodEnd, filedAt: latestAnnual.filedAt, summary: summaryOf(latestAnnual) }
+        ? { id: latestAnnual.id, filingType: latestAnnual.filingType, periodEnd: latestAnnual.periodEnd, filedAt: latestAnnual.filedAt, summary: latestAnnual.aiSummary }
         : null,
       latestQuarterly: latestQuarterly
-        ? { id: latestQuarterly.id, filingType: latestQuarterly.filingType, periodEnd: latestQuarterly.periodEnd, filedAt: latestQuarterly.filedAt, summary: summaryOf(latestQuarterly) }
+        ? { id: latestQuarterly.id, filingType: latestQuarterly.filingType, periodEnd: latestQuarterly.periodEnd, filedAt: latestQuarterly.filedAt, summary: latestQuarterly.aiSummary }
         : null,
       latestProxy: latestProxy
-        ? { id: latestProxy.id, periodEnd: latestProxy.periodEnd, summary: summaryOf(latestProxy) }
+        ? { id: latestProxy.id, periodEnd: latestProxy.periodEnd, summary: latestProxy.aiSummary }
         : null,
-      recentEvents: recentEvents.map((e) => ({ id: e.id, filedAt: e.filedAt, summary: summaryOf(e) })),
+      recentEvents: recentEvents.map((e) => ({ id: e.id, filedAt: e.filedAt, summary: e.aiSummary })),
       availableFiscalYears,
       selectedFiscalYear,
       executives: execCompData.map((e) => ({

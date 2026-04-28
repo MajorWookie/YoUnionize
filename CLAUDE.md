@@ -1,8 +1,8 @@
-# CLAUDE.md — Younionize
+# CLAUDE.md — YoUnion
 
 ## Project Overview
 
-Younionize is a cross-platform application (iOS-first, then Android, then Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. It ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
+YoUnion is a cross-platform application (iOS-first, then Android, then Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. It ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
 
 ## Tech Stack
 
@@ -48,12 +48,12 @@ Younionize is a cross-platform application (iOS-first, then Android, then Web) f
 │            sec-fetch, sec-ingest                          │
 ├─────────────────────────────────────────────────────────┤
 │                   packages/ (workspace)                   │
-│  @younionize/ai       — Claude API wrapper + prompts + extractJson │
-│  @younionize/postgres  — Drizzle DB client (postgres-js)       │
-│  @younionize/sec-api   — SEC EDGAR API client + schemas        │
-│  @younionize/helpers   — Shared utilities (ensureEnv, types,   │
+│  @union/ai       — Claude API wrapper + prompts + extractJson │
+│  @union/postgres  — Drizzle DB client (postgres-js)       │
+│  @union/sec-api   — SEC EDGAR API client + schemas        │
+│  @union/helpers   — Shared utilities (ensureEnv, types,   │
 │                     concurrency, normalizeName, nicknames)│
-│  @younionize/hooks     — React hooks (useAuth, useDebounce)    │
+│  @union/hooks     — React hooks (useAuth, useDebounce)    │
 └─────────────────────────────────────────────────────────┘
          │                    │                  │
     Supabase Auth      PostgreSQL + pgvector    SEC API
@@ -99,8 +99,8 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
 - **Markdown**: `MarkdownContent` wraps `react-native-markdown-display` with Tamagui theme tokens. Enable via `markdown` prop on `TextSummaryCard`.
 
 ### Name Normalization & Deduplication
-- **`normalizeName()`** in `@younionize/helpers` — lowercase, trim, strip honorific suffixes. Used for people dedup across filings.
-- **`getCanonicalFirstName()`** in `@younionize/helpers` — maps nicknames to formal names (e.g., "Bill" → "William") via static `nickname-map.ts`. Used in enrichment layer only (not in `normalizeName()`) to avoid false positives in dedup indexes.
+- **`normalizeName()`** in `@union/helpers` — lowercase, trim, strip honorific suffixes. Used for people dedup across filings.
+- **`getCanonicalFirstName()`** in `@union/helpers` — maps nicknames to formal names (e.g., "Bill" → "William") via static `nickname-map.ts`. Used in enrichment layer only (not in `normalizeName()`) to avoid false positives in dedup indexes.
 - **Dedup indexes**: `directors_dedup_idx` (company_id, normalized_name) and `exec_comp_dedup_idx` (company_id, normalized_name, fiscal_year).
 - **Sync requirement**: The SQL migration and `normalizeName()` helper use the same regex — keep them in sync.
 
@@ -119,7 +119,7 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
 - **Prompt templates** in `packages/ai/src/prompts/` — one file per prompt, 8th-grade reading level, define financial terms.
 - **Summary versioning**: `CURRENT_SUMMARY_VERSION = 2`. `CompanySummaryCard` handles v1/v2 via `isV2Summary()`.
 - **ClaudeClient methods**: `summarizeSection()`, `generateCompanySummary()`, `generateEmployeeImpact()`, `summarizeMda()`, `generateWhatThisMeans()`, `analyzeCompensation()`, `generateRagResponse()`. All use exponential backoff (5 retries, handles 429/529).
-- **`extractJson()`** in `@younionize/ai` — parses JSON from Claude responses, handling markdown fences and prose wrapping. Used by structured prompt responses (company-summary, employee-impact).
+- **`extractJson()`** in `@union/ai` — parses JSON from Claude responses, handling markdown fences and prose wrapping. Used by structured prompt responses (company-summary, employee-impact).
 - Embeddings: always pass `input_type: 'document'` when storing, `input_type: 'query'` when searching.
 - The `/ask` Edge Function calls Voyage AI directly (not `ClaudeClient`) because Edge Functions run on Deno.
 - RAG pipeline components (embedding, retrieval, generation) must be clearly separated.

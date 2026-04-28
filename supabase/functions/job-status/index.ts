@@ -5,7 +5,7 @@ import { jobs } from '../_shared/schema.ts'
 import { badRequest, notFound, classifyError } from '../_shared/api-utils.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return handleCors(req)
+  if (req.method === 'OPTIONS') return handleCors()
 
   try {
     const url = new URL(req.url)
