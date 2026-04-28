@@ -1,0 +1,724 @@
+{
+  "info": {
+    "name": "YoUnion — Supabase PostgREST",
+    "description": "Read-focused collection for inspecting YoUnion database tables via Supabase's auto-generated PostgREST API.\n\n## Setup\n1. Import `younion.postman_environment.json` alongside this collection.\n2. Set `supabase_url` (e.g. `http://127.0.0.1:54321` for local, your project URL for hosted).\n3. Set `supabase_key` to your **publishable** key (`SUPABASE_KEY` in `.env`). This grants anon access — RLS-protected tables (users, user_profiles, user_cost_of_living) will return `[]` until you call **Auth → Sign in with password**, which captures a user JWT into `{{user_jwt}}` for you.\n4. Open any folder and hit Send.\n\n## Headers\n- `apikey`: identifies the project. Always the publishable key.\n- `Authorization: Bearer ...`: anon access if it's the publishable key, authenticated access if it's a user JWT.\n\nThe collection-level `Authorization` defaults to `{{supabase_key}}` so anon-readable tables Just Work. To switch to authenticated mode, change a request's auth to `Bearer {{user_jwt}}` (or override at the folder level).\n\n## Query DSL cheatsheet (PostgREST)\n- `?select=col1,col2` — projection\n- `?col=eq.value` — equality (`gt`, `lt`, `gte`, `lte`, `neq`, `like`, `ilike`, `in.(a,b)`, `is.null`)\n- `?order=col.desc.nullslast`\n- `?limit=25&offset=50`\n- `?select=*,related_table(*)` — embed FK relations\n- Header `Prefer: count=exact` — total row count in `Content-Range` response header\n- Header `Accept: application/vnd.pgrst.object+json` — return single object instead of array (404 if 0 or >1 rows)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{supabase_key}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "rest_path", "value": "/rest/v1", "type": "string" },
+    { "key": "auth_path", "value": "/auth/v1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Get a user JWT to access RLS-protected tables. The 'Sign in with password' request automatically writes the returned access_token into `{{user_jwt}}` via a test script.",
+      "item": [
+        {
+          "name": "Sign in with password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "  pm.environment.set('user_jwt', json.access_token);",
+                  "  pm.environment.set('user_id', json.user && json.user.id);",
+                  "  console.log('Saved user_jwt and user_id to environment');",
+                  "} else {",
+                  "  console.warn('No access_token in response', json);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}{{auth_path}}/token?grant_type=password",
+              "host": ["{{supabase_url}}{{auth_path}}"],
+              "path": ["token"],
+              "query": [{ "key": "grant_type", "value": "password" }]
+            }
+          }
+        },
+        {
+          "name": "Get current user (using user_jwt)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{auth_path}}/user",
+              "host": ["{{supabase_url}}{{auth_path}}"],
+              "path": ["user"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "companies",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=25&order=ticker.asc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "ticker.asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By ticker",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "ticker", "value": "eq.AAPL" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search by name (ilike)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?name=ilike.*apple*&select=ticker,name,cik&limit=10",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "name", "value": "ilike.*apple*" },
+                { "key": "select", "value": "ticker,name,cik" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "directors",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/directors?select=*&limit=25",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["directors"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By company_id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/directors?company_id=eq.{{company_id}}&select=*&order=name.asc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["directors"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "name.asc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "executive_compensation",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?select=*&limit=25&order=fiscal_year.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "fiscal_year.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By company_id and fiscal_year",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&fiscal_year=eq.2023&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "fiscal_year", "value": "eq.2023" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Top earners (total_compensation desc)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?select=name,title,fiscal_year,total_compensation,companies(ticker,name)&order=total_compensation.desc.nullslast&limit=20",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "select", "value": "name,title,fiscal_year,total_compensation,companies(ticker,name)" },
+                { "key": "order", "value": "total_compensation.desc.nullslast" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "filing_summaries",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?select=*&limit=25&order=created_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By company_id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=*&order=created_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "insider_trades",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/insider_trades?select=*&limit=25&order=transaction_date.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["insider_trades"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "transaction_date.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By company_id (recent)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/insider_trades?company_id=eq.{{company_id}}&select=*&order=transaction_date.desc&limit=50",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["insider_trades"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "transaction_date.desc" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "embeddings",
+      "item": [
+        {
+          "name": "List (limit 25, exclude vector column)",
+          "description": "Embeddings store 1024-dim vectors — projecting them in JSON is wasteful. Exclude with explicit select.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/embeddings?select=id,company_id,filing_summary_id,chunk_text,created_at&limit=25",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["embeddings"],
+              "query": [
+                { "key": "select", "value": "id,company_id,filing_summary_id,chunk_text,created_at" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By company_id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/embeddings?company_id=eq.{{company_id}}&select=id,chunk_text,created_at&limit=50",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["embeddings"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "id,chunk_text,created_at" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "compensation_analyses",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/compensation_analyses?select=*&limit=25&order=created_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["compensation_analyses"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "form_8k_events",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/form_8k_events?select=*&limit=25&order=event_date.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["form_8k_events"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "event_date.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By company_id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/form_8k_events?company_id=eq.{{company_id}}&select=*&order=event_date.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["form_8k_events"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "event_date.desc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "raw_sec_responses",
+      "item": [
+        {
+          "name": "List (metadata only — exclude payload)",
+          "description": "raw_sec_responses contains verbatim SEC API JSON which can be huge. Exclude the payload column unless you need it.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/raw_sec_responses?select=id,company_id,endpoint,fetched_at&limit=25&order=fetched_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["raw_sec_responses"],
+              "query": [
+                { "key": "select", "value": "id,company_id,endpoint,fetched_at" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "fetched_at.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By id (full payload)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/raw_sec_responses?id=eq.{{raw_response_id}}&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["raw_sec_responses"],
+              "query": [
+                { "key": "id", "value": "eq.{{raw_response_id}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "personalized_summaries",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/personalized_summaries?select=*&limit=25&order=created_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["personalized_summaries"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "jobs",
+      "item": [
+        {
+          "name": "List (limit 25)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/jobs?select=*&limit=25&order=created_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["jobs"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/jobs?status=in.(pending,running)&select=*&order=created_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["jobs"],
+              "query": [
+                { "key": "status", "value": "in.(pending,running)" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "created_at.desc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "users (RLS — needs user_jwt)",
+      "description": "Requires authenticated session. Run Auth → Sign in with password first.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "List (limited by RLS to your row)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/users?select=*&limit=25",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "user_profiles (RLS — needs user_jwt)",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "Mine",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/user_profiles?user_id=eq.{{user_id}}&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["user_profiles"],
+              "query": [
+                { "key": "user_id", "value": "eq.{{user_id}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "user_cost_of_living (RLS — needs user_jwt)",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "Mine",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/user_cost_of_living?user_id=eq.{{user_id}}&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["user_cost_of_living"],
+              "query": [
+                { "key": "user_id", "value": "eq.{{user_id}}" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Query Patterns (cookbook)",
+      "description": "Copy-paste examples of PostgREST features you'll use across tables.",
+      "item": [
+        {
+          "name": "Pagination (Range header)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Range", "value": "0-24" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=ticker,name&order=ticker.asc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "ticker,name" },
+                { "key": "order", "value": "ticker.asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Embed FK relation",
+          "description": "Bring back parent company alongside each director using FK relationship traversal.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/directors?select=name,title,companies(ticker,name)&limit=10",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["directors"],
+              "query": [
+                { "key": "select", "value": "name,title,companies(ticker,name)" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multiple filters (AND)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?fiscal_year=gte.2022&total_compensation=gte.10000000&select=name,title,fiscal_year,total_compensation,companies(ticker)&order=total_compensation.desc&limit=25",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "fiscal_year", "value": "gte.2022" },
+                { "key": "total_compensation", "value": "gte.10000000" },
+                { "key": "select", "value": "name,title,fiscal_year,total_compensation,companies(ticker)" },
+                { "key": "order", "value": "total_compensation.desc" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "OR filter",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?or=(ticker.eq.AAPL,ticker.eq.MSFT,ticker.eq.GOOGL)&select=ticker,name",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "or", "value": "(ticker.eq.AAPL,ticker.eq.MSFT,ticker.eq.GOOGL)" },
+                { "key": "select", "value": "ticker,name" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Single object (404 if not exactly one row)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "ticker", "value": "eq.AAPL" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
