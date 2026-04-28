@@ -1,4 +1,4 @@
-import { SecApiClient } from '@union/sec-api'
+import { SecApiClient } from '@younionize/sec-api'
 
 let client: SecApiClient | undefined
 

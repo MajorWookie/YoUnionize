@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
-import { getDb, filingSummaries } from '@union/postgres'
-import { TenKSection } from '@union/sec-api'
-import type { Filing, FilingQueryResponse } from '@union/sec-api'
+import { getDb, filingSummaries } from '@younionize/postgres'
+import { TenKSection } from '@younionize/sec-api'
+import type { Filing, FilingQueryResponse } from '@younionize/sec-api'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 

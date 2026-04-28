@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { getDb, directors } from '@union/postgres'
-import { normalizeName } from '@union/helpers'
+import { getDb, directors } from '@younionize/postgres'
+import { normalizeName } from '@younionize/helpers'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 
