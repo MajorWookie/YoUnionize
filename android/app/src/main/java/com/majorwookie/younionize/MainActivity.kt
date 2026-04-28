@@ -1,4 +1,4 @@
-package com.majorwookie.younion
+package com.majorwookie.younionize
 
 import android.os.Build
 import android.os.Bundle

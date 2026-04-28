@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { getDb, userProfiles, userCostOfLiving } from '@union/postgres'
+import { getDb, userProfiles, userCostOfLiving } from '@younionize/postgres'
 import { ensureAuth } from '~/features/auth/server/ensureAuth'
 import { withLogging, classifyError } from '~/server/api-utils'
 
