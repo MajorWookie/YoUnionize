@@ -239,6 +239,51 @@
       "name": "filing_summaries",
       "item": [
         {
+          "name": "Latest filing — raw_data only (single object)",
+          "description": "Returns just the `raw_data` jsonb of the most recently filed row for the given company. Uses `select=raw_data` to project only that one column, `order=filed_at.desc&limit=1` to take the latest, and the single-object Accept header so the response is the object — not a one-element array.\n\nIf you'd rather sort by DB row creation time, swap `order` to `created_at.desc`. Note the difference: `filed_at` is when SEC received the filing; `created_at` is when our row was inserted (could differ on backfills).\n\nRequires `{{company_id}}` to be set in the environment.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json", "description": "Strip the array wrapper — return the row as an object. 406 if 0 or >1 rows match (limit=1 prevents the >1 case)." }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=raw_data&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "raw_data", "description": "Project only this column. Massive payload reduction since `raw_data` already is the SEC response — `select=*` would also pull ai_summary, human_summary, etc." },
+                { "key": "order", "value": "filed_at.desc", "description": "Most recent SEC filing first. Alt: `created_at.desc` (DB row creation order)." },
+                { "key": "limit", "value": "1", "description": "Single row." },
+                { "key": "filing_type", "value": "eq.10-K", "disabled": true, "description": "Optional filter — narrow to a specific filing type (e.g. 10-K, 10-Q, 8-K, DEF 14A)." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Latest filing — raw_data jsonb path (single field inside)",
+          "description": "If you only need one field inside the `raw_data` jsonb blob, use the PostgREST jsonb arrow operators in the select. `->` returns jsonb, `->>` returns text. Replace `your_field` with the actual key.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=value:raw_data->your_field&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "value:raw_data->your_field", "description": "Pull a sub-field of the raw_data jsonb. Use `->>` instead of `->` if you want it as a plain string rather than nested json. The `value:` prefix renames the column in the response." },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
           "name": "List (limit 25)",
           "request": {
             "method": "GET",
@@ -714,6 +759,123 @@
               "query": [
                 { "key": "ticker", "value": "eq.AAPL" },
                 { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "REFERENCE — every query parameter (all disabled, flip on what you need)",
+          "description": "Hit Send as-is and you get the full companies table (only `select=*` is enabled). Every other row is a disabled example of a PostgREST query parameter you can enable. Substitute real column names from the table you're targeting.\n\nPostgREST docs: https://postgrest.org/en/stable/references/api/tables_views.html",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "*", "description": "PROJECTION — return all columns. Default if omitted." },
+                { "key": "select", "value": "ticker,name,cik", "disabled": true, "description": "PROJECTION — explicit column list. Cheaper than `*` for wide tables." },
+                { "key": "select", "value": "ticker,legal_name:name", "disabled": true, "description": "PROJECTION — alias columns: `output_name:db_column`." },
+                { "key": "select", "value": "ticker,cik::text", "disabled": true, "description": "PROJECTION — cast a column to another type using `column::type`." },
+                { "key": "select", "value": "raw_data->>field_name", "disabled": true, "description": "PROJECTION — extract jsonb field as text. Use `->` for jsonb subobject, `->>` for text." },
+                { "key": "select", "value": "*,directors(*)", "disabled": true, "description": "EMBED — pull the related directors rows for each company via FK relationship." },
+                { "key": "select", "value": "*,directors(name,title)", "disabled": true, "description": "EMBED — relation with column projection on the embedded table." },
+                { "key": "select", "value": "*,directors!directors_company_id_fkey(*)", "disabled": true, "description": "EMBED — disambiguate which FK to follow when there are multiple FKs between the same two tables." },
+                { "key": "select", "value": "*,directors(*),executive_compensation(*)", "disabled": true, "description": "EMBED — multiple relations in one request." },
+                { "key": "select", "value": "*,director_count:directors(count)", "disabled": true, "description": "EMBED — return only the count of related rows." },
+
+                { "key": "ticker", "value": "eq.AAPL", "disabled": true, "description": "FILTER eq — equals." },
+                { "key": "ticker", "value": "neq.AAPL", "disabled": true, "description": "FILTER neq — not equal." },
+                { "key": "cik", "value": "gt.1000000", "disabled": true, "description": "FILTER gt — greater than." },
+                { "key": "cik", "value": "gte.1000000", "disabled": true, "description": "FILTER gte — greater than or equal." },
+                { "key": "cik", "value": "lt.9999999", "disabled": true, "description": "FILTER lt — less than." },
+                { "key": "cik", "value": "lte.9999999", "disabled": true, "description": "FILTER lte — less than or equal." },
+                { "key": "name", "value": "like.Apple*", "disabled": true, "description": "FILTER like — SQL LIKE, case-sensitive. `*` is the wildcard (URL-friendly substitute for `%`)." },
+                { "key": "name", "value": "ilike.*apple*", "disabled": true, "description": "FILTER ilike — case-insensitive LIKE. Most commonly used for substring search." },
+                { "key": "name", "value": "match.^Apple", "disabled": true, "description": "FILTER match — POSIX regex, case-sensitive." },
+                { "key": "name", "value": "imatch.^apple", "disabled": true, "description": "FILTER imatch — POSIX regex, case-insensitive." },
+                { "key": "ticker", "value": "in.(AAPL,MSFT,GOOGL)", "disabled": true, "description": "FILTER in — value in list. Comma-separated, parens required. Quote strings with commas: `in.(\"a,b\",c)`." },
+                { "key": "cik", "value": "is.null", "disabled": true, "description": "FILTER is — IS NULL. Also: `is.true`, `is.false`, `is.unknown`." },
+                { "key": "cik", "value": "isdistinct.123", "disabled": true, "description": "FILTER isdistinct — IS DISTINCT FROM (null-safe inequality)." },
+                { "key": "name", "value": "fts.iphone", "disabled": true, "description": "FILTER fts — full-text search using `to_tsquery`. Combine words with `&`, `|`, `!`." },
+                { "key": "name", "value": "plfts.iphone", "disabled": true, "description": "FILTER plfts — plain full-text search via `plainto_tsquery` (no operator parsing)." },
+                { "key": "name", "value": "phfts.apple iphone", "disabled": true, "description": "FILTER phfts — phrase full-text search via `phraseto_tsquery`. Words must appear in order." },
+                { "key": "name", "value": "wfts.apple OR iphone", "disabled": true, "description": "FILTER wfts — websearch FTS via `websearch_to_tsquery`. Google-style operators." },
+                { "key": "tags", "value": "cs.{apple,tech}", "disabled": true, "description": "FILTER cs — contains. For arrays/jsonb/range. e.g. array contains `{apple,tech}`." },
+                { "key": "tags", "value": "cd.{apple,tech,phone}", "disabled": true, "description": "FILTER cd — contained by." },
+                { "key": "tags", "value": "ov.{apple,tech}", "disabled": true, "description": "FILTER ov — overlap (any element in common)." },
+                { "key": "period", "value": "sl.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER sl — strictly left of (range type)." },
+                { "key": "period", "value": "sr.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER sr — strictly right of." },
+                { "key": "period", "value": "nxr.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER nxr — does not extend right." },
+                { "key": "period", "value": "nxl.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER nxl — does not extend left." },
+                { "key": "period", "value": "adj.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER adj — adjacent to." },
+
+                { "key": "ticker", "value": "not.eq.AAPL", "disabled": true, "description": "NEGATION — prefix any operator with `not.`. Works with ilike, in, is, etc." },
+                { "key": "name", "value": "not.ilike.*apple*", "disabled": true, "description": "NEGATION — `not.ilike` excludes substring matches." },
+
+                { "key": "or", "value": "(ticker.eq.AAPL,ticker.eq.MSFT)", "disabled": true, "description": "LOGICAL or — comma-separated conditions inside parens. Equivalent to SQL OR." },
+                { "key": "and", "value": "(cik.gt.0,cik.lt.9999999)", "disabled": true, "description": "LOGICAL and — explicit AND group. Multiple top-level params already AND together; this is mainly used inside `or`." },
+                { "key": "or", "value": "(name.ilike.*apple*,and(cik.gt.1000,cik.lt.2000))", "disabled": true, "description": "LOGICAL nested — combine `or` with nested `and(...)` for complex predicates." },
+                { "key": "or", "value": "(ticker.eq.AAPL,not.and(cik.gt.1000,cik.lt.2000))", "disabled": true, "description": "LOGICAL nested with negation — `not.and(...)` inverts a sub-group." },
+
+                { "key": "order", "value": "name.asc", "disabled": true, "description": "ORDER — ascending by column. `asc` is default; can omit." },
+                { "key": "order", "value": "name.desc", "disabled": true, "description": "ORDER — descending." },
+                { "key": "order", "value": "name.asc.nullsfirst", "disabled": true, "description": "ORDER — control null placement: `nullsfirst` or `nullslast`." },
+                { "key": "order", "value": "cik.desc.nullslast,name.asc", "disabled": true, "description": "ORDER — multi-column, comma-separated. First column is primary sort." },
+
+                { "key": "limit", "value": "25", "disabled": true, "description": "PAGINATION — cap rows returned. Pair with `offset` or use the `Range` header." },
+                { "key": "offset", "value": "50", "disabled": true, "description": "PAGINATION — skip N rows. Combine with `limit`." },
+
+                { "key": "directors.order", "value": "name.asc", "disabled": true, "description": "EMBED MODIFIER — order rows inside the embedded `directors(...)` relation." },
+                { "key": "directors.limit", "value": "5", "disabled": true, "description": "EMBED MODIFIER — limit rows inside the embedded relation." },
+                { "key": "directors.offset", "value": "0", "disabled": true, "description": "EMBED MODIFIER — offset inside the embedded relation." },
+                { "key": "directors.title", "value": "eq.CEO", "disabled": true, "description": "EMBED MODIFIER — filter the embedded relation. Format: `<relation>.<col>=<op>.<value>`." },
+                { "key": "directors.select", "value": "name,title", "disabled": true, "description": "EMBED MODIFIER — alternate way to project columns on the embedded relation (also can be done inside the select itself)." },
+
+                { "key": "on_conflict", "value": "ticker", "disabled": true, "description": "WRITE-ONLY — for POST upserts: name the unique column to match on. Pair with `Prefer: resolution=merge-duplicates`." },
+                { "key": "columns", "value": "ticker,name", "disabled": true, "description": "WRITE-ONLY — for POST: limit which columns are inserted from the body." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "REFERENCE — every header (all disabled, flip on what you need)",
+          "description": "Companion to the query-param reference. Every PostgREST-aware header you might use, with descriptions.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}", "description": "AUTH — Supabase project key. Always required." },
+              { "key": "Accept", "value": "application/json", "disabled": true, "description": "RESPONSE FORMAT — default. JSON array of rows." },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json", "disabled": true, "description": "RESPONSE FORMAT — single object instead of array. 406 if 0 or >1 rows match." },
+              { "key": "Accept", "value": "text/csv", "disabled": true, "description": "RESPONSE FORMAT — CSV output." },
+              { "key": "Accept", "value": "application/openapi+json", "disabled": true, "description": "RESPONSE FORMAT — at the API root, returns the OpenAPI spec describing every table and RPC." },
+              { "key": "Accept-Profile", "value": "public", "disabled": true, "description": "SCHEMA — read from a non-default Postgres schema (must be exposed via `db-schemas` setting)." },
+              { "key": "Content-Profile", "value": "public", "disabled": true, "description": "SCHEMA — for writes: target a non-default schema." },
+              { "key": "Prefer", "value": "count=exact", "disabled": true, "description": "COUNT — total row count returned in `Content-Range` response header. Slow on large tables." },
+              { "key": "Prefer", "value": "count=planned", "disabled": true, "description": "COUNT — fast estimate from query planner. Cheap but approximate." },
+              { "key": "Prefer", "value": "count=estimated", "disabled": true, "description": "COUNT — exact when small, planned when large. Good default for unknown sizes." },
+              { "key": "Prefer", "value": "return=representation", "disabled": true, "description": "WRITE — include the inserted/updated/deleted row(s) in the response body." },
+              { "key": "Prefer", "value": "return=minimal", "disabled": true, "description": "WRITE — don't return a body. Default for inserts." },
+              { "key": "Prefer", "value": "return=headers-only", "disabled": true, "description": "WRITE — return only Location header pointing at the new row." },
+              { "key": "Prefer", "value": "resolution=merge-duplicates", "disabled": true, "description": "UPSERT — on conflict, UPDATE the existing row. Pair with `on_conflict=<col>` query param." },
+              { "key": "Prefer", "value": "resolution=ignore-duplicates", "disabled": true, "description": "UPSERT — on conflict, leave existing row alone." },
+              { "key": "Prefer", "value": "missing=default", "disabled": true, "description": "WRITE — when a column is missing from the body, use its DB default instead of NULL." },
+              { "key": "Prefer", "value": "tx=commit", "disabled": true, "description": "TRANSACTION — commit (default)." },
+              { "key": "Prefer", "value": "tx=rollback", "disabled": true, "description": "TRANSACTION — execute and roll back. Useful for dry-run testing of writes." },
+              { "key": "Prefer", "value": "handling=strict", "disabled": true, "description": "VALIDATION — error on unknown query parameters or headers. Default is `lenient`." },
+              { "key": "Prefer", "value": "timezone=America/New_York", "disabled": true, "description": "TIMEZONE — set the session timezone for this request (affects timestamp formatting)." },
+              { "key": "Range", "value": "0-24", "disabled": true, "description": "PAGINATION — alternative to `limit`/`offset`. Inclusive 0-indexed range. Pair with `Prefer: count=exact` to get totals." },
+              { "key": "Range-Unit", "value": "items", "disabled": true, "description": "PAGINATION — must be `items` (the only supported unit)." },
+              { "key": "If-Match", "value": "\"<etag>\"", "disabled": true, "description": "CONCURRENCY — only act if the resource ETag matches (optimistic locking)." }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "1" }
               ]
             }
           }
