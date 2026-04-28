@@ -1,16 +1,17 @@
 {
   "info": {
-    "name": "YoUnion — Supabase PostgREST",
-    "description": "Read-focused collection for inspecting YoUnion database tables via Supabase's auto-generated PostgREST API.\n\n## Setup\n1. Import `younion.postman_environment.json` alongside this collection.\n2. Set `supabase_url` (e.g. `http://127.0.0.1:54321` for local, your project URL for hosted).\n3. Set `supabase_key` to your **publishable** key (`SUPABASE_KEY` in `.env`). This grants anon access — RLS-protected tables (users, user_profiles, user_cost_of_living) will return `[]` until you call **Auth → Sign in with password**, which captures a user JWT into `{{user_jwt}}` for you.\n4. Open any folder and hit Send.\n\n## Headers\n- `apikey`: identifies the project. Always the publishable key.\n- `Authorization: Bearer ...`: anon access if it's the publishable key, authenticated access if it's a user JWT.\n\nThe collection-level `Authorization` defaults to `{{supabase_key}}` so anon-readable tables Just Work. To switch to authenticated mode, change a request's auth to `Bearer {{user_jwt}}` (or override at the folder level).\n\n## Query DSL cheatsheet (PostgREST)\n- `?select=col1,col2` — projection\n- `?col=eq.value` — equality (`gt`, `lt`, `gte`, `lte`, `neq`, `like`, `ilike`, `in.(a,b)`, `is.null`)\n- `?order=col.desc.nullslast`\n- `?limit=25&offset=50`\n- `?select=*,related_table(*)` — embed FK relations\n- Header `Prefer: count=exact` — total row count in `Content-Range` response header\n- Header `Accept: application/vnd.pgrst.object+json` — return single object instead of array (404 if 0 or >1 rows)",
+    "name": "YoUnion — Supabase PostgREST + Edge Functions",
+    "description": "Inspect the YoUnion Supabase project end-to-end:\n- **PostgREST tables** for ad-hoc SQL-style reads against the database.\n- **Edge Functions** for the human review pipeline (write-side: apply human edits, verify AI summaries, override raw payloads).\n\n## Setup\n1. Import `younion.postman_environment.json` (local) or `younion.postman_environment.remote.json` (hosted) alongside this collection.\n2. Set `supabase_url` (e.g. `http://127.0.0.1:54321` for local, your project URL for hosted).\n3. Set `supabase_key` to your **publishable** key (`SUPABASE_KEY` in `.env`).\n4. **Run Auth → Sign in with password.** This captures a JWT into `{{user_jwt}}` and `{{user_id}}`. Without it, every other request returns 401 or `[]` — see RLS posture below.\n\n## Access model (RLS)\nRLS is on for every public-schema table. Three tiers:\n\n| Tier | Tables | Caller |\n| --- | --- | --- |\n| Public SEC data — readable to any authenticated user | companies, filing_summaries, directors, executive_compensation, insider_trades, form_8k_events | needs `{{user_jwt}}` |\n| User-owned — readable only to the row's owner | users, user_profiles, user_cost_of_living, compensation_analyses, personalized_summaries | needs `{{user_jwt}}`, owner-only |\n| Service-only — RLS-deny + GRANT revoked, **invisible to PostgREST** | raw_sec_responses, embeddings, jobs, filing_sections | reachable only via Edge Functions or psql |\n\nThe anon publishable key alone now returns `[]` for everything. **Sign in first.** The collection-level `Authorization` is set to `Bearer {{user_jwt}}` so one sign-in unlocks everything; the publishable key continues to identify the project via the `apikey` header.\n\n## Headers\n- `apikey`: identifies the project. Always the publishable key (`{{supabase_key}}`).\n- `Authorization: Bearer ...`: a user JWT after sign-in (`{{user_jwt}}`).\n\n## Query DSL cheatsheet (PostgREST)\n- `?select=col1,col2` — projection\n- `?col=eq.value` — equality (`gt`, `lt`, `gte`, `lte`, `neq`, `like`, `ilike`, `in.(a,b)`, `is.null`)\n- `?order=col.desc.nullslast`\n- `?limit=25&offset=50`\n- `?select=*,related_table(*)` — embed FK relations\n- Header `Prefer: count=exact` — total row count in `Content-Range` response header\n- Header `Accept: application/vnd.pgrst.object+json` — return single object instead of array (406 if 0 or >1 rows)\n\n## Recent schema changes reflected here\n- **filing_sections** — section text (MD&A, risk factors, etc.) was moved out of `filing_summaries.raw_data.extractedSections` into a dedicated table (one row per filing × section). Service-only — see the `filing_sections` folder for the query shape, and the **Review Pipeline (Edge Functions)** folder for the human-curated read path.\n- **Review pipeline columns** on `filing_summaries`: `summarization_status`, `human_summary`, `raw_data_override`, `summary_version` (`0` = pending re-summarization, `-1` = failed), `optimistic_lock_version`, `summarization_updated_at`/`_by`. New requests in the **filing_summaries** folder demonstrate filtering and projection; mutations live in the **Review Pipeline (Edge Functions)** folder.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{supabase_key}}", "type": "string" }]
+    "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
   },
   "variable": [
     { "key": "rest_path", "value": "/rest/v1", "type": "string" },
-    { "key": "auth_path", "value": "/auth/v1", "type": "string" }
+    { "key": "auth_path", "value": "/auth/v1", "type": "string" },
+    { "key": "functions_path", "value": "/functions/v1", "type": "string" }
   ],
   "item": [
     {
@@ -110,7 +111,7 @@
         },
         {
           "name": "Lesson 06 — Drill into a jsonb column (sub-field extraction)",
-          "description": "**SQL equivalent:** `SELECT raw_data->'formType' FROM filing_summaries WHERE company_id = '...' AND filing_type = '10-K' ORDER BY filed_at DESC LIMIT 1;`\n\n**What you're looking at**\nMost interesting data in YoUnion lives inside jsonb columns:\n- `filing_summaries.raw_data` — the verbatim SEC API JSON for a filing\n- `filing_summaries.ai_summary` — Claude's structured summary\n- `directors.committees`, `directors.qualifications` — list-shaped metadata\n\nPostgREST exposes Postgres's jsonb arrow operators directly in the select clause:\n- `column->key` — returns the value as **jsonb** (preserves nested structure)\n- `column->>key` — returns the value as **text** (stringifies it)\n- `column->idx` — for jsonb arrays (numeric index)\n- `column#>'{a,b,c}'` — path drill (jsonb)\n- `column#>>'{a,b,c}'` — path drill (text)\n\n**Why this matters for precision**\nInstead of pulling the entire 5MB `raw_data` blob and parsing it client-side, you can ask the database to extract just the field you want. The wire payload shrinks dramatically.\n\n**Try this**\n- This request pulls only `raw_data->>'formType'` for the latest 10-K.\n- Edit the select to `raw_data->>'cik'` to get the CIK from inside the SEC JSON.\n- Try `ai_summary->>'summary'` (if AI summary is populated) to pull the summary text.\n- Use `value:raw_data->>'formType'` to alias the output field to `value`.\n\n**Requires `{{company_id}}` in your environment.** Run a Lesson 03 query against `companies` first, then copy an `id` into the env.",
+          "description": "**SQL equivalent:** `SELECT raw_data->'formType' FROM filing_summaries WHERE company_id = '...' AND filing_type = '10-K' ORDER BY filed_at DESC LIMIT 1;`\n\n**What you're looking at**\nMost interesting data in YoUnion lives inside jsonb columns:\n- `filing_summaries.raw_data` — the verbatim SEC API JSON for a filing\n- `filing_summaries.ai_summary` — Claude's structured summary\n- `directors.committees`, `directors.qualifications` — list-shaped metadata\n\nPostgREST exposes Postgres's jsonb arrow operators directly in the select clause:\n- `column->key` — returns the value as **jsonb** (preserves nested structure)\n- `column->>key` — returns the value as **text** (stringifies it)\n- `column->idx` — for jsonb arrays (numeric index)\n- `column#>'{a,b,c}'` — path drill (jsonb)\n- `column#>>'{a,b,c}'` — path drill (text)\n\n**Why this matters for precision**\nInstead of pulling the entire 5MB `raw_data` blob and parsing it client-side, you can ask the database to extract just the field you want. The wire payload shrinks dramatically.\n\n**Try this**\n- This request pulls only `raw_data->>'formType'` for the latest 10-K.\n- Edit the select to `raw_data->>'cik'` to get the CIK from inside the SEC JSON.\n- Try `ai_summary->>'summary'` (if AI summary is populated) to pull the summary text.\n- Use `value:raw_data->>'formType'` to alias the output field to `value`.\n\n**Requires `{{company_id}}` in your environment.** Run a Lesson 03 query against `companies` first, then copy an `id` into the env.\n\n**Heads-up — schema change (2026-04):** filing section text (MD&A, risk factors, etc.) used to live at `filing_summaries.raw_data.extractedSections`. It now lives in a dedicated `filing_sections` table — see that folder for queries against the new shape. The drill examples here still work for non-section sub-fields like `formType`, `cik`, `periodOfReport`.",
           "request": {
             "method": "GET",
             "header": [
@@ -868,6 +869,179 @@
               ]
             }
           }
+        },
+        {
+          "name": "By summarization_status (review queue)",
+          "description": "Filter by review-pipeline status. Values:\n- `ai_generated` — AI ran, no human touch yet (default after summarize)\n- `human_verified` — human read it and approved without edits\n- `human_edited` — human modified the AI summary; <80% changed\n- `human_authored` — human rewrote substantially; ≥80% changed (or no AI baseline existed)\n\nThe write side of these transitions lives in the **Review Pipeline (Edge Functions)** folder.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?summarization_status=eq.ai_generated&select=id,filing_type,filed_at,accession_number,summarization_status,summarization_updated_at,companies(ticker)&order=summarization_updated_at.desc&limit=50",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "summarization_status", "value": "eq.ai_generated", "description": "Try `eq.human_verified`, `eq.human_edited`, `eq.human_authored`, or `in.(human_edited,human_authored)`." },
+                { "key": "select", "value": "id,filing_type,filed_at,accession_number,summarization_status,summarization_updated_at,companies(ticker)" },
+                { "key": "order", "value": "summarization_updated_at.desc" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pending re-summarization (summary_version=0)",
+          "description": "`summary_version=0` is the sentinel set when ingestion finishes or when a human applies a `raw_data_override`. The summarization pipeline scans for these. Compare to `>0` (current AI version) and `-1` (last summarize attempt failed — see next request).",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?summary_version=eq.0&select=id,filing_type,filed_at,accession_number,companies(ticker)&order=filed_at.desc&limit=50",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "summary_version", "value": "eq.0", "description": "`>0` = current AI version, `0` = pending, `-1` = last re-summarize failed." },
+                { "key": "select", "value": "id,filing_type,filed_at,accession_number,companies(ticker)" },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Failed re-summarization (summary_version=-1)",
+          "description": "Filings whose last re-summarization run failed. The `review list --status failed` CLI surfaces these for manual intervention.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?summary_version=eq.-1&select=id,filing_type,filed_at,accession_number,summarization_updated_at,companies(ticker)&order=summarization_updated_at.desc&limit=50",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "summary_version", "value": "eq.-1" },
+                { "key": "select", "value": "id,filing_type,filed_at,accession_number,summarization_updated_at,companies(ticker)" },
+                { "key": "order", "value": "summarization_updated_at.desc" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Effective summary (human_summary ?? ai_summary)",
+          "description": "Project both AI and human summaries side by side. Display sites use the read precedence `humanSummary ?? aiSummary` — when `human_summary` is non-null, that's what users see. Useful for spot-checking what's currently rendered.\n\nAlso projects `optimistic_lock_version` — the value you must pass as `expectedLockVersion` to the **Review Pipeline (Edge Functions)** mutations.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&select=id,filed_at,summarization_status,summary_version,optimistic_lock_version,ai_summary,human_summary&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "filing_type", "value": "eq.10-K" },
+                { "key": "select", "value": "id,filed_at,summarization_status,summary_version,optimistic_lock_version,ai_summary,human_summary", "description": "Both summaries side by side. `optimistic_lock_version` feeds `expectedLockVersion` on the review-* Edge Function calls." },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "filing_sections",
+      "description": "Normalized SEC section text — one row per (filing, section_code). Replaces the legacy `filing_summaries.raw_data.extractedSections` JSON blob.\n\n**RLS:** service-only. Postgres connections from Edge Functions can read/write; PostgREST clients (anon and authenticated) will always see `[]` here. The requests below show the query shape — they're useful when you have direct Postgres access (psql, Supabase Studio SQL editor, or service-role connection). For client-side reads, go through an Edge Function that joins server-side.\n\n**Section codes** are raw SEC item codes; the meaning depends on `filing_type`:\n- 10-K: `1` (business overview), `1A` (risk factors), `3` (legal proceedings), `7` (MD&A), `8` (financial statements), `11` (executive compensation)\n- 10-Q: `part1item1` (financial statements), `part1item2` (MD&A), `part2item1` (legal), `part2item1a` (risk factors)\n- DEF 14A: `part1item1` (proxy), `part1item7` (executive compensation)\n\n**fetch_status** values: `success`, `empty`, `error`. Failed extractions retain a `fetch_error` message — see the dedicated request below for triage.",
+      "item": [
+        {
+          "name": "By filing_id (all sections of one filing)",
+          "description": "All extracted sections for a single filing. Set `{{filing_id}}` first by running a filing_summaries query and copying an `id`.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_sections?filing_id=eq.{{filing_id}}&select=section_code,fetch_status,fetch_error,extracted_at&order=section_code.asc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_sections"],
+              "query": [
+                { "key": "filing_id", "value": "eq.{{filing_id}}", "description": "filing_summaries.id (UUID)." },
+                { "key": "select", "value": "section_code,fetch_status,fetch_error,extracted_at", "description": "Excludes `text` — that column can be very large. Add it to the projection only when you actually need the body." },
+                { "key": "order", "value": "section_code.asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "MD&A text for a 10-K (section_code=7)",
+          "description": "Pull the full MD&A body. Single-object Accept since `(filing_id, section_code)` is unique.\n\nFor 10-Q use `part1item2`. For DEF 14A executive compensation use `part1item7`.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_sections?filing_id=eq.{{filing_id}}&section_code=eq.7&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_sections"],
+              "query": [
+                { "key": "filing_id", "value": "eq.{{filing_id}}" },
+                { "key": "section_code", "value": "eq.7", "description": "10-K MD&A. Swap to `part1item2` for 10-Q, `part1item7` for DEF 14A executive compensation." },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Failed extractions (fetch_status=error)",
+          "description": "Sections that failed to fetch from the SEC. Triage list — these rows are why some filings have incomplete summaries.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_sections?fetch_status=eq.error&select=filing_id,section_code,fetch_error,extracted_at&order=extracted_at.desc&limit=50",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_sections"],
+              "query": [
+                { "key": "fetch_status", "value": "eq.error" },
+                { "key": "select", "value": "filing_id,section_code,fetch_error,extracted_at" },
+                { "key": "order", "value": "extracted_at.desc" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Section + parent filing (FK embed)",
+          "description": "Embed the parent `filing_summaries` row (filing_type, filed_at, accession_number, company_id) into each section. PostgREST detects the FK from `filing_id`. Useful when scanning sections across many filings without doing two round trips.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_sections?section_code=eq.7&select=section_code,extracted_at,filing_summaries(id,filing_type,filed_at,accession_number,company_id)&filing_summaries.filing_type=eq.10-K&order=extracted_at.desc&limit=10",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_sections"],
+              "query": [
+                { "key": "section_code", "value": "eq.7" },
+                { "key": "select", "value": "section_code,extracted_at,filing_summaries(id,filing_type,filed_at,accession_number,company_id)", "description": "Embed the parent filing. Add `text` to the outer projection if you want the body." },
+                { "key": "filing_summaries.filing_type", "value": "eq.10-K", "description": "Embed-side filter — narrows the join to 10-K filings." },
+                { "key": "order", "value": "extracted_at.desc" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
         }
       ]
     },
@@ -907,48 +1081,6 @@
                 { "key": "company_id", "value": "eq.{{company_id}}" },
                 { "key": "select", "value": "*" },
                 { "key": "order", "value": "transaction_date.desc" },
-                { "key": "limit", "value": "50" }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "embeddings",
-      "item": [
-        {
-          "name": "List (limit 25, exclude vector column)",
-          "description": "Embeddings store 1024-dim vectors — projecting them in JSON is wasteful. Exclude with explicit select.",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
-            ],
-            "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/embeddings?select=id,company_id,filing_summary_id,chunk_text,created_at&limit=25",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["embeddings"],
-              "query": [
-                { "key": "select", "value": "id,company_id,filing_summary_id,chunk_text,created_at" },
-                { "key": "limit", "value": "25" }
-              ]
-            }
-          }
-        },
-        {
-          "name": "By company_id",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
-            "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/embeddings?company_id=eq.{{company_id}}&select=id,chunk_text,created_at&limit=50",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["embeddings"],
-              "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "id,chunk_text,created_at" },
                 { "key": "limit", "value": "50" }
               ]
             }
@@ -1024,51 +1156,6 @@
       ]
     },
     {
-      "name": "raw_sec_responses",
-      "item": [
-        {
-          "name": "List (metadata only — exclude payload)",
-          "description": "raw_sec_responses contains verbatim SEC API JSON which can be huge. Exclude the payload column unless you need it.",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
-            ],
-            "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/raw_sec_responses?select=id,company_id,endpoint,fetched_at&limit=25&order=fetched_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["raw_sec_responses"],
-              "query": [
-                { "key": "select", "value": "id,company_id,endpoint,fetched_at" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "fetched_at.desc" }
-              ]
-            }
-          }
-        },
-        {
-          "name": "By id (full payload)",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
-            ],
-            "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/raw_sec_responses?id=eq.{{raw_response_id}}&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["raw_sec_responses"],
-              "query": [
-                { "key": "id", "value": "eq.{{raw_response_id}}" },
-                { "key": "select", "value": "*" }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "personalized_summaries",
       "item": [
         {
@@ -1094,42 +1181,140 @@
       ]
     },
     {
-      "name": "jobs",
+      "name": "Review Pipeline (Edge Functions)",
+      "description": "Write-side endpoints for the human review of AI-generated filing summaries. All require auth — sign in first to populate `{{user_jwt}}`.\n\n## Status state machine\n- `ai_generated` — fresh AI output, untouched by humans (default after summarize run)\n- `human_verified` — human read it and approved without changes (POST /review-verify)\n- `human_edited` — human modified the AI summary, **<80%** changed (computed by value-only diff against `ai_summary`)\n- `human_authored` — human rewrote substantially, **≥80%** changed, OR no AI baseline existed\n\n## Optimistic locking\nEvery write request takes `expectedLockVersion`. Read the current value from `filing_summaries.optimistic_lock_version` (use the `Effective summary` request in the **filing_summaries** folder), pass it in, and the row updates only if it still matches. A 409 with `{ details: { expected, actual } }` means someone else edited concurrently — re-fetch and retry.\n\n## How `summary_version` interacts\n- `>0` = current AI version number (currently 2)\n- `0` = pending (re-)summarization. Set automatically when `raw_data_override` is applied, so the next summarize run picks up the human-edited input.\n- `-1` = last summarize attempt failed; needs manual intervention.\n\n## Source\n[supabase/functions/](../../supabase/functions/) — see `review-list`, `review-get`, `review-verify`, `review-summary`, `review-raw-override`.",
       "item": [
         {
-          "name": "List (limit 25)",
+          "name": "List review queue",
+          "description": "GET /functions/v1/review-list — paginated review queue.\n\n**Query params** (all optional):\n- `ticker` — narrow to one company\n- `status` — comma-separated; values: `ai_generated`, `human_verified`, `human_edited`, `human_authored`, `failed` (virtual — = `summary_version=-1`)\n- `limit` — 1–500, default 200",
           "request": {
             "method": "GET",
-            "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
-            ],
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
             "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/jobs?select=*&limit=25&order=created_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["jobs"],
+              "raw": "{{supabase_url}}{{functions_path}}/review-list?status=ai_generated&limit=50",
+              "host": ["{{supabase_url}}{{functions_path}}"],
+              "path": ["review-list"],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "created_at.desc" }
+                { "key": "status", "value": "ai_generated", "description": "Comma-separated. e.g. `ai_generated,failed` for both untouched AI output and broken filings." },
+                { "key": "limit", "value": "50", "description": "1–500. Default 200." },
+                { "key": "ticker", "value": "AAPL", "disabled": true, "description": "Optional — narrow to one company." }
               ]
             }
           }
         },
         {
-          "name": "By status",
+          "name": "Get review item (with diff)",
+          "description": "GET /functions/v1/review-get?id=<filing_summary_id> — full review item plus a value-only `changeRatio` between `ai_summary` and the current `human_summary` (if any).\n\n**Response shape:** `{ item: {...}, diff: { changeRatio, humanAuthoredThreshold, wouldBeAuthored } }`.\n\nA `changeRatio >= humanAuthoredThreshold` (0.8) means the next save would be classified `human_authored`; below it = `human_edited`.",
           "request": {
             "method": "GET",
             "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
             "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/jobs?status=in.(pending,running)&select=*&order=created_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["jobs"],
+              "raw": "{{supabase_url}}{{functions_path}}/review-get?id={{filing_id}}",
+              "host": ["{{supabase_url}}{{functions_path}}"],
+              "path": ["review-get"],
               "query": [
-                { "key": "status", "value": "in.(pending,running)" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "created_at.desc" }
+                { "key": "id", "value": "{{filing_id}}", "description": "filing_summaries.id (UUID). Set the `filing_id` env var first by running a filing_summaries query and copying an id." }
               ]
+            }
+          }
+        },
+        {
+          "name": "Verify (mark AI summary approved)",
+          "description": "POST /functions/v1/review-verify — \"I read it, it's fine, no edits.\" Transitions `ai_generated` → `human_verified` without touching content.\n\n**Body:** `{ filingId, expectedLockVersion }`. Both required.\n\n**Conflict (409):** stale `expectedLockVersion`. Re-read `optimistic_lock_version`, retry.",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filingId\": \"{{filing_id}}\",\n  \"expectedLockVersion\": 0\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}{{functions_path}}/review-verify",
+              "host": ["{{supabase_url}}{{functions_path}}"],
+              "path": ["review-verify"]
+            }
+          }
+        },
+        {
+          "name": "Apply human summary edit",
+          "description": "POST /functions/v1/review-summary — write a `human_summary`. The server diffs it against `ai_summary` and assigns status:\n- ≥80% changed → `human_authored`\n- <80% changed → `human_edited`\n- No AI baseline → always `human_authored`\n\n**Body:** `{ filingId, humanSummary, expectedLockVersion }`. `humanSummary` is a free-form jsonb object — its shape matches whatever the prompt produced (see [packages/ai/src/prompts/](../../packages/ai/src/prompts/)).\n\n**Response:** `{ ok, filingId, status, changeRatio, humanAuthoredThreshold }`.",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filingId\": \"{{filing_id}}\",\n  \"expectedLockVersion\": 0,\n  \"humanSummary\": {\n    \"summary\": \"Replace with your edited summary.\",\n    \"highlights\": []\n  }\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}{{functions_path}}/review-summary",
+              "host": ["{{supabase_url}}{{functions_path}}"],
+              "path": ["review-summary"]
+            }
+          }
+        },
+        {
+          "name": "Clear human summary edit",
+          "description": "DELETE /functions/v1/review-summary — drop `human_summary`, returning the filing to `ai_generated` (the AI baseline takes over for display).\n\n**Body:** `{ filingId, expectedLockVersion }`.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filingId\": \"{{filing_id}}\",\n  \"expectedLockVersion\": 0\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}{{functions_path}}/review-summary",
+              "host": ["{{supabase_url}}{{functions_path}}"],
+              "path": ["review-summary"]
+            }
+          }
+        },
+        {
+          "name": "Apply raw_data override",
+          "description": "POST /functions/v1/review-raw-override — replace the SEC raw payload that summarization will read on the next run. Sets `summary_version=0` so the pipeline re-summarizes from the override.\n\n**Body:** `{ filingId, override, expectedLockVersion }`. `override` is a free-form jsonb object — same shape as `raw_data` (the SEC API response).\n\n**Use case:** SEC text extraction garbled a section; fix the JSON manually, save, and the next summarize run produces a clean summary.",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filingId\": \"{{filing_id}}\",\n  \"expectedLockVersion\": 0,\n  \"override\": {\n    \"formType\": \"10-K\",\n    \"periodOfReport\": \"2024-09-28\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}{{functions_path}}/review-raw-override",
+              "host": ["{{supabase_url}}{{functions_path}}"],
+              "path": ["review-raw-override"]
+            }
+          }
+        },
+        {
+          "name": "Clear raw_data override",
+          "description": "DELETE /functions/v1/review-raw-override — drop the override, falling back to the original `raw_data` for the next summarize run.\n\n**Body:** `{ filingId, expectedLockVersion }`.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filingId\": \"{{filing_id}}\",\n  \"expectedLockVersion\": 0\n}"
+            },
+            "url": {
+              "raw": "{{supabase_url}}{{functions_path}}/review-raw-override",
+              "host": ["{{supabase_url}}{{functions_path}}"],
+              "path": ["review-raw-override"]
             }
           }
         }
