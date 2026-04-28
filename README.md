@@ -368,4 +368,11 @@ These are retained for backwards compatibility but not required for new setups:
 
 ## License
 
-Private — not open source.
+[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+
+You are free to use, study, modify, and redistribute Younionize. If you run a
+modified version as a hosted service that users interact with over a network,
+you must publish your modifications under the same license. See [COPYRIGHT](COPYRIGHT)
+for the rationale.
+
+Copyright © 2026 Adrian Anderson.
