@@ -41,7 +41,8 @@
       "Bash(echo \"EXIT_CODE=$?\")",
       "Bash(git commit --amend -m ' *)",
       "Bash(git push *)",
-      "Bash(gh pr create --title 'Normalize SEC filing sections into filing_sections table' --body ' *)"
+      "Bash(gh pr create --title 'Normalize SEC filing sections into filing_sections table' --body ' *)",
+      "Bash(supabase projects *)"
     ]
   },
   "enableAllProjectMcpServers": true,
