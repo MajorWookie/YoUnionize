@@ -14,6 +14,555 @@
   ],
   "item": [
     {
+      "name": "00 — Start Here (Learn by Querying)",
+      "description": "A guided tour of querying Supabase via Postman. Each request is hittable against your real DB and teaches one concept. Run them in order.\n\n## What 'Supabase via Postman' really is\nSupabase auto-exposes every Postgres table as a REST endpoint via PostgREST: `GET https://<project>.supabase.co/rest/v1/<table_name>?<query>`.\n\nThe SQL `WHERE`, `SELECT`, `ORDER BY`, `LIMIT`, etc. are translated into URL query parameters with a small DSL:\n- Filters: `column=op.value` (e.g. `?ticker=eq.AAPL`)\n- Projection: `select=col1,col2`\n- Ordering: `order=col.desc`\n- Pagination: `limit=N&offset=M`\n\nThat's the whole game. Everything else is variations.\n\n## How to use this folder\nGo top to bottom. Hit Send on each one. Read the description in the right panel BEFORE clicking Send so you know what to look for in the response. Then look at each row in the **Params** and **Headers** tabs — every row has its own description (hover or click).\n\n## Glossary of terms you'll meet\n- **PostgREST**: the open-source layer that turns Postgres tables into a REST API. Supabase wraps it.\n- **DSL**: domain-specific language — here it just means PostgREST's query-string syntax.\n- **jsonb**: Postgres's binary JSON type. Several columns in this DB (raw_data, ai_summary, committees) are jsonb.\n- **Embed**: PostgREST's term for joining a related table into the response.\n- **RLS**: row-level security — rows can be hidden from anon callers. Sign in to see them.",
+      "item": [
+        {
+          "name": "Lesson 01 — Read everything (with a safety limit)",
+          "description": "**SQL equivalent:** `SELECT * FROM companies LIMIT 5;`\n\n**What you're looking at**\n- The response is a JSON array, one element per row.\n- `select=*` means \"all columns\". You'll see id (uuid), ticker, name, cik, sector, industry, exchange, last_fetch_at, created_at, updated_at.\n- `limit=5` caps the result. Without it, you'd get every company in the DB. **Always start with a limit** when exploring an unfamiliar table.\n\n**Try this**\n- Change `limit` to `1`. Notice the response is still an array (`[{ ... }]`), just shorter.\n- Change `limit` to `100`. Watch how long it takes.\n- Remove `limit` entirely. Read the warning about why this is a bad idea on big tables.\n\n**Concept**\nEvery PostgREST request returns an array unless you opt into single-object mode (you'll learn that in Lesson 04).",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}", "description": "Your Supabase publishable key. Identifies the project. Required on every request." }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=5",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "*", "description": "Project all columns. The asterisk is interpreted by PostgREST, not the URL — no escaping needed." },
+                { "key": "limit", "value": "5", "description": "Max rows to return. Defaults to no limit. ALWAYS set this when exploring a new table." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 02 — Pick specific columns (projection)",
+          "description": "**SQL equivalent:** `SELECT ticker, name, sector FROM companies LIMIT 5;`\n\n**What you're looking at**\nReturning every column is wasteful when you only need three. Projection trims the response.\n\n**Why this matters for precision**\nMany tables in YoUnion have fat jsonb columns:\n- `filing_summaries.raw_data` — verbatim SEC API JSON, can be megabytes\n- `filing_summaries.ai_summary` — Claude-generated summary blob\n- `companies` is small, but the same principle applies everywhere\n\nProjecting only the columns you need is the single biggest performance win in PostgREST.\n\n**Try this**\n- Add `created_at` to the select list. Format: comma-separated, no spaces.\n- Try `select=*,sector` — yes, you can mix `*` with extra fields (rarely useful, but legal).\n- Try `select=name:legal_name` to alias a column. The response will have a key `legal_name` instead of `name`. Useful when consuming the response programmatically.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=ticker,name,sector&limit=5",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "ticker,name,sector", "description": "Comma-separated column list. No spaces between names. To rename a column on output: `output_name:db_column`." },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 03 — Filter to specific rows (WHERE clause)",
+          "description": "**SQL equivalent:** `SELECT ticker, name FROM companies WHERE ticker = 'AAPL';`\n\n**What you're looking at**\nA filter is just `column=op.value` in the URL. The operator is the *prefix* before the dot.\n\nThis request returns an array — even if only one row matches — because that's the default shape. Lesson 04 shows you how to ask for an object.\n\n**The full operator menu**\n| Operator | Meaning | Example |\n| --- | --- | --- |\n| `eq` | equals | `ticker=eq.AAPL` |\n| `neq` | not equal | `ticker=neq.AAPL` |\n| `gt`/`gte` | greater than (or equal) | `cik=gt.1000000` |\n| `lt`/`lte` | less than (or equal) | `cik=lt.9999999` |\n| `like`/`ilike` | SQL LIKE / case-insensitive (`*` is wildcard) | `name=ilike.*apple*` |\n| `in` | value in list | `ticker=in.(AAPL,MSFT,GOOGL)` |\n| `is` | IS NULL / IS TRUE / IS FALSE | `sector=is.null` |\n\n**Try this**\n- Change to `ticker=eq.MSFT`. Then `ticker=eq.NONEXISTENT` — note the empty array `[]`, not an error.\n- Try `sector=eq.Technology` to filter by sector.\n- Try `name=ilike.*apple*` for substring search (case-insensitive).\n- Multiple filters AND together: `&sector=eq.Technology&exchange=eq.NASDAQ`.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=ticker,name,sector,exchange",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "ticker", "value": "eq.AAPL", "description": "Filter where ticker equals 'AAPL'. The format is always `column=operator.value`." },
+                { "key": "select", "value": "ticker,name,sector,exchange" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 04 — Get one row as an object (not array)",
+          "description": "**SQL equivalent (sort of):** `SELECT ... LIMIT 1` plus client-side `[0]`.\n\n**What you're looking at**\nThe `Accept: application/vnd.pgrst.object+json` header tells PostgREST: \"I want a single object back, not an array.\" If 0 or 2+ rows match, you get HTTP 406, not a successful empty response. So this is for when you *expect* exactly one row.\n\n**Why this matters for precision**\nWhen you're extracting one specific company's name, you don't want to write `response[0].name` — you want `response.name`. This header makes that work.\n\n**Try this**\n- Compare the response shape to Lesson 03. Same data, different wrapper.\n- Change to `ticker=eq.NONEXISTENT`. Note the 406 status — that's PostgREST telling you the row doesn't exist.\n- Combine with column projection: `select=name`. Response is now `{\"name\": \"Apple Inc.\"}`. You're one JSON parse away from a scalar.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json", "description": "Strip the array wrapper. Returns a single object. 406 if rows matched != 1." }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=*",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "ticker", "value": "eq.AAPL" },
+                { "key": "select", "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 05 — Extract a single value (scalar drill-down)",
+          "description": "**SQL equivalent:** `SELECT name FROM companies WHERE ticker = 'AAPL';` → returns `\"Apple Inc.\"`\n\n**What you're looking at**\nCombine the three techniques you just learned:\n1. **Filter** to one row (`ticker=eq.AAPL`)\n2. **Project** one column (`select=name`)\n3. **Single object** (Accept header)\n\nResponse: `{\"name\": \"Apple Inc.\"}`. The actual scalar is `.name`.\n\n**This is the precision pattern.** Whenever you want \"the X of company Y\", build it like this. Some examples to try:\n- `companies?ticker=eq.AAPL&select=cik` → CIK number\n- `companies?ticker=eq.AAPL&select=sector` → sector string\n- `executive_compensation?company_id=eq.{{company_id}}&fiscal_year=eq.2024&title=ilike.*CEO*&select=executive_name,total_compensation&order=total_compensation.desc&limit=1` → CEO name + comp\n\n**Note**\nPostgREST has no built-in way to return *just* the bare string — you always get a JSON object/array. To go scalar, parse client-side.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=name",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "ticker", "value": "eq.AAPL", "description": "Narrow to one row." },
+                { "key": "select", "value": "name", "description": "Project one column. Response shape: {\"name\": \"...\"}." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 06 — Drill into a jsonb column (sub-field extraction)",
+          "description": "**SQL equivalent:** `SELECT raw_data->'formType' FROM filing_summaries WHERE company_id = '...' AND filing_type = '10-K' ORDER BY filed_at DESC LIMIT 1;`\n\n**What you're looking at**\nMost interesting data in YoUnion lives inside jsonb columns:\n- `filing_summaries.raw_data` — the verbatim SEC API JSON for a filing\n- `filing_summaries.ai_summary` — Claude's structured summary\n- `directors.committees`, `directors.qualifications` — list-shaped metadata\n\nPostgREST exposes Postgres's jsonb arrow operators directly in the select clause:\n- `column->key` — returns the value as **jsonb** (preserves nested structure)\n- `column->>key` — returns the value as **text** (stringifies it)\n- `column->idx` — for jsonb arrays (numeric index)\n- `column#>'{a,b,c}'` — path drill (jsonb)\n- `column#>>'{a,b,c}'` — path drill (text)\n\n**Why this matters for precision**\nInstead of pulling the entire 5MB `raw_data` blob and parsing it client-side, you can ask the database to extract just the field you want. The wire payload shrinks dramatically.\n\n**Try this**\n- This request pulls only `raw_data->>'formType'` for the latest 10-K.\n- Edit the select to `raw_data->>'cik'` to get the CIK from inside the SEC JSON.\n- Try `ai_summary->>'summary'` (if AI summary is populated) to pull the summary text.\n- Use `value:raw_data->>'formType'` to alias the output field to `value`.\n\n**Requires `{{company_id}}` in your environment.** Run a Lesson 03 query against `companies` first, then copy an `id` into the env.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&select=accession_number,filed_at,form_type:raw_data->>formType&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}", "description": "Set this env var first by running a companies query and copying an id." },
+                { "key": "filing_type", "value": "eq.10-K", "description": "Annual report. Other values: 10-Q (quarterly), 8-K (current event), DEF 14A (proxy)." },
+                { "key": "select", "value": "accession_number,filed_at,form_type:raw_data->>formType", "description": "Pull two regular columns plus one extracted from inside the raw_data jsonb. `->>` returns text; `->` would return jsonb." },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 07 — Filter precisely with comparison operators",
+          "description": "**SQL equivalent:** `SELECT executive_name, title, total_compensation FROM executive_compensation WHERE fiscal_year >= 2022 AND total_compensation >= 10000000 ORDER BY total_compensation DESC LIMIT 25;`\n\n**What you're looking at**\nMultiple top-level filters AND together. Each is a separate `column=op.value` query parameter. Order doesn't matter.\n\nThis pulls execs paid $10M+ since 2022, ranked by total comp.\n\n**Try this**\n- Bump the floor to `total_compensation=gte.50000000` for the top earners only.\n- Add `&title=ilike.*CEO*` to scope to CEOs.\n- Negate: `&title=not.ilike.*CEO*` to exclude CEOs.\n- OR groups (rather than AND): `or=(title.ilike.*CEO*,title.ilike.*CFO*)`.\n\n**Edge cases**\n- `is.null` for nulls, NOT `eq.null` (which would look for the literal string 'null').\n- For `in`: `?ticker=in.(AAPL,MSFT,GOOGL)` — parens required, comma-separated.\n- Strings with commas: quote them — `in.(\"foo,bar\",baz)`.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?fiscal_year=gte.2022&total_compensation=gte.10000000&select=executive_name,title,fiscal_year,total_compensation,companies(ticker)&order=total_compensation.desc.nullslast&limit=25",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "fiscal_year", "value": "gte.2022", "description": "Greater-than-or-equal. Use gt/gte/lt/lte for ranges." },
+                { "key": "total_compensation", "value": "gte.10000000", "description": "Stored in dollars (bigint). Bump this to narrow further." },
+                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker)", "description": "Note `companies(ticker)` — that's a foreign-key embed. Lesson 09 covers this." },
+                { "key": "order", "value": "total_compensation.desc.nullslast", "description": "Push nulls to the bottom. `nullsfirst` is the alternative." },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 08 — Sort and paginate",
+          "description": "**SQL equivalent:** `SELECT ticker, name FROM companies ORDER BY ticker ASC LIMIT 25 OFFSET 0;`\n\n**What you're looking at**\nTwo ways to paginate:\n- `limit=25&offset=50` — query-param style (this lesson)\n- `Range: 50-74` header — Range-header style (PostgREST-native)\n\nBoth work. The Range header has one extra trick: pair it with `Prefer: count=exact` and PostgREST will return the total in the `Content-Range` response header (you'll see `0-24/1234` in the headers tab of the response). Cheap pagination metadata.\n\n**Try this**\n- Change `offset` to `25`, `50`, etc. to walk through pages.\n- Change `order` to `created_at.desc` to see newest companies first.\n- Multi-column sort: `order=sector.asc,ticker.asc`.\n- Add the `Prefer: count=exact` header (uncomment in headers tab) and check the response headers for `Content-Range`.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact", "disabled": true, "description": "Enable to get total row count in the `Content-Range` response header. Slow on huge tables." }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=ticker,name&order=ticker.asc&limit=25&offset=0",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "ticker,name" },
+                { "key": "order", "value": "ticker.asc", "description": "Direction defaults to asc if omitted. Add `.nullsfirst` or `.nullslast` to control null placement." },
+                { "key": "limit", "value": "25" },
+                { "key": "offset", "value": "0", "description": "Page 0. Increment by `limit` to walk through results." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 09 — Join via embed (related tables in one query)",
+          "description": "**SQL equivalent:** `SELECT d.name, d.title, c.ticker, c.name AS company_name FROM directors d JOIN companies c ON c.id = d.company_id LIMIT 10;`\n\n**What you're looking at**\nPostgREST 'embeds' related rows into the response by detecting foreign-key relationships from your schema. Drizzle's `.references(() => companies.id)` gives PostgREST the FK metadata it needs — you don't have to do anything else.\n\nThe syntax is `select=...,related_table_name(column_list)`. Examples:\n- `select=name,title,companies(ticker,name)` — pull the parent company alongside each director\n- `select=*,directors(*)` — get a company AND all its directors in one round trip\n- `select=*,directors(*),executive_compensation(*)` — multiple embeds at once\n\nYou can even apply filters/orders/limits *inside* the embed:\n- `directors.title=eq.CEO` — filter embedded directors\n- `directors.order=name.asc` — order embedded directors\n- `directors.limit=5` — cap embedded rows per parent\n\n**Why this matters for precision**\nOne embed = one round trip = no N+1 query problem. If you want a company plus its top 3 paid execs plus its directors, you can do it all in a single GET.\n\n**Try this**\n- Flip the direction: `companies?select=*,directors(*),executive_compensation(*)&ticker=eq.AAPL` — Apple plus everything related.\n- Filter inside the embed: `companies?select=name,executive_compensation(executive_name,title,total_compensation)&executive_compensation.fiscal_year=eq.2024&executive_compensation.order=total_compensation.desc&executive_compensation.limit=3&ticker=eq.AAPL`.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/directors?select=name,title,companies(ticker,name)&limit=10",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["directors"],
+              "query": [
+                { "key": "select", "value": "name,title,companies(ticker,name)", "description": "The `companies(...)` part is a foreign-key embed. PostgREST detects the FK from `directors.company_id` and joins automatically." },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 10 — Count rows (and what PostgREST CAN'T do)",
+          "description": "**SQL equivalent:** `SELECT COUNT(*) FROM companies;`\n\n**What you're looking at**\nPostgREST has no `count(*)` selector — instead, send `Prefer: count=exact` and read the **response header** `Content-Range`. The body is still rows; the header carries the total.\n\nWith `limit=0` you get the count *without* fetching any rows — purely a metadata query.\n\nVariants:\n- `count=exact` — accurate but full-scan; slow on huge tables\n- `count=planned` — fast estimate from the planner\n- `count=estimated` — exact when small, planned when large (good default)\n\n**What PostgREST does NOT support**\nThese are deliberate omissions; for them you need a Postgres view or a SQL function exposed as RPC.\n- `SELECT DISTINCT`\n- `GROUP BY` with aggregates (`SUM`, `AVG`, `COUNT(DISTINCT col)`)\n- Window functions\n- `HAVING`\n- Arbitrary joins (only FK-defined relationships)\n\n**The escape hatch**\nWrite a Postgres function:\n```sql\nCREATE FUNCTION top_paid_execs(year int, lim int)\nRETURNS TABLE(executive_name text, total_comp bigint) AS $$\n  SELECT executive_name, total_compensation\n  FROM executive_compensation\n  WHERE fiscal_year = year\n  ORDER BY total_compensation DESC\n  LIMIT lim;\n$$ LANGUAGE sql STABLE;\n```\nThen call it from PostgREST: `POST /rest/v1/rpc/top_paid_execs` with body `{\"year\": 2024, \"lim\": 10}`. RPC is how you escape the table-CRUD model for anything more complex.\n\n**Try this**\n- Run as-is. Check the response **Headers** tab for `Content-Range: 0-0/<TOTAL>`.\n- Combine with a filter: `?sector=eq.Technology` to count tech companies.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Prefer", "value": "count=exact", "description": "Tell PostgREST to compute and return the total row count. Look for `Content-Range` in the response headers." }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=0",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "limit", "value": "0", "description": "Return zero rows — we only care about the count in the response header. Saves wire bytes." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lesson 11 — Putting it all together (precise extraction)",
+          "description": "**The goal:** for a given company, get the latest 10-K's CEO compensation row + just the named executive's name and total comp.\n\n**The query**\nThis combines:\n1. **Filter** by company (FK), filing context, executive role\n2. **Embed** the parent company name in one round trip\n3. **Project** only the columns we want\n4. **Order + limit** to take the highest-paid match (most likely the CEO)\n5. **Single-object Accept** so the response is the row, not `[row]`\n\n**Read this query out loud, slowly**\n`/executive_compensation?company_id=eq.{{company_id}}&title=ilike.*CEO*&fiscal_year=eq.2024&select=executive_name,title,total_compensation,companies(ticker,name)&order=total_compensation.desc&limit=1`\n\n→ \"From `executive_compensation`, where `company_id` equals my env var AND `title` looks like 'CEO' (case-insensitive) AND `fiscal_year` is 2024, give me only `executive_name`, `title`, `total_compensation`, and the parent company's `ticker` and `name`, sorted by `total_compensation` descending, take the top 1, and return as a single object.\"\n\nIf you can compose that query without looking it up, you've internalized PostgREST.\n\n**Try this**\n- Drop the `title` filter — get the highest-paid exec regardless of title.\n- Change `fiscal_year` to a different year.\n- Try `select=executive_name,total_compensation,salary,bonus,stock_awards,option_awards` to see compensation breakdown.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&title=ilike.*CEO*&fiscal_year=eq.2024&select=executive_name,title,total_compensation,companies(ticker,name)&order=total_compensation.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "title", "value": "ilike.*CEO*", "description": "Case-insensitive substring. Catches 'Chief Executive Officer', 'CEO', etc." },
+                { "key": "fiscal_year", "value": "eq.2024", "description": "Adjust per company's available years. Pull distinct years from the table first if unsure." },
+                { "key": "select", "value": "executive_name,title,total_compensation,companies(ticker,name)" },
+                { "key": "order", "value": "total_compensation.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 — Dashboard UI → Query Map",
+      "description": "Every panel on the company detail page is backed by a query. This folder maps each UI surface to the exact PostgREST request that produces the data behind it.\n\n**How to use this folder**\nWhen you see a value on the company dashboard and ask \"where does that number come from?\", find the matching request here. Set `{{company_id}}` in your environment to a real UUID (run `companies → By ticker` first), and every request below will work against that company.\n\nThe Edge Function source of truth for the dashboard is [supabase/functions/company-detail/index.ts](../../supabase/functions/company-detail/index.ts) — these requests reproduce its individual queries directly against PostgREST, skipping the function. That's exactly what you want when debugging or extracting precise values: bypass the assembled response, ask Postgres directly.\n\n**Glossary**\n- *Company header* = the top of the page (ticker, name, industry).\n- *Leadership* = the table of named executive officers with comp.\n- *CEO Spotlight* = the highlighted top-paid exec card.\n- *Filings list* = recent 10-K / 10-Q / 8-K / DEF 14A items.\n- *Recent events* = 8-K-derived event cards.\n- *AI Summary fields* = the structured summary panels (MD&A, risk factors, what-this-means).",
+      "item": [
+        {
+          "name": "Company header — ticker, name, sector, exchange",
+          "description": "**UI surface:** the page title and metadata strip at the top of the company detail page.\n\n**Query shape:** filter by ticker, return as a single object (because there's exactly one match per ticker — `ticker` is a unique column).\n\n**To narrow:** add more columns to `select`, e.g. `&select=*` to see everything stored about this company.\n**To broaden:** swap to `companies?sector=eq.Technology` to see all companies in a sector.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=id,ticker,name,sector,industry,exchange,cik,last_fetch_at",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "ticker", "value": "eq.AAPL", "description": "Change to any ticker. Tickers are stored uppercase." },
+                { "key": "select", "value": "id,ticker,name,sector,industry,exchange,cik,last_fetch_at", "description": "Note `id` is the UUID you need for {{company_id}}. The `last_fetch_at` shows the freshness of SEC data." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Available fiscal years dropdown",
+          "description": "**UI surface:** the fiscal-year selector on the leadership panel.\n\n**The Edge Function** uses `selectDistinct({ year })` from Drizzle. PostgREST has no DISTINCT — so the closest equivalent is to project + order, then dedupe client-side, OR write a Postgres function exposed as RPC.\n\nThis request uses the *project + order* approach: get every fiscal_year row sorted desc; the consumer dedupes. For a company with 5 execs over 3 years, you'll get 15 rows where you only need 3 distinct values. That's the price of skipping RPC.\n\n**The clean way** (for production code): create a SQL function in Supabase like `get_fiscal_years(company_uuid)` and call it via `POST /rest/v1/rpc/get_fiscal_years`.\n\n**To narrow:** there's nothing to narrow — distinct values are the entire purpose.\n**To broaden:** drop the `company_id` filter to see fiscal years across all companies.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&select=fiscal_year&order=fiscal_year.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "fiscal_year", "description": "Project just the year. The response is an array with duplicates — dedupe client-side." },
+                { "key": "order", "value": "fiscal_year.desc", "description": "Newest first, matching the dashboard's default selection." }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Leadership table (top 20 by comp, fiscal year)",
+          "description": "**UI surface:** the leadership/executive compensation table on the company detail page.\n\n**The Edge Function** runs this exact pattern: filter by company + selected fiscal year, sort by total compensation desc, cap at 20.\n\n**To narrow:** add `&title=ilike.*CEO*` to scope to one role.\n**To broaden:** drop `fiscal_year` to see all years for this company. Or drop `company_id` to compare execs across the entire DB (warning — large response).",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&fiscal_year=eq.2024&select=*&order=total_compensation.desc.nullslast&limit=20",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "fiscal_year", "value": "eq.2024", "description": "Adjust to a year that exists for this company (use the previous request to discover available years)." },
+                { "key": "select", "value": "*", "description": "Returns full comp breakdown: salary, bonus, stock_awards, option_awards, non_equity_incentive, other_compensation, ceo_pay_ratio, total_compensation." },
+                { "key": "order", "value": "total_compensation.desc.nullslast" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "CEO Spotlight (top-paid exec)",
+          "description": "**UI surface:** the highlighted CEO/top-exec card on the company dashboard.\n\nNot a separate Edge Function query — derived from the leadership data by taking the highest-paid exec. We can do that directly in PostgREST with `limit=1`.\n\n**Note on title matching:** SEC filings use varied titles (\"Chief Executive Officer\", \"CEO and Chairman\", \"President & CEO\"). `title=ilike.*CEO*` catches all common variants.\n\n**To narrow:** drop the `title` filter — get the top-paid person regardless of role.\n**To broaden:** raise `limit=5` to see the C-suite top 5.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&title=ilike.*CEO*&fiscal_year=eq.2024&select=executive_name,title,fiscal_year,total_compensation,salary,bonus,stock_awards,option_awards,ceo_pay_ratio&order=total_compensation.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["executive_compensation"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "title", "value": "ilike.*CEO*", "description": "Substring, case-insensitive. Catches multiple title variants." },
+                { "key": "fiscal_year", "value": "eq.2024" },
+                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,salary,bonus,stock_awards,option_awards,ceo_pay_ratio", "description": "All comp components — useful if the UI shows a breakdown bar/donut." },
+                { "key": "order", "value": "total_compensation.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Directors list",
+          "description": "**UI surface:** the board-of-directors panel.\n\nNo fiscal-year filter — directors are stored as a single set per company (the most recent extraction). If a director left the board, they may still appear; check `tenure_start`.\n\n**To narrow:** `&is_independent=is.true` for independent directors only. Or `&title=ilike.*Chair*` for chair/co-chair.\n**To broaden:** drop the company filter to see all directors across the DB.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/directors?company_id=eq.{{company_id}}&select=name,title,role,is_independent,age,tenure_start,committees,director_class&order=name.asc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["directors"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "name,title,role,is_independent,age,tenure_start,committees,director_class", "description": "`committees` is jsonb — array of committee names. Use jsonb arrows to drill in if needed." },
+                { "key": "order", "value": "name.asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "All filings list (metadata only)",
+          "description": "**UI surface:** the filings timeline / list view.\n\nThe Edge Function projects only metadata — never the bulky `raw_data` jsonb. Replicate that here. If you want to inspect a single filing's body, use the next request and pass the `id`.\n\n**To narrow:** add `&filing_type=eq.10-K` to scope to one type.\n**To broaden:** drop `company_id` for cross-company filings (large response).",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=id,filing_type,period_end,filed_at,accession_number,summary_version,summarization_status&order=filed_at.desc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "id,filing_type,period_end,filed_at,accession_number,summary_version,summarization_status", "description": "Deliberately excludes raw_data, ai_summary, human_summary — those can be megabytes each." },
+                { "key": "order", "value": "filed_at.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Latest 10-K (annual report) — full row",
+          "description": "**UI surface:** \"Latest annual report\" card and its drill-in screen.\n\n**The Edge Function** finds the first 10-K with a non-null `ai_summary` after sorting by `filed_at` desc.\n\n**To narrow further:** project specific ai_summary jsonb sub-fields with `select=ai_summary->>summary_text` (replace path with actual key).\n**To broaden:** swap `eq.10-K` to `in.(10-K,10-K/A)` to include amendments.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&ai_summary=not.is.null&select=*&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "filing_type", "value": "eq.10-K" },
+                { "key": "ai_summary", "value": "not.is.null", "description": "Only filings that have been processed through AI summarization. The `not.` prefix negates `is.null`." },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Latest 10-Q (quarterly)",
+          "description": "**UI surface:** \"Latest quarterly\" card.\n\nIdentical pattern to 10-K, just a different filing_type. Worth understanding as a template — every \"latest X\" card on the page is the same shape with a different `filing_type`.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-Q&ai_summary=not.is.null&select=*&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "filing_type", "value": "eq.10-Q" },
+                { "key": "ai_summary", "value": "not.is.null" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Latest DEF 14A (proxy statement)",
+          "description": "**UI surface:** \"Proxy statement\" / compensation-disclosure related cards.\n\nDEF 14A filings carry the executive compensation disclosure that powers the leadership table. The proxy is the source of `executive_compensation` rows.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.DEF 14A&ai_summary=not.is.null&select=*&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "filing_type", "value": "eq.DEF 14A", "description": "The space in 'DEF 14A' is significant — Postman URL-encodes it automatically. If you copy the curl manually, that becomes `DEF%2014A`." },
+                { "key": "ai_summary", "value": "not.is.null" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Recent 8-K events (top 5)",
+          "description": "**UI surface:** the \"recent events\" card stack on the dashboard.\n\nNote: there are TWO sources of 8-K data:\n- `filing_summaries` rows where `filing_type=eq.8-K` — the AI-summarized version\n- `form_8k_events` table — parsed item-level events (next request)\n\nThis request gives the AI summary side. Use the next one for structured event types.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.8-K&ai_summary=not.is.null&select=id,filed_at,accession_number,ai_summary&order=filed_at.desc&limit=5",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "filing_type", "value": "eq.8-K" },
+                { "key": "ai_summary", "value": "not.is.null" },
+                { "key": "select", "value": "id,filed_at,accession_number,ai_summary" },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Form 8-K parsed events (item-level)",
+          "description": "**UI surface:** the structured 8-K event list (where each row carries an item type like 'Item 5.02 — Departure of Directors').\n\nThis pulls from the dedicated `form_8k_events` table, which has one row per (filing, item type). Useful when you want to filter by event category — `item_type=eq.5.02` for executive departures, etc.\n\n**To narrow:** `&item_type=eq.5.02` for executive officer changes, `&item_type=eq.7.01` for Reg FD disclosures.\n**To broaden:** drop `company_id` for cross-company event sweeps.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/form_8k_events?company_id=eq.{{company_id}}&select=*&order=filed_at.desc&limit=25",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["form_8k_events"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "*" },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Insider trades (recent transactions)",
+          "description": "**UI surface:** the insider trading activity table.\n\nForm 4 filings — when officers/directors buy or sell stock.\n\n**To narrow:**\n- `&transaction_type=eq.S` for sales only\n- `&filer_name=ilike.*Tim Cook*` for one named insider\n- `&total_value=gte.1000000` for trades over $1M\n\n**To broaden:** raise the limit, or drop `company_id`.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/insider_trades?company_id=eq.{{company_id}}&select=filer_name,filer_title,transaction_date,transaction_type,shares,price_per_share,total_value,direct_or_indirect&order=transaction_date.desc&limit=50",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["insider_trades"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "select", "value": "filer_name,filer_title,transaction_date,transaction_type,shares,price_per_share,total_value,direct_or_indirect", "description": "transaction_type values per Form 4: 'P'=purchase, 'S'=sale, 'A'=grant/award, 'M'=option exercise, etc." },
+                { "key": "order", "value": "transaction_date.desc" },
+                { "key": "limit", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Drill into ai_summary jsonb (precise field extraction)",
+          "description": "**UI surface:** any individual panel inside an AI summary card — MD&A, risk factors, what-this-means, etc. — when you only want one piece of the structured response.\n\n**The `ai_summary` jsonb shape** depends on the prompt that produced it. Look at [packages/ai/src/prompts/](../../packages/ai/src/prompts/) for the actual schemas — `company-summary.ts`, `mda-summary.ts`, `employee-impact.ts`, etc. each define a different output shape.\n\n**The pattern**\nUse jsonb arrow operators inside the `select` clause to extract specific fields without dragging the whole blob over the wire:\n- `select=summary:ai_summary->>summary` — text leaf\n- `select=highlights:ai_summary->highlights` — keep as jsonb (probably an array)\n- `select=sub:ai_summary#>>'{section,subsection,field}'` — deep path drill\n\n**Replace `your_field`** with the actual key you want. If you don't know the keys, run the previous request (latest 10-K full row) once, look at `ai_summary` in the response, then come back here and target the specific key.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&ai_summary=not.is.null&select=accession_number,filed_at,extracted:ai_summary->your_field&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "filing_type", "value": "eq.10-K" },
+                { "key": "ai_summary", "value": "not.is.null" },
+                { "key": "select", "value": "accession_number,filed_at,extracted:ai_summary->your_field", "description": "Replace `your_field` with the actual key inside ai_summary. Use `->` for jsonb (preserves nesting), `->>` for text. The `extracted:` prefix renames the output column." },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Drill into raw_data jsonb (verbatim SEC fields)",
+          "description": "**UI surface:** any panel showing raw SEC data — XBRL financial tables, period-end metadata, original form fields.\n\n**The `raw_data` shape** is whatever sec-api.io returned. Common top-level keys depending on filing type: `formType`, `periodOfReport`, `cik`, `companyName`, `xbrl` (heavy), `text` (heavy).\n\nThis request shows the precision pattern: pull just `formType` and `periodOfReport` from inside the verbatim SEC blob, without dragging the megabytes of XBRL.\n\n**To explore the shape first:** run filing_summaries → 'Latest filing — raw_data only' once to see what keys exist for this filing type, then come back and project specific paths.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&select=accession_number,form_type:raw_data->>formType,period:raw_data->>periodOfReport,cik:raw_data->>cik&order=filed_at.desc&limit=1",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["filing_summaries"],
+              "query": [
+                { "key": "company_id", "value": "eq.{{company_id}}" },
+                { "key": "filing_type", "value": "eq.10-K" },
+                { "key": "select", "value": "accession_number,form_type:raw_data->>formType,period:raw_data->>periodOfReport,cik:raw_data->>cik", "description": "Three jsonb extractions in one select. Each uses `->>` because we want strings. Each is aliased so the response keys are clean." },
+                { "key": "order", "value": "filed_at.desc" },
+                { "key": "limit", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Composite — company + execs + directors in one round trip",
+          "description": "**UI surface:** the entire 'who runs this company' section, fetched in one request.\n\nThis is the embed flex. Instead of 3 separate queries (companies, executive_compensation, directors), embed both relations into the company query. PostgREST detects the FKs from the schema and joins for you.\n\nThis is also exactly what you'd build if you were rewriting the company-detail Edge Function as a single PostgREST call instead of 4 parallel Drizzle queries.",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey", "value": "{{supabase_key}}" },
+              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=ticker,name,sector,executive_compensation(executive_name,title,total_compensation),directors(name,title,is_independent)&executive_compensation.fiscal_year=eq.2024&executive_compensation.order=total_compensation.desc&executive_compensation.limit=10&directors.order=name.asc",
+              "host": ["{{supabase_url}}{{rest_path}}"],
+              "path": ["companies"],
+              "query": [
+                { "key": "ticker", "value": "eq.AAPL" },
+                { "key": "select", "value": "ticker,name,sector,executive_compensation(executive_name,title,total_compensation),directors(name,title,is_independent)", "description": "Embed two related tables. Each parenthesized clause is an embed with its own column projection." },
+                { "key": "executive_compensation.fiscal_year", "value": "eq.2024", "description": "EMBED FILTER — applies inside the embedded executive_compensation rows only. Format: `<embed>.<col>=<op>.<value>`." },
+                { "key": "executive_compensation.order", "value": "total_compensation.desc" },
+                { "key": "executive_compensation.limit", "value": "10" },
+                { "key": "directors.order", "value": "name.asc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Auth",
       "description": "Get a user JWT to access RLS-protected tables. The 'Sign in with password' request automatically writes the returned access_token into `{{user_jwt}}` via a test script.",
       "item": [
@@ -222,11 +771,11 @@
             "method": "GET",
             "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
             "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?select=name,title,fiscal_year,total_compensation,companies(ticker,name)&order=total_compensation.desc.nullslast&limit=20",
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?select=executive_name,title,fiscal_year,total_compensation,companies(ticker,name)&order=total_compensation.desc.nullslast&limit=20",
               "host": ["{{supabase_url}}{{rest_path}}"],
               "path": ["executive_compensation"],
               "query": [
-                { "key": "select", "value": "name,title,fiscal_year,total_compensation,companies(ticker,name)" },
+                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker,name)" },
                 { "key": "order", "value": "total_compensation.desc.nullslast" },
                 { "key": "limit", "value": "20" }
               ]
@@ -715,13 +1264,13 @@
             "method": "GET",
             "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
             "url": {
-              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?fiscal_year=gte.2022&total_compensation=gte.10000000&select=name,title,fiscal_year,total_compensation,companies(ticker)&order=total_compensation.desc&limit=25",
+              "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?fiscal_year=gte.2022&total_compensation=gte.10000000&select=executive_name,title,fiscal_year,total_compensation,companies(ticker)&order=total_compensation.desc&limit=25",
               "host": ["{{supabase_url}}{{rest_path}}"],
               "path": ["executive_compensation"],
               "query": [
                 { "key": "fiscal_year", "value": "gte.2022" },
                 { "key": "total_compensation", "value": "gte.10000000" },
-                { "key": "select", "value": "name,title,fiscal_year,total_compensation,companies(ticker)" },
+                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker)" },
                 { "key": "order", "value": "total_compensation.desc" },
                 { "key": "limit", "value": "25" }
               ]
