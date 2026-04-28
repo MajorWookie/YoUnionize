@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
-import { getDb } from '@union/postgres'
+import { getDb } from '@younionize/postgres'
 import { jobs } from '../database/schema/jobs'
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed'

@@ -6,7 +6,7 @@
  * - `fetchBatchHandler`: Enqueue individual fetch jobs for multiple companies
  */
 
-import { getDb, jobs } from '@union/postgres'
+import { getDb, jobs } from '@younionize/postgres'
 import { lookupCompany, getCompanyByTicker } from '../services/company-lookup'
 import { fetchAllSecData } from '../services/sec-fetcher'
 import { processRawSecData } from '../services/raw-data-processor'

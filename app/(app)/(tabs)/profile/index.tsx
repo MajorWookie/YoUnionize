@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@union/hooks'
+import { useAuth } from '@younionize/hooks'
 import { Button, H2, H4, Paragraph, Separator, Spinner, YStack } from 'tamagui'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { Card } from '~/interface/display/Card'

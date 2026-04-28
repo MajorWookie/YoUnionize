@@ -7,11 +7,11 @@ import {
   filingSections,
   embeddings,
   executiveCompensation,
-} from '@union/postgres'
-import { CURRENT_SUMMARY_VERSION } from '@union/ai'
-import type { ClaudeClient } from '@union/ai'
-import { pMapSettled } from '@union/helpers'
-import { getSectionFriendlyName } from '@union/sec-api'
+} from '@younionize/postgres'
+import { CURRENT_SUMMARY_VERSION } from '@younionize/ai'
+import type { ClaudeClient } from '@younionize/ai'
+import { pMapSettled } from '@younionize/helpers'
+import { getSectionFriendlyName } from '@younionize/sec-api'
 import { getAiClient } from '../ai-client'
 import { transformXbrlToStatements } from './xbrl-transformer'
 import type { FinancialStatement } from './xbrl-transformer'

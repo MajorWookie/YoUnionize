@@ -20,8 +20,8 @@
  */
 
 import { eq } from 'drizzle-orm'
-import { getDb, filingSummaries, filingSections } from '@union/postgres'
-import { pMapSettled } from '@union/helpers'
+import { getDb, filingSummaries, filingSections } from '@younionize/postgres'
+import { pMapSettled } from '@younionize/helpers'
 import { getSecApiClient } from '../src/server/sec-api-client'
 import { lookupCompany } from '../src/server/services/company-lookup'
 import { ingestCompensation } from '../src/server/services/compensation-ingestion'
@@ -29,8 +29,8 @@ import { ingestInsiderTrading } from '../src/server/services/insider-trading-ing
 import { ingestDirectors } from '../src/server/services/directors-ingestion'
 import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
 import type { CompanyRecord } from '../src/server/services/company-lookup'
-import type { Filing } from '@union/sec-api'
-import { getSectionItemsForFilingType } from '@union/sec-api'
+import type { Filing } from '@younionize/sec-api'
+import { getSectionItemsForFilingType } from '@younionize/sec-api'
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
