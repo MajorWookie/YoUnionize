@@ -298,7 +298,7 @@ async function summarizeSingleFiling(
  * keyed by section code. Used to populate the rollup-input map so resumed
  * runs see sections summarised in prior invocations — not just this run.
  */
-async function loadAllSectionTextByCode(filingId: string): Promise<Map<string, string>> {
+export async function loadAllSectionTextByCode(filingId: string): Promise<Map<string, string>> {
   const db = getDb()
   const rows = await db
     .select({
@@ -670,7 +670,7 @@ async function buildRollups(
  * via JSON.stringify) or — in future — a structured object; we coerce
  * defensively.
  */
-async function loadAllSectionSummariesByCode(filingId: string): Promise<Map<string, string>> {
+export async function loadAllSectionSummariesByCode(filingId: string): Promise<Map<string, string>> {
   const db = getDb()
   const rows = await db
     .select({
@@ -695,7 +695,7 @@ async function loadAllSectionSummariesByCode(filingId: string): Promise<Map<stri
  * risk_factors lives at '1A' but 10-Q lives at 'part2item1a') because
  * the dispatch table is the source of truth.
  */
-function findSectionTextByPromptKind(
+export function findSectionTextByPromptKind(
   filingType: string,
   sectionTextByCode: Map<string, string>,
   promptKind: SectionPromptKind,
@@ -729,7 +729,7 @@ const AGGREGATOR_SECTION_ORDER: ReadonlyArray<SectionPromptKind> = [
   'narrative',
 ] as const
 
-function buildAggregatedContext(args: {
+export function buildAggregatedContext(args: {
   filingMeta: {
     companyName: string
     filingType: string
@@ -806,7 +806,7 @@ function serializeXbrlStatement(stmt: FinancialStatement): string {
  * fields fall back to a "not analysed" sentinel so the consumer doesn't
  * crash on undefined.
  */
-function mergeEmployeeImpact(
+export function mergeEmployeeImpact(
   outlook: EmployeeOutlookResult | null,
   signals: WorkforceSignalsResult | null,
 ): EmployeeImpactResult {
