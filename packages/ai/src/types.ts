@@ -55,6 +55,38 @@ export interface CompanySummaryResult {
   opportunities: Array<string>
 }
 
+/**
+ * Outlook portion of the employee-impact rollup. Produced by
+ * `generateEmployeeImpact` from pre-summarised section context. Job security,
+ * compensation, growth — the "is the company a good place to work" lens.
+ */
+export interface EmployeeOutlookResult {
+  overall_outlook: string
+  job_security: string
+  compensation_signals: string
+  growth_opportunities: string
+  watch_items: Array<string>
+}
+
+/**
+ * Workforce-geography + H-1B/visa portion of the employee-impact rollup.
+ * Produced by `generateWorkforceSignals` from raw business_overview +
+ * risk_factors text (pre-summarised text loses the specific quotes/numbers
+ * this prompt needs).
+ */
+export interface WorkforceSignalsResult {
+  workforce_geography: string
+  h1b_and_visa_dependency: string
+  watch_items: Array<string>
+}
+
+/**
+ * Merged shape stored on `filing_summaries.ai_summary.employee_impact` for
+ * frontend backwards compatibility. The summarisation pipeline runs
+ * `generateEmployeeImpact` and `generateWorkforceSignals` separately, then
+ * merges the two outputs into this single object so consumers don't have to
+ * change.
+ */
 export interface EmployeeImpactResult {
   overall_outlook: string
   job_security: string
@@ -65,4 +97,4 @@ export interface EmployeeImpactResult {
   watch_items: Array<string>
 }
 
-export const CURRENT_SUMMARY_VERSION = 2
+export const CURRENT_SUMMARY_VERSION = 3

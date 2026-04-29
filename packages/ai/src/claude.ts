@@ -18,6 +18,10 @@ import {
   employeeImpactUserPrompt,
 } from './prompts/employee-impact'
 import {
+  workforceSignalsSystemPrompt,
+  workforceSignalsUserPrompt,
+} from './prompts/workforce-signals'
+import {
   mdaSummarySystemPrompt,
   mdaSummaryUserPrompt,
 } from './prompts/mda-summary'
@@ -30,8 +34,9 @@ import type {
   ClaudeClientConfig,
   CompensationAnalysisResult,
   CompanySummaryResult,
-  EmployeeImpactResult,
+  EmployeeOutlookResult,
   TokenUsage,
+  WorkforceSignalsResult,
 } from './types'
 
 const DEFAULT_MODEL = 'claude-haiku-4-5'
@@ -183,16 +188,15 @@ export class ClaudeClient {
   // ─── Company summary (structured health assessment) ────────────────
 
   async generateCompanySummary(params: {
-    rawData: Record<string, unknown>
+    aggregatedSections: string
     filingType: string
     companyName: string
   }): Promise<AiResponse<CompanySummaryResult>> {
-    const dataStr = truncateForContext(JSON.stringify(params.rawData, null, 2))
     const systemPrompt = companySummarySystemPrompt()
     const userPrompt = companySummaryUserPrompt({
       companyName: params.companyName,
       filingType: params.filingType,
-      rawData: dataStr,
+      aggregatedSections: params.aggregatedSections,
     })
 
     const { text, usage } = await this.chat(systemPrompt, userPrompt)
@@ -201,27 +205,50 @@ export class ClaudeClient {
     return { data, usage, cached: false }
   }
 
-  // ─── Employee impact analysis ─────────────────────────────────────
+  // ─── Employee impact (outlook only) ───────────────────────────────
+  // Returns the outlook portion of EmployeeImpactResult (job security,
+  // compensation, growth, watch_items). The summarisation pipeline merges
+  // this with generateWorkforceSignals output before storing on
+  // filing_summaries.ai_summary.employee_impact.
 
   async generateEmployeeImpact(params: {
-    rawData: Record<string, unknown>
+    aggregatedSections: string
     filingType: string
     companyName: string
-    riskFactors?: string
-    mdaText?: string
-  }): Promise<AiResponse<EmployeeImpactResult>> {
-    const dataStr = truncateForContext(JSON.stringify(params.rawData, null, 2))
+  }): Promise<AiResponse<EmployeeOutlookResult>> {
     const systemPrompt = employeeImpactSystemPrompt()
     const userPrompt = employeeImpactUserPrompt({
       companyName: params.companyName,
       filingType: params.filingType,
-      rawData: dataStr,
-      riskFactors: params.riskFactors,
-      mdaText: params.mdaText,
+      aggregatedSections: params.aggregatedSections,
     })
 
     const { text, usage } = await this.chat(systemPrompt, userPrompt)
-    const data = this.parseJson<EmployeeImpactResult>(text)
+    const data = this.parseJson<EmployeeOutlookResult>(text)
+
+    return { data, usage, cached: false }
+  }
+
+  // ─── Workforce signals (geography + visa dependency) ──────────────
+  // Runs against raw business_overview + risk_factors text (not summaries)
+  // because direct quotes and exact figures matter for these signals.
+
+  async generateWorkforceSignals(params: {
+    companyName: string
+    filingType: string
+    businessOverview: string | null
+    riskFactors: string | null
+  }): Promise<AiResponse<WorkforceSignalsResult>> {
+    const systemPrompt = workforceSignalsSystemPrompt()
+    const userPrompt = workforceSignalsUserPrompt({
+      companyName: params.companyName,
+      filingType: params.filingType,
+      businessOverview: params.businessOverview,
+      riskFactors: params.riskFactors,
+    })
+
+    const { text, usage } = await this.chat(systemPrompt, userPrompt)
+    const data = this.parseJson<WorkforceSignalsResult>(text)
 
     return { data, usage, cached: false }
   }
@@ -334,18 +361,4 @@ export class ClaudeClient {
 
     return { data: text, usage, cached: false }
   }
-}
-
-/**
- * Truncate a JSON string to fit within ~100k characters (~25k tokens).
- * Keeps the beginning and end for context, marking the middle as truncated.
- */
-function truncateForContext(text: string, maxChars = 100_000): string {
-  if (text.length <= maxChars) return text
-  const half = Math.floor(maxChars / 2)
-  return (
-    text.slice(0, half) +
-    '\n\n... [CONTENT TRUNCATED FOR CONTEXT WINDOW] ...\n\n' +
-    text.slice(-half)
-  )
 }

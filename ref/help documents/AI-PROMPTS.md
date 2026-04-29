@@ -21,7 +21,8 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 | What it does | File | Triggered by |
 |---|---|---|
 | Structured "company health" card (headline, key numbers, red flags, opportunities) | [company-summary.ts](../../packages/ai/src/prompts/company-summary.ts) | `POST /api/companies/[ticker]/summarize` |
-| Worker-impact analysis (job security, H-1B, geography mismatch) | [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts) | `POST /api/companies/[ticker]/summarize` |
+| Worker outlook (job security, comp, growth — handled by aggregated section input) | [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts) | `POST /api/companies/[ticker]/summarize` |
+| Workforce geography + H-1B/visa dependency (raw section text) | [workforce-signals.ts](../../packages/ai/src/prompts/workforce-signals.ts) | `POST /api/companies/[ticker]/summarize` |
 | Per-section summaries (risk factors, MD&A, business overview, etc.) | [section-summary.ts](../../packages/ai/src/prompts/section-summary.ts) | `POST /api/companies/[ticker]/summarize` |
 | MD&A markdown breakdown (rendered as the MD&A card) | [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts) | `POST /api/companies/[ticker]/summarize` |
 | Pay fairness analysis (1–100 score, comparisons, recommendations) | [compensation-analysis.ts](../../packages/ai/src/prompts/compensation-analysis.ts) | `POST /api/analysis/compensation-fairness` |
@@ -42,25 +43,37 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 - Tighten or loosen what counts as a "red flag" vs. "opportunity"
 - Adjust the reading level (currently 8th-grade)
 
-**Input data:** the entire filing JSON (XBRL financials, etc.), truncated to ~100k chars by `truncateForContext()` in `claude.ts:371`.
+**Input data:** the markdown-aggregated view of the filing's per-section AI summaries built by `buildAggregatedContext()` in `summarization-pipeline.ts`. Includes filing meta, ordered section summaries (Business Overview → MD&A → Risk Factors → …), and one-line XBRL serialisations. **Not** the raw filing JSON — the prompt explicitly instructs Claude that it's reading pre-summarised content.
 
 ---
 
-### 2. Employee Impact — [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts)
+### 2. Employee Outlook — [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts)
 
-**What it produces:** the longest and most opinionated prompt. Returns JSON with `overall_outlook`, `job_security`, `compensation_signals`, `growth_opportunities`, `workforce_geography`, `h1b_and_visa_dependency`, `watch_items[]`.
+**What it produces:** the outlook portion of the worker-impact card: `overall_outlook`, `job_security`, `compensation_signals`, `growth_opportunities`, `watch_items[]`. Geography and visa-dependency are handled by [workforce-signals.ts](../../packages/ai/src/prompts/workforce-signals.ts) — a focused prompt that needs raw text, not summaries.
 
 **When to edit:**
-- Add new "signal categories" (currently 6: Job Security, Compensation, Growth, Culture, Workforce Geography, H-1B/Visa)
-- Adjust how aggressively the model flags H-1B/visa concerns (currently scans for ~10 specific terms and flags reliance as a concern)
-- Change the geographic-revenue-vs-headcount mismatch threshold (currently flags any noticeable disproportion)
-- Add or remove the "show your work" requirement that forces the model to quote raw filing text
+- Add new outlook signal categories (currently 4: Job Security, Compensation, Growth, Culture)
+- Adjust how aggressively the model flags concerns
+- Tweak the "be direct, don't hedge" instruction
 
-**Input data:** filing JSON + optional `riskFactors` text + optional `mdaText`.
+**Input data:** the same aggregated section context that company-summary uses. The pipeline merges this prompt's output with `workforce-signals` output into a single `EmployeeImpactResult` for frontend backwards compatibility.
 
 ---
 
-### 3. Section Summary — [section-summary.ts](../../packages/ai/src/prompts/section-summary.ts)
+### 3. Workforce Signals — [workforce-signals.ts](../../packages/ai/src/prompts/workforce-signals.ts)
+
+**What it produces:** the geography + visa portion of the worker-impact card: `workforce_geography`, `h1b_and_visa_dependency`, `watch_items[]`. Output is merged with `generateEmployeeImpact` into the `employee_impact` rollup.
+
+**When to edit:**
+- Adjust how aggressively the model flags H-1B/visa concerns (scans for specific terms; flags reliance as concern)
+- Change the geographic-revenue-vs-headcount mismatch threshold
+- Tweak the "show your work" / direct-quote requirements
+
+**Input data:** raw text of the `business_overview` (Item 1) and `risk_factors` (Item 1A) sections. Raw text — not the summary — because direct quotes and exact figures matter for these signals. The pipeline finds these sections by `promptKind` lookup so it works across 10-K (`'1'` / `'1A'`) and 10-Q (`'part2item1a'`) filings.
+
+---
+
+### 4. Section Summary — [section-summary.ts](../../packages/ai/src/prompts/section-summary.ts)
 
 **What it produces:** a short (under 150 words) plain-text summary of a single filing section.
 
@@ -80,7 +93,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 4. MD&A Summary — [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts)
+### 5. MD&A Summary — [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts)
 
 **What it produces:** **markdown** (not JSON) — the structured MD&A card on the dashboard. Renders through `MarkdownContent` / `react-native-markdown-display`.
 
@@ -101,7 +114,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 5. Compensation Analysis — [compensation-analysis.ts](../../packages/ai/src/prompts/compensation-analysis.ts)
+### 6. Compensation Analysis — [compensation-analysis.ts](../../packages/ai/src/prompts/compensation-analysis.ts)
 
 **What it produces:** the fairness gauge. Returns JSON with `fairness_score` (1–100), `explanation`, `comparisons[]`, `recommendations[]`.
 
@@ -114,7 +127,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 6. What This Means — [what-this-means.ts](../../packages/ai/src/prompts/what-this-means.ts)
+### 7. What This Means — [what-this-means.ts](../../packages/ai/src/prompts/what-this-means.ts)
 
 **What it produces:** the personalized "explaining this to a friend over a beer" overlay. Plain-text prose, 1–3 paragraphs, no markdown.
 
@@ -125,7 +138,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 7. RAG Answer — [rag-answer.ts](../../packages/ai/src/prompts/rag-answer.ts) ⚠️ AND [supabase/functions/ask/index.ts](../../supabase/functions/ask/index.ts#L32)
+### 8. RAG Answer — [rag-answer.ts](../../packages/ai/src/prompts/rag-answer.ts) ⚠️ AND [supabase/functions/ask/index.ts](../../supabase/functions/ask/index.ts#L32)
 
 **What it produces:** the answer to a user's chat question, grounded in retrieved filing chunks.
 
