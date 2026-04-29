@@ -42,6 +42,12 @@ export function formatDate(input: string | null | undefined): string {
   })
 }
 
+export function formatPercent(n: number | null | undefined): string {
+  if (n == null) return '–'
+  const sign = n > 0 ? '+' : ''
+  return `${sign}${n.toFixed(1)}%`
+}
+
 export function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
