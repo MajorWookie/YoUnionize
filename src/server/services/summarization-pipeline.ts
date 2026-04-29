@@ -34,7 +34,12 @@ import {
   executiveCompensation,
 } from '@younionize/postgres'
 import { CURRENT_SUMMARY_VERSION } from '@younionize/ai'
-import type { ClaudeClient } from '@younionize/ai'
+import type {
+  ClaudeClient,
+  EmployeeImpactResult,
+  EmployeeOutlookResult,
+  WorkforceSignalsResult,
+} from '@younionize/ai'
 import { pMapSettled } from '@younionize/helpers'
 import {
   getSectionDispatch,
@@ -465,6 +470,7 @@ async function callPromptForSection(args: {
 const PROMPT_KIND_TO_PROMPT_LABEL: Record<SectionPromptKind, string> = {
   rollup_executive_summary: 'rollup_executive_summary',
   rollup_employee_impact: 'rollup_employee_impact',
+  rollup_workforce_signals: 'rollup_workforce_signals',
   xbrl_income_statement: 'xbrl_income_statement',
   xbrl_balance_sheet: 'xbrl_balance_sheet',
   xbrl_cash_flow: 'xbrl_cash_flow',
@@ -515,6 +521,14 @@ async function markSectionFailed(rowId: string): Promise<void> {
 
 // ─── Filing-level rollups ───────────────────────────────────────────────────
 
+const XBRL_KEYS = [
+  'income_statement',
+  'balance_sheet',
+  'cash_flow',
+  'shareholders_equity',
+] as const
+type XbrlKey = (typeof XBRL_KEYS)[number]
+
 async function buildRollups(
   filing: FilingRow,
   companyId: string,
@@ -527,23 +541,44 @@ async function buildRollups(
   let inputTokens = 0
   let outputTokens = 0
 
-  // Structured XBRL — no Claude call; pure transformation.
+  // Structured XBRL — no Claude call; pure transformation. Held in a local
+  // map so the aggregator (below) can include the same statements without
+  // re-deriving them.
   const xbrlData = filing.rawData.xbrlData as Record<string, unknown> | undefined
+  const xbrlStatements: Partial<Record<XbrlKey, FinancialStatement>> = {}
   if (xbrlData) {
     const statements = transformXbrlToStatements(xbrlData)
-    for (const key of ['income_statement', 'balance_sheet', 'cash_flow', 'shareholders_equity'] as const) {
-      if (statements[key]) {
-        rollupOut[key] = statements[key]
+    for (const key of XBRL_KEYS) {
+      const stmt = statements[key]
+      if (stmt) {
+        rollupOut[key] = stmt
+        xbrlStatements[key] = stmt
       }
     }
   }
 
-  // Executive summary (10-K, 10-Q only — 8-K and DEF 14A don't carry the
-  // breadth of context this prompt expects).
+  // 10-K / 10-Q: executive summary + employee impact + workforce signals.
+  // Both Claude rollups consume aggregated section summaries (a few KB)
+  // instead of the full filing rawData (~500k tokens). Workforce signals
+  // is its own focused prompt that runs on RAW business_overview +
+  // risk_factors text because direct quotes/numbers matter for that lens.
   if (filing.filingType === '10-K' || filing.filingType === '10-Q') {
+    const sectionSummariesByCode = await loadAllSectionSummariesByCode(filing.id)
+    const aggregatedSections = buildAggregatedContext({
+      filingMeta: {
+        companyName,
+        filingType: filing.filingType,
+        periodOfReport: (filing.rawData.periodOfReport as string | undefined) ?? null,
+        accessionNumber: filing.accessionNumber,
+      },
+      sectionSummariesByCode,
+      filingType: filing.filingType,
+      xbrl: xbrlStatements,
+    })
+
     try {
       const summary = await ai.generateCompanySummary({
-        rawData: filing.rawData,
+        aggregatedSections,
         filingType: filing.filingType,
         companyName,
       })
@@ -556,24 +591,43 @@ async function buildRollups(
       )
     }
 
-    // Employee impact — also 10-K/10-Q. Pulls in risk_factors + mda text.
+    // Employee outlook + workforce signals merge into a single
+    // EmployeeImpactResult shape on rollupOut.employee_impact for FE compat.
+    let outlook: EmployeeOutlookResult | null = null
     try {
-      const riskCode = filing.filingType === '10-K' ? '1A' : 'part2item1a'
-      const mdaCode = filing.filingType === '10-K' ? '7' : 'part1item2'
-      const impact = await ai.generateEmployeeImpact({
-        rawData: filing.rawData,
+      const outlookRes = await ai.generateEmployeeImpact({
+        aggregatedSections,
         filingType: filing.filingType,
         companyName,
-        riskFactors: sectionMapByCode.get(riskCode),
-        mdaText: sectionMapByCode.get(mdaCode),
       })
-      rollupOut.employee_impact = impact.data
-      inputTokens += impact.usage.inputTokens
-      outputTokens += impact.usage.outputTokens
+      outlook = outlookRes.data
+      inputTokens += outlookRes.usage.inputTokens
+      outputTokens += outlookRes.usage.outputTokens
     } catch (err) {
       console.info(
-        `[Summarize] employee_impact rollup failed for ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`,
+        `[Summarize] employee_impact (outlook) rollup failed for ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`,
       )
+    }
+
+    let signals: WorkforceSignalsResult | null = null
+    try {
+      const signalsRes = await ai.generateWorkforceSignals({
+        companyName,
+        filingType: filing.filingType,
+        businessOverview: findSectionTextByPromptKind(filing.filingType, sectionMapByCode, 'business_overview'),
+        riskFactors: findSectionTextByPromptKind(filing.filingType, sectionMapByCode, 'risk_factors'),
+      })
+      signals = signalsRes.data
+      inputTokens += signalsRes.usage.inputTokens
+      outputTokens += signalsRes.usage.outputTokens
+    } catch (err) {
+      console.info(
+        `[Summarize] workforce_signals rollup failed for ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+
+    if (outlook || signals) {
+      rollupOut.employee_impact = mergeEmployeeImpact(outlook, signals)
     }
   }
 
@@ -604,6 +658,171 @@ async function buildRollups(
   }
 
   return { inputTokens, outputTokens }
+}
+
+/**
+ * Load every section's stored AI summary for a filing, keyed by section
+ * code. Used by the aggregator to feed pre-summarised section context
+ * into the rollup prompts (instead of the multi-MB raw filing JSON).
+ *
+ * Skips rows whose ai_summary is null (skipped or not yet processed).
+ * The jsonb column stores either a string (most prompt kinds round-trip
+ * via JSON.stringify) or — in future — a structured object; we coerce
+ * defensively.
+ */
+async function loadAllSectionSummariesByCode(filingId: string): Promise<Map<string, string>> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      sectionCode: filingSections.sectionCode,
+      aiSummary: filingSections.aiSummary,
+    })
+    .from(filingSections)
+    .where(eq(filingSections.filingId, filingId))
+
+  const map = new Map<string, string>()
+  for (const r of rows) {
+    if (r.aiSummary == null) continue
+    const text = typeof r.aiSummary === 'string' ? r.aiSummary : JSON.stringify(r.aiSummary)
+    if (text.trim().length > 0) map.set(r.sectionCode, text)
+  }
+  return map
+}
+
+/**
+ * Find the raw section text for the first section whose prompt-dispatch
+ * matches the given kind. Robust to filing-type variations (e.g. 10-K
+ * risk_factors lives at '1A' but 10-Q lives at 'part2item1a') because
+ * the dispatch table is the source of truth.
+ */
+function findSectionTextByPromptKind(
+  filingType: string,
+  sectionTextByCode: Map<string, string>,
+  promptKind: SectionPromptKind,
+): string | null {
+  for (const [code, text] of sectionTextByCode) {
+    const dispatch = getSectionDispatch(filingType, code)
+    if (dispatch.promptKind === promptKind) return text
+  }
+  return null
+}
+
+/**
+ * Compose a markdown document of the filing's pre-summarised sections plus
+ * structured XBRL statements. Replaces the practice of feeding Claude the
+ * full filing JSON for rollup prompts. Section ordering is fixed —
+ * Business Overview → MD&A → Risk Factors → Financial Footnotes →
+ * other narrative → XBRL — so prompt instructions like "scan the risk
+ * factors" can rely on the document's structure.
+ */
+const AGGREGATOR_SECTION_ORDER: ReadonlyArray<SectionPromptKind> = [
+  'business_overview',
+  'mda',
+  'risk_factors',
+  'financial_footnotes',
+  'legal_proceedings',
+  'cybersecurity',
+  'controls_and_procedures',
+  'related_transactions',
+  'executive_compensation',
+  'proxy',
+  'narrative',
+] as const
+
+function buildAggregatedContext(args: {
+  filingMeta: {
+    companyName: string
+    filingType: string
+    periodOfReport: string | null
+    accessionNumber: string
+  }
+  sectionSummariesByCode: Map<string, string>
+  filingType: string
+  xbrl: Partial<Record<XbrlKey, FinancialStatement>>
+}): string {
+  const { filingMeta, sectionSummariesByCode, filingType, xbrl } = args
+  const lines: Array<string> = []
+
+  lines.push(`# ${filingMeta.companyName} — ${filingMeta.filingType}`)
+  if (filingMeta.periodOfReport) lines.push(`Period: ${filingMeta.periodOfReport}`)
+  lines.push(`Accession: ${filingMeta.accessionNumber}`)
+  lines.push('')
+
+  // Group sections by promptKind so the priority order is deterministic.
+  const byKind = new Map<SectionPromptKind, Array<{ code: string; summary: string }>>()
+  for (const [code, summary] of sectionSummariesByCode) {
+    const dispatch = getSectionDispatch(filingType, code)
+    if (dispatch.promptKind === 'pass_through') continue
+    const arr = byKind.get(dispatch.promptKind) ?? []
+    arr.push({ code, summary })
+    byKind.set(dispatch.promptKind, arr)
+  }
+
+  for (const kind of AGGREGATOR_SECTION_ORDER) {
+    const items = byKind.get(kind) ?? []
+    for (const { code, summary } of items) {
+      lines.push(`## ${getSectionFriendlyName(code, filingType)}`)
+      lines.push('')
+      lines.push(summary.trim())
+      lines.push('')
+    }
+  }
+
+  for (const key of XBRL_KEYS) {
+    const stmt = xbrl[key]
+    if (!stmt) continue
+    lines.push(`## ${stmt.title ?? key}`)
+    lines.push(serializeXbrlStatement(stmt))
+    lines.push('')
+  }
+
+  return lines.join('\n').trim()
+}
+
+/**
+ * Compact one-line serialisation of a FinancialStatement (label: value
+ * (±N%), …). Shared between the aggregator and the embedding-text
+ * extractor below.
+ */
+function serializeXbrlStatement(stmt: FinancialStatement): string {
+  if (!stmt.items) return ''
+  return `${stmt.title}: ` +
+    stmt.items
+      .filter((item) => item.current != null)
+      .map(
+        (item) =>
+          `${item.label}: ${formatNumber(item.current)}` +
+          (item.changePercent != null
+            ? ` (${item.changePercent > 0 ? '+' : ''}${item.changePercent}%)`
+            : ''),
+      )
+      .join(', ')
+}
+
+/**
+ * Combine the outlook prompt's output with the workforce-signals prompt's
+ * output into the v2-shape EmployeeImpactResult that frontends already
+ * read. Either input may be null if its Claude call failed; missing
+ * fields fall back to a "not analysed" sentinel so the consumer doesn't
+ * crash on undefined.
+ */
+function mergeEmployeeImpact(
+  outlook: EmployeeOutlookResult | null,
+  signals: WorkforceSignalsResult | null,
+): EmployeeImpactResult {
+  const NA = 'Not analysed for this filing.'
+  return {
+    overall_outlook: outlook?.overall_outlook ?? NA,
+    job_security: outlook?.job_security ?? NA,
+    compensation_signals: outlook?.compensation_signals ?? NA,
+    growth_opportunities: outlook?.growth_opportunities ?? NA,
+    workforce_geography: signals?.workforce_geography ?? NA,
+    h1b_and_visa_dependency: signals?.h1b_and_visa_dependency ?? NA,
+    watch_items: [
+      ...(outlook?.watch_items ?? []),
+      ...(signals?.watch_items ?? []),
+    ],
+  }
 }
 
 /**
@@ -997,17 +1216,7 @@ function extractRollupText(key: RollupKey, value: unknown): string | null {
   if (typeof value === 'object' && 'items' in (value as Record<string, unknown>)) {
     const stmt = value as FinancialStatement
     if (!stmt.items) return null
-    return `${stmt.title}: ` +
-      stmt.items
-        .filter((item) => item.current != null)
-        .map(
-          (item) =>
-            `${item.label}: ${formatNumber(item.current)}` +
-            (item.changePercent != null
-              ? ` (${item.changePercent > 0 ? '+' : ''}${item.changePercent}%)`
-              : ''),
-        )
-        .join(', ')
+    return serializeXbrlStatement(stmt)
   }
   return null
 }

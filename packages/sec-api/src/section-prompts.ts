@@ -28,6 +28,7 @@ export type SectionPromptKind =
   // Cross-section synthesis (live on filing_summaries, not filing_sections)
   | 'rollup_executive_summary'
   | 'rollup_employee_impact'
+  | 'rollup_workforce_signals'
   // Structured (XBRL → typed payload)
   | 'xbrl_income_statement'
   | 'xbrl_balance_sheet'
@@ -177,6 +178,7 @@ export function getSectionDispatch(
 export const ROLLUP_KINDS: ReadonlyArray<SectionPromptKind> = [
   'rollup_executive_summary',
   'rollup_employee_impact',
+  'rollup_workforce_signals',
   'xbrl_income_statement',
   'xbrl_balance_sheet',
   'xbrl_cash_flow',
@@ -192,8 +194,9 @@ export const ROLLUP_KINDS: ReadonlyArray<SectionPromptKind> = [
  * Bump the version suffix when editing a prompt template's wording.
  */
 export const PROMPT_VERSIONS: Record<SectionPromptKind, string> = {
-  rollup_executive_summary: 'rollup_executive_summary@v2',
-  rollup_employee_impact: 'rollup_employee_impact@v1',
+  rollup_executive_summary: 'rollup_executive_summary@v3',
+  rollup_employee_impact: 'rollup_employee_impact@v2',
+  rollup_workforce_signals: 'rollup_workforce_signals@v1',
   xbrl_income_statement: 'xbrl_income_statement@v1',
   xbrl_balance_sheet: 'xbrl_balance_sheet@v1',
   xbrl_cash_flow: 'xbrl_cash_flow@v1',

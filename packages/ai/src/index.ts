@@ -5,6 +5,8 @@ export type {
   FilingSummaryResult,
   CompanySummaryResult,
   EmployeeImpactResult,
+  EmployeeOutlookResult,
+  WorkforceSignalsResult,
   KeyNumber,
   CompensationAnalysisResult,
   CompensationComparison,
@@ -37,6 +39,11 @@ export {
   employeeImpactUserPrompt,
 } from './prompts/employee-impact'
 export type { EmployeeImpactParams } from './prompts/employee-impact'
+export {
+  workforceSignalsSystemPrompt,
+  workforceSignalsUserPrompt,
+} from './prompts/workforce-signals'
+export type { WorkforceSignalsParams } from './prompts/workforce-signals'
 export {
   mdaSummarySystemPrompt,
   mdaSummaryUserPrompt,
