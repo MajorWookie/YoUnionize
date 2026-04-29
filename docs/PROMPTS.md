@@ -11,7 +11,6 @@ Each prompt file exports a `*SystemPrompt()` and `*UserPrompt()` function, plus 
 | `section-summary.ts` | `summarizeSection()` | `POST /api/companies/[ticker]/summarize` | Summarizes individual filing sections (risk factors, financials, exec comp, etc.). Includes per-section guidance via `SECTION_GUIDANCE` map. |
 | `company-summary.ts` | `generateCompanySummary()` | `POST /api/companies/[ticker]/summarize` | Produces overall company health assessment as structured JSON (headline, company_health, key_numbers, outlook). Built from aggregated section summaries. |
 | `mda-summary.ts` | `summarizeMda()` | `POST /api/companies/[ticker]/summarize` | Translates the MD&A section into structured markdown (Big Picture, Revenue, Costs, Forward-Looking). Optionally compares to prior-year MD&A. |
-| `filing-summary.ts` | `generateFilingSummary()` | `POST /api/companies/[ticker]/summarize` | Plain-language summary of an entire filing for non-finance readers. |
 | `employee-impact.ts` | `generateEmployeeImpact()` | `POST /api/companies/[ticker]/summarize` | Scans filings for employment signals: job security, benefits, geographic footprint, visa dependency, union activity. |
 | `what-this-means.ts` | `generateWhatThisMeans()` | `POST /api/company-personalize` | Personalized "what this means for you" based on user's job title, pay, and industry. Cached per user. |
 | `compensation-analysis.ts` | `generateCompensationAnalysis()` | `POST /api/analysis/compensation-fairness` | Fairness analysis comparing user pay to executive compensation. Returns structured JSON (fairness score, pay ratios, talking points). |
@@ -22,6 +21,7 @@ Each prompt file exports a `*SystemPrompt()` and `*UserPrompt()` function, plus 
 - **Reading level**: All prompts target 8th-grade reading level
 - **Financial terms**: Defined inline in parentheses on first use
 - **Output format**: `company-summary`, `employee-impact`, and `compensation-analysis` return structured JSON (parsed via `extractJson()` in `packages/ai/src/extract-json.ts`). Others return markdown.
+- **Legacy v1 type**: `FilingSummaryResult` (in `packages/ai/src/types.ts`) is retained because some `filing_summaries.ai_summary` rows in the database were produced by the now-removed `filing-summary.ts` prompt. The frontend's `CompanySummaryCard` discriminates v1 vs. v2 via `isV2Summary()`. No new v1 data is generated.
 - **Retry logic**: All ClaudeClient methods use exponential backoff (5 retries, handles 429/529)
 - **Summary versioning**: `CURRENT_SUMMARY_VERSION = 2` in the summarization pipeline. `CompanySummaryCard` handles v1/v2 via `isV2Summary()`.
 

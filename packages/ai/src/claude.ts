@@ -1,10 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { extractJson } from './extract-json'
 import {
-  filingSummarySystemPrompt,
-  filingSummaryUserPrompt,
-} from './prompts/filing-summary'
-import {
   sectionSummarySystemPrompt,
   sectionSummaryUserPrompt,
 } from './prompts/section-summary'
@@ -35,7 +31,6 @@ import type {
   CompensationAnalysisResult,
   CompanySummaryResult,
   EmployeeImpactResult,
-  FilingSummaryResult,
   TokenUsage,
 } from './types'
 
@@ -157,29 +152,6 @@ export class ClaudeClient {
     const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
 
     return { data: text, usage, cached: false }
-  }
-
-  // ─── Generate comprehensive filing summary ─────────────────────────
-
-  async generateFilingSummary(params: {
-    rawData: Record<string, unknown>
-    filingType: string
-    companyName: string
-  }): Promise<AiResponse<FilingSummaryResult>> {
-    // Truncate raw data to fit context window — keep most important fields
-    const dataStr = truncateForContext(JSON.stringify(params.rawData, null, 2))
-
-    const systemPrompt = filingSummarySystemPrompt()
-    const userPrompt = filingSummaryUserPrompt({
-      companyName: params.companyName,
-      filingType: params.filingType,
-      rawData: dataStr,
-    })
-
-    const { text, usage } = await this.chat(systemPrompt, userPrompt)
-    const data = this.parseJson<FilingSummaryResult>(text)
-
-    return { data, usage, cached: false }
   }
 
   // ─── Compensation analysis ──────────────────────────────────────────
