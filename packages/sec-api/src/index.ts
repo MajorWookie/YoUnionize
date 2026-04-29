@@ -22,6 +22,15 @@ export {
   getSectionFriendlyName,
 } from './sections'
 export type { SectionItemInfo } from './sections'
+export {
+  getSectionDispatch,
+  ROLLUP_KINDS,
+  PROMPT_VERSIONS,
+} from './section-prompts'
+export type {
+  SectionPromptKind,
+  SectionPromptDispatch,
+} from './section-prompts'
 export type {
   SecApiClientConfig,
   Filing,

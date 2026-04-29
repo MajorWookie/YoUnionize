@@ -1,6 +1,12 @@
 import { date, index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { companies } from './companies'
 
+// As of migration 20260429000000_per_section_summaries.sql, ai_summary and
+// human_summary on this table are rollup-only: executive_summary,
+// employee_impact, and structured XBRL statements (income_statement,
+// balance_sheet, cash_flow, shareholders_equity). Per-item summaries
+// (Item 1 Business Overview, Item 7 MD&A, etc.) live on filing_sections —
+// reviewers can verify those item-by-item.
 export const filingSummaries = pgTable(
   'filing_summaries',
   {

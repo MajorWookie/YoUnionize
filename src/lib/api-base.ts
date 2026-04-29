@@ -78,7 +78,6 @@ const DYNAMIC_ROUTES: Array<{
   paramName: string
 }> = [
   { pattern: /^\/api\/companies\/([^/]+)\/detail$/, functionName: 'company-detail', paramName: 'ticker' },
-  { pattern: /^\/api\/companies\/([^/]+)\/ingest$/, functionName: 'company-ingest', paramName: 'ticker' },
   { pattern: /^\/api\/companies\/([^/]+)\/summarize$/, functionName: 'company-summarize', paramName: 'ticker' },
   { pattern: /^\/api\/companies\/([^/]+)\/summary-status$/, functionName: 'company-summary-status', paramName: 'ticker' },
   { pattern: /^\/api\/jobs\/([^/]+)$/, functionName: 'job-status', paramName: 'id' },

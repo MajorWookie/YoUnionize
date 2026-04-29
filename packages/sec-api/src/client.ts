@@ -32,8 +32,19 @@ import type {
 } from './sec-api.types'
 
 const INITIAL_BACKOFF_MS = 500
-const MAX_RETRIES = 3
+const MAX_RETRIES = 5
 const BACKOFF_MULTIPLIER = 2
+
+// sec-api.io's section extractor is asynchronous: when a section hasn't been
+// extracted yet, it returns the literal string "processing" (HTTP 200) and
+// expects the caller to poll until the real text is ready. Real bug found
+// 2026-04-29: 717 rows of filing_sections.text were the literal placeholder
+// because we treated "processing" as a successful body. We now poll inside
+// extractSection — typical resolution is one or two retries.
+const PROCESSING_PLACEHOLDER = 'processing'
+const PROCESSING_MAX_POLLS = 6
+const PROCESSING_INITIAL_DELAY_MS = 1000
+const PROCESSING_BACKOFF_MULTIPLIER = 1.5
 
 /**
  * Typed client for the sec-api.io API.
@@ -69,7 +80,10 @@ export class SecApiClient {
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
-        const delay = INITIAL_BACKOFF_MS * BACKOFF_MULTIPLIER ** (attempt - 1)
+        // Backoff with full jitter — flatten the herd when many parallel
+        // section calls hit the rate limit at the same instant.
+        const base = INITIAL_BACKOFF_MS * BACKOFF_MULTIPLIER ** (attempt - 1)
+        const delay = Math.floor(Math.random() * base) + base
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
 
@@ -82,6 +96,17 @@ export class SecApiClient {
       })
 
       if (response.status === 429 && attempt < MAX_RETRIES) {
+        // Honor Retry-After when sec-api sends it; otherwise fall through
+        // to the loop's exponential-backoff-with-jitter on the next pass.
+        // Defensive `?.get` because not every Response shim (and not every
+        // test mock) exposes a Headers object.
+        const retryAfterHeader = response.headers?.get?.('retry-after')
+        if (retryAfterHeader) {
+          const retryAfterSec = Number.parseInt(retryAfterHeader, 10)
+          if (Number.isFinite(retryAfterSec) && retryAfterSec > 0) {
+            await new Promise((resolve) => setTimeout(resolve, retryAfterSec * 1000))
+          }
+        }
         lastError = new SecApiError(429, 'Rate limited', url)
         continue
       }
@@ -155,13 +180,38 @@ export class SecApiClient {
 
   // ─── Section Extractor ────────────────────────────────────────────────
 
-  /** Extract a specific section from a 10-K, 10-Q, or 8-K filing. */
+  /**
+   * Extract a specific section from a 10-K, 10-Q, or 8-K filing.
+   *
+   * Polls past the `"processing"` placeholder that sec-api.io returns while
+   * its async extractor is still preparing the section. Returns the real
+   * text once available, or throws SecApiError(503, "section still
+   * processing after N polls") if extraction never completes within the
+   * polling budget — the caller can persist that as a regular fetch error
+   * and the retry job (`sec-retry.ts`) can replay later.
+   */
   async extractSection(
     url: string,
     item: SectionItem,
     type: 'text' | 'html' = 'text',
   ): Promise<string> {
-    return this.getText('/extractor', { url, item, type })
+    let delay = PROCESSING_INITIAL_DELAY_MS
+    for (let poll = 0; poll <= PROCESSING_MAX_POLLS; poll++) {
+      const text = await this.getText('/extractor', { url, item, type })
+      // Trim before the placeholder check — empirically sec-api can return
+      // "processing\n" or whitespace-padded variants.
+      if (text.trim().toLowerCase() !== PROCESSING_PLACEHOLDER) {
+        return text
+      }
+      if (poll === PROCESSING_MAX_POLLS) break
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      delay = Math.floor(delay * PROCESSING_BACKOFF_MULTIPLIER)
+    }
+    throw new SecApiError(
+      503,
+      `section ${item} still processing after ${PROCESSING_MAX_POLLS + 1} polls`,
+      `/extractor?item=${item}`,
+    )
   }
 
   // ─── XBRL-to-JSON Converter ──────────────────────────────────────────

@@ -82,6 +82,9 @@ export const companies = pgTable('companies', {
 
 // ── Filings ─────────────────────────────────────────────────────────────
 
+// Mirrors src/database/schema/filings.ts. ai_summary / human_summary on this
+// table hold filing-level rollups (executive_summary, employee_impact,
+// structured XBRL); per-item summaries live on filing_sections.
 export const filingSummaries = pgTable(
   'filing_summaries',
   {
@@ -94,8 +97,16 @@ export const filingSummaries = pgTable(
     filedAt: timestamp('filed_at', { mode: 'string' }).notNull(),
     accessionNumber: text('accession_number').notNull().unique(),
     rawData: jsonb('raw_data').notNull(),
+    rawDataOverride: jsonb('raw_data_override'),
     aiSummary: jsonb('ai_summary'),
-    summaryVersion: integer('summary_version').default(1),
+    humanSummary: jsonb('human_summary'),
+    summaryVersion: integer('summary_version').notNull().default(1),
+    summarizationStatus: text('summarization_status').notNull().default('ai_generated'),
+    summarizationUpdatedAt: timestamp('summarization_updated_at', { mode: 'string' })
+      .notNull()
+      .defaultNow(),
+    summarizationUpdatedBy: uuid('summarization_updated_by'),
+    optimisticLockVersion: integer('optimistic_lock_version').notNull().default(0),
     createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
   },
@@ -104,6 +115,15 @@ export const filingSummaries = pgTable(
       table.companyId,
       table.filingType,
       table.periodEnd,
+    ),
+    index('filing_summaries_review_status_idx').on(
+      table.summarizationStatus,
+      table.summarizationUpdatedAt,
+    ),
+    index('filing_summaries_review_company_idx').on(
+      table.companyId,
+      table.summarizationStatus,
+      table.summarizationUpdatedAt,
     ),
   ],
 )
@@ -240,6 +260,9 @@ export const jobs = pgTable('jobs', {
 })
 
 // ── Filing Sections ────────────────────────────────────────────────────
+// Mirrors src/database/schema/filing-sections.ts. One row per (filing,
+// SEC item code). AI summary, human override, and review state live on
+// each row so a reviewer can verify Item 1A independently from Item 7.
 
 export const filingSections = pgTable('filing_sections', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -251,6 +274,16 @@ export const filingSections = pgTable('filing_sections', {
   fetchStatus: text('fetch_status').notNull().default('success'),
   fetchError: text('fetch_error'),
   extractedAt: timestamp('extracted_at', { mode: 'string' }).defaultNow().notNull(),
+  aiSummary: jsonb('ai_summary'),
+  humanSummary: jsonb('human_summary'),
+  summarizationStatus: text('summarization_status').notNull().default('ai_generated'),
+  summarizationUpdatedAt: timestamp('summarization_updated_at', { mode: 'string' })
+    .notNull()
+    .defaultNow(),
+  summarizationUpdatedBy: uuid('summarization_updated_by'),
+  summaryVersion: integer('summary_version').notNull().default(0),
+  optimisticLockVersion: integer('optimistic_lock_version').notNull().default(0),
+  promptId: text('prompt_id'),
 })
 
 // ── Raw SEC Responses ──────────────────────────────────────────────────
