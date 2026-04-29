@@ -17,11 +17,25 @@ const env = g.process.env
 
 const meta = import.meta.env
 
-if (meta.VITE_SUPABASE_URL) env.VITE_SUPABASE_URL = meta.VITE_SUPABASE_URL
-if (meta.VITE_SUPABASE_KEY) env.VITE_SUPABASE_KEY = meta.VITE_SUPABASE_KEY
-if (meta.VITE_DEV_SKIP_AUTH !== undefined) {
-  env.VITE_DEV_SKIP_AUTH = meta.VITE_DEV_SKIP_AUTH
-  // useAuth currently reads EXPO_PUBLIC_DEV_SKIP_AUTH; mirror until/unless that
-  // hook is updated to fall back to VITE_DEV_SKIP_AUTH symmetrically.
-  env.EXPO_PUBLIC_DEV_SKIP_AUTH = meta.VITE_DEV_SKIP_AUTH
+// Mirror both VITE_* and EXPO_PUBLIC_* keys from import.meta.env into process.env
+// so shared packages (which read process.env directly) work without caring about
+// which framework's convention populated the values.
+const KEYS = [
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_KEY',
+  'VITE_DEV_SKIP_AUTH',
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'EXPO_PUBLIC_SUPABASE_KEY',
+  'EXPO_PUBLIC_DEV_SKIP_AUTH',
+] as const
+
+for (const k of KEYS) {
+  const v = meta[k]
+  if (v !== undefined && v !== '') env[k] = v
+}
+
+// useAuth reads EXPO_PUBLIC_DEV_SKIP_AUTH; if only VITE_DEV_SKIP_AUTH is set,
+// mirror it so the auth-bypass flag still resolves correctly on web.
+if (env.EXPO_PUBLIC_DEV_SKIP_AUTH === undefined && env.VITE_DEV_SKIP_AUTH !== undefined) {
+  env.EXPO_PUBLIC_DEV_SKIP_AUTH = env.VITE_DEV_SKIP_AUTH
 }

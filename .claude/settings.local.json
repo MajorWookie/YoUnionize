@@ -49,7 +49,10 @@
       "Bash(git fetch *)",
       "Bash(git pull *)",
       "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
-      "Bash(grep \"\\\\.ts$\")"
+      "Bash(grep \"\\\\.ts$\")",
+      "Bash(git mv *)",
+      "Bash(bun --cwd web run typecheck)",
+      "Bash(git check-ignore *)"
     ]
   },
   "enableAllProjectMcpServers": true,
