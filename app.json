@@ -5,20 +5,11 @@
     "scheme": "younion",
     "version": "0.1.6",
     "platforms": [
-      "ios",
-      "android",
-      "web"
+      "ios"
     ],
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.majorwookie.younion"
-    },
-    "android": {
-      "package": "com.majorwookie.younion"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "single"
     },
     "plugins": [
       "expo-router",

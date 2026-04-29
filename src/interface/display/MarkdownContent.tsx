@@ -1,7 +1,3 @@
-/**
- * Cross-platform markdown renderer.
- * Uses react-native-markdown-display on native and basic HTML rendering on web.
- */
 import { useTheme } from 'tamagui'
 import Markdown from 'react-native-markdown-display'
 import type { StyleSheet } from 'react-native'

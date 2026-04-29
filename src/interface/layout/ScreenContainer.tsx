@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { ScrollView } from 'react-native'
-import { useTheme, YStack, isWeb } from 'tamagui'
+import { useTheme, YStack } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 interface ScreenContainerProps {
@@ -24,11 +24,10 @@ export function ScreenContainer({
     <YStack
       style={{ flexGrow: 1, backgroundColor: bg }}
       width="100%"
-      maxW={isWeb ? 960 : undefined}
       self="center"
       px={padded ? '$4' : undefined}
-      pt={isWeb ? '$4' : insets.top + 8}
-      pb={isWeb ? '$4' : insets.bottom + 8}
+      pt={insets.top + 8}
+      pb={insets.bottom + 8}
     >
       {children}
     </YStack>
