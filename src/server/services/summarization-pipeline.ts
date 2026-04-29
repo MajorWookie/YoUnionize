@@ -220,11 +220,15 @@ async function summarizeSingleFiling(
     SECTION_CONCURRENCY,
   )
 
-  const sectionMapByCode = new Map<string, string>(
-    sectionRows
-      .filter((r): r is SectionRow & { text: string } => r.text != null && r.fetchStatus === 'success')
-      .map((r) => [r.sectionCode, r.text]),
-  )
+  // Pull every successfully-extracted section for this filing, not just the
+  // ones being processed this run. On a resumed run where some sections were
+  // summarised in a prior invocation, sectionRows only contains rows still
+  // marked pending (summary_version IN (0, -1)) — building the rollup input
+  // map from sectionRows alone meant risk_factors/mda text that finished in
+  // an earlier run was silently missing from the rollups. The text column
+  // doesn't change during summarisation (only ai_summary does), so a single
+  // DB query gives us the authoritative state.
+  const sectionMapByCode = await loadAllSectionTextByCode(filing.id)
 
   // ── Persist per-section results ─────────────────────────────────────────
   const successfulWrites: Array<SectionWriteResult> = []
@@ -283,6 +287,33 @@ async function summarizeSingleFiling(
 }
 
 // ─── Section loading ────────────────────────────────────────────────────────
+
+/**
+ * Load every successfully-extracted section's raw text for a filing,
+ * keyed by section code. Used to populate the rollup-input map so resumed
+ * runs see sections summarised in prior invocations — not just this run.
+ */
+async function loadAllSectionTextByCode(filingId: string): Promise<Map<string, string>> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      sectionCode: filingSections.sectionCode,
+      text: filingSections.text,
+    })
+    .from(filingSections)
+    .where(
+      and(
+        eq(filingSections.filingId, filingId),
+        eq(filingSections.fetchStatus, 'success'),
+      ),
+    )
+
+  const map = new Map<string, string>()
+  for (const r of rows) {
+    if (r.text != null) map.set(r.sectionCode, r.text)
+  }
+  return map
+}
 
 async function loadPendingSections(filingId: string): Promise<Array<SectionRow>> {
   const db = getDb()
