@@ -33,7 +33,10 @@ interface FilingSummary {
   filingType: string
   periodEnd: string | null
   filedAt: string
-  summary: { executive_summary?: string } & Record<string, unknown>
+  // Keyed by section name (executive_summary, employee_impact, etc.). Each
+  // value is the structured *result object* from a Claude prompt, not a
+  // string. Use extractRollupText() to pull the markdown body.
+  summary: Record<string, unknown>
 }
 
 interface Executive {
@@ -64,6 +67,30 @@ const fmtCompact = new Intl.NumberFormat('en-US', {
 function lastName(full: string): string {
   const parts = full.trim().split(/\s+/)
   return parts[parts.length - 1] ?? full
+}
+
+/**
+ * Pull a (headline, markdown) pair out of the executive_summary rollup.
+ * V2 (CompanySummaryResult): { headline, company_health, ... }
+ * V1 (FilingSummaryResult):  { executive_summary, plain_language_explanation, ... }
+ * Discriminator from the Expo CompanySummaryCard: presence of `headline`.
+ */
+function extractRollupText(value: unknown): {
+  headline?: string
+  markdown?: string
+} {
+  if (!value || typeof value !== 'object') return {}
+  const obj = value as Record<string, unknown>
+  if (
+    typeof obj.headline === 'string' &&
+    typeof obj.company_health === 'string'
+  ) {
+    return { headline: obj.headline, markdown: obj.company_health }
+  }
+  if (typeof obj.executive_summary === 'string') {
+    return { markdown: obj.executive_summary }
+  }
+  return {}
 }
 
 function buildCompBreakdown(exec: Executive) {
@@ -148,7 +175,9 @@ export function CompanyPage() {
   }
 
   const { company, latestAnnual, executives } = data
-  const summaryText = latestAnnual?.summary.executive_summary
+  const { headline, markdown: summaryText } = extractRollupText(
+    latestAnnual?.summary.executive_summary,
+  )
 
   const topExecs = executives
     .slice()
@@ -197,9 +226,14 @@ export function CompanyPage() {
 
         {summaryText ? (
           <Card withBorder padding="lg" radius="md">
-            <Title order={3} mb="sm">
+            <Title order={3} mb={headline ? 'xs' : 'sm'}>
               Executive Summary
             </Title>
+            {headline && (
+              <Text fw={600} size="md" c="navy.7" mb="sm">
+                {headline}
+              </Text>
+            )}
             <MarkdownContent>{summaryText}</MarkdownContent>
           </Card>
         ) : (

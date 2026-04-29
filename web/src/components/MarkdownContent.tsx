@@ -3,6 +3,15 @@ import remarkGfm from 'remark-gfm'
 import { Anchor, Code, List, Text, Title } from '@mantine/core'
 
 export function MarkdownContent({ children }: { children: string }) {
+  // Defensive: react-markdown's assertion error on non-string children is
+  // cryptic ("expected string, got [object Object]") and breaks the whole
+  // chunk. If a caller passes us the wrong shape (most often the result
+  // *object* from a Claude prompt instead of one of its string fields),
+  // surface it via console + render nothing.
+  if (typeof children !== 'string') {
+    console.warn('MarkdownContent expected string children, got:', children)
+    return null
+  }
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
