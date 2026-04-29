@@ -190,15 +190,16 @@ export class SecApiClient {
    * Extract a specific section from a 10-K, 10-Q, or 8-K filing.
    *
    * Polls past the `"processing"` placeholder that sec-api.io returns while
-   * its async extractor is still preparing the section. Returns the real
-   * text once available, or throws SecApiError(503, "section still
-   * processing after N polls") if extraction never completes within the
-   * polling budget — the caller can persist that as a regular fetch error
-   * and the retry job (`sec-retry.ts`) can replay later.
-   *
-   * Logs a one-line warning once an individual call crosses 4 polls so a
-   * long-running retry doesn't look stuck. Healthy sections (ready on the
-   * first hit) stay silent.
+   * its async extractor is still preparing the section. Returns:
+   *   • the real text once available
+   *   • an empty string when sec-api responds 404 — this means "the item
+   *     code doesn't exist in this filing" (common for DEF 14A items 1.1
+   *     and 1.7, which sec-api's extractor doesn't reliably support; also
+   *     happens for typos and form-type mismatches). Empty is the honest
+   *     answer, not an error.
+   *   • throws SecApiError(503) if extraction never completes within the
+   *     polling budget — the caller can persist that as a fetch error and
+   *     the retry job (`sec-retry.ts`) can replay later.
    */
   async extractSection(
     url: string,
@@ -207,7 +208,18 @@ export class SecApiClient {
   ): Promise<string> {
     let delay = PROCESSING_INITIAL_DELAY_MS
     for (let poll = 0; poll <= PROCESSING_MAX_POLLS; poll++) {
-      const text = await this.getText('/extractor', { url, item, type })
+      let text: string
+      try {
+        text = await this.getText('/extractor', { url, item, type })
+      } catch (err) {
+        if (err instanceof SecApiError && err.statusCode === 404) {
+          // sec-api signals "this item code isn't in this filing" with a
+          // 404. Semantically empty, not an error — return '' so the caller
+          // records fetch_status='empty' rather than 'error'.
+          return ''
+        }
+        throw err
+      }
       // Trim before the placeholder check — empirically sec-api can return
       // "processing\n" or whitespace-padded variants.
       if (text.trim().toLowerCase() !== PROCESSING_PLACEHOLDER) {

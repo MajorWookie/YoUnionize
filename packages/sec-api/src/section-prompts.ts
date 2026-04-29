@@ -99,7 +99,10 @@ const TEN_K_DISPATCH: Record<string, SectionPromptDispatch> = {
   [TenKSection.CONTROLS_AND_PROCEDURES]: { promptKind: 'controls_and_procedures', ...SHORT },
   [TenKSection.OTHER_INFO]: { promptKind: 'narrative', ...SHORT },
   [TenKSection.DIRECTORS_AND_GOVERNANCE]: { promptKind: 'narrative', ...SHORT },
-  [TenKSection.EXECUTIVE_COMPENSATION]: { promptKind: 'executive_compensation', ...SHORT },
+  // Item 11 is almost always "incorporated by reference to the Proxy
+  // Statement" — the actual compensation analysis lives on the DEF 14A
+  // summary. Skip the Claude call here; DEF_14A_DISPATCH handles it.
+  [TenKSection.EXECUTIVE_COMPENSATION]: PASS,
   [TenKSection.SECURITY_OWNERSHIP]: { promptKind: 'narrative', ...SHORT },
   [TenKSection.RELATED_TRANSACTIONS]: { promptKind: 'related_transactions', ...SHORT },
   [TenKSection.ACCOUNTANT_FEES]: { promptKind: 'narrative', ...SHORT },

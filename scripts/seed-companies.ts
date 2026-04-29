@@ -35,7 +35,7 @@ import {
 } from '../src/server/services/sec-retry'
 import type { CompanyRecord } from '../src/server/services/company-lookup'
 import type { Filing } from '@younionize/sec-api'
-import { getSectionItemsForFilingType } from '@younionize/sec-api'
+import { getActualSectionItems } from '@younionize/sec-api'
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -222,7 +222,12 @@ async function extractSectionsToTable(
   const url = filing.linkToFilingDetails
   if (!url) return
 
-  const sectionItems = getSectionItemsForFilingType(filingType)
+  // For 8-K, only ask sec-api about items actually in the filing. The
+  // unfiltered list would burn ~60s per non-existent item polling for a
+  // "processing" placeholder that never resolves. See getActualSectionItems
+  // in @younionize/sec-api.
+  const rawItems = (filing as unknown as { items?: ReadonlyArray<string> }).items
+  const sectionItems = getActualSectionItems(filingType, rawItems)
   if (sectionItems.length === 0) return
 
   const results = await pMapSettled(

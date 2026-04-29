@@ -17,6 +17,7 @@ export type {
 } from './sec-api.constants'
 export {
   getSectionItemsForFilingType,
+  getActualSectionItems,
   legacyKeyToSectionCode,
   sectionCodeToLegacyKey,
   getSectionFriendlyName,

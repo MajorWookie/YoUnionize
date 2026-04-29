@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 import { getDb, rawSecResponses, companies } from '@younionize/postgres'
-import { getSectionItemsForFilingType } from '@younionize/sec-api'
+import { getActualSectionItems, getSectionItemsForFilingType } from '@younionize/sec-api'
 import type { Filing, SectionItemInfo } from '@younionize/sec-api'
 import { pMapSettled } from '@younionize/helpers'
 import { getSecApiClient } from '../sec-api-client'
@@ -126,7 +126,11 @@ export async function fetchAllSecData(company: CompanyRecord): Promise<FetchResu
   )
 
   for (const filing of sectionFilings) {
-    const sectionItems = getSectionItemsForFilingType(filing.formType)
+    // For 8-K, narrow to items actually in the filing — see
+    // getActualSectionItems for why (avoids 60s+ of dead polling per
+    // non-existent item).
+    const rawItems = (filing as unknown as { items?: ReadonlyArray<string> }).items
+    const sectionItems = getActualSectionItems(filing.formType, rawItems)
     // Cap concurrent extractor calls per filing — see SECTION_EXTRACT_CONCURRENCY
     // in scripts/seed-companies.ts for the rationale (sec-api's async
     // extractor queue floods when 17-21 sections fire simultaneously).

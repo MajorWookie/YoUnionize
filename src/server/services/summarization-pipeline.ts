@@ -544,10 +544,11 @@ async function buildRollups(
     }
   }
 
-  // Executive compensation rollup — top-5 + analysis. Drives both the
-  // dashboard's CEO-pay card and the compensation-fairness flow.
-  if (filing.filingType === '10-K' || filing.filingType === 'DEF 14A') {
-    const execComp = await buildExecCompRollup(companyId, companyName, sectionMapByCode, filing.filingType, ai)
+  // Executive compensation rollup — top-5 + analysis. Lives on the DEF 14A
+  // summary only; 10-K Item 11 is incorporated-by-reference boilerplate and
+  // produces no usable analysis. The frontend reads this from proxySummary.
+  if (filing.filingType === 'DEF 14A') {
+    const execComp = await buildExecCompRollup(companyId, companyName, sectionMapByCode, ai)
     rollupOut.executive_compensation = execComp.result
     inputTokens += execComp.usage.inputTokens
     outputTokens += execComp.usage.outputTokens
@@ -573,7 +574,6 @@ async function buildExecCompRollup(
   companyId: string,
   companyName: string,
   sectionMapByCode: Map<string, string>,
-  filingType: string,
   ai: ClaudeClient,
 ): Promise<{ result: ExecCompSummary; usage: { inputTokens: number; outputTokens: number } }> {
   const db = getDb()
@@ -600,19 +600,16 @@ async function buildExecCompRollup(
   const ceoPayRatio =
     compData.find((e) => e.ceoPayRatio != null)?.ceoPayRatio ?? null
 
-  const riskCode = filingType === '10-K' ? '1A' : 'part2item1a'
-  const riskFactorsText = sectionMapByCode.get(riskCode) ?? ''
-  const employeeCompAsRiskFactor =
-    /employee.{0,30}compensation|talent.{0,20}retention|labor.{0,20}cost|wage.{0,20}pressure/i.test(
-      riskFactorsText,
-    )
+  // DEF 14A doesn't carry risk-factors itself. The 10-K's risk-factors
+  // signal isn't in scope here — leave the field present (UI consumers
+  // tolerate false) and let a future cross-filing rollup own that flag.
+  const employeeCompAsRiskFactor = false
 
-  // Prefer DEF 14A's detailed exec-comp item, then proxy item, then the
-  // 10-K's incorporated-by-reference Item 11.
+  // DEF 14A's detailed exec-comp item lives at part1item7 (CD&A) or
+  // part1item1 (proxy intro), depending on how the filer structured it.
   const proxyText =
     sectionMapByCode.get('part1item7') ??
     sectionMapByCode.get('part1item1') ??
-    sectionMapByCode.get('11') ??
     null
 
   let analysis: string | null = null
