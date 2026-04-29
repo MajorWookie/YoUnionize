@@ -32,6 +32,7 @@ import {
   type RecentEvent,
 } from '~/components/RecentEventsList'
 import { FinancialsSection } from '~/components/FinancialsSection'
+import { IncomeStatementSunburst } from '~/components/IncomeStatementSunburst'
 import {
   asEmployeeImpact,
   asString,
@@ -373,15 +374,16 @@ export function CompanyPage() {
 
         <LeadershipSection executives={executives} directors={directors} />
 
+        <IncomeStatementSunburst
+          summary={summary}
+          periodEnd={latestAnnual?.periodEnd}
+        />
+
         <FinancialsSection summary={summary} />
 
         <InsiderTradingTable trades={insiderTrades} />
 
         <RecentEventsList events={recentEvents} />
-
-        <Text c="slate.6" size="xs" ta="center">
-          The multi-ring income statement sunburst will land in the next PR.
-        </Text>
       </Stack>
     </Container>
   )

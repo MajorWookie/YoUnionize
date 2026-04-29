@@ -14,20 +14,10 @@ import {
   formatPercent,
 } from '~/lib/format'
 
-export interface FinancialLineItem {
-  label: string
-  current: number | null
-  prior: number | null
-  change: number | null
-  changePercent: number | null
-}
-
-export interface FinancialStatement {
-  title: string
-  periodCurrent: string
-  periodPrior: string | null
-  items: Array<FinancialLineItem>
-}
+import type {
+  FinancialLineItem,
+  FinancialStatement,
+} from '~/lib/financial-types'
 
 type StatementKey =
   | 'income_statement'
