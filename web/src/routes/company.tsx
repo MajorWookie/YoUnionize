@@ -20,6 +20,18 @@ import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 import { MarkdownContent } from '~/components/MarkdownContent'
 import { TextSummaryCard } from '~/components/TextSummaryCard'
 import {
+  LeadershipSection,
+  type DirectorRow,
+} from '~/components/LeadershipSection'
+import {
+  InsiderTradingTable,
+  type InsiderTrade,
+} from '~/components/InsiderTradingTable'
+import {
+  RecentEventsList,
+  type RecentEvent,
+} from '~/components/RecentEventsList'
+import {
   asEmployeeImpact,
   asString,
   formatEmployeeImpact,
@@ -63,6 +75,9 @@ interface CompanyDetailResponse {
   company: CompanyInfo
   latestAnnual: FilingSummary | null
   executives: Array<Executive>
+  directors: Array<DirectorRow>
+  insiderTrades: Array<InsiderTrade>
+  recentEvents: Array<RecentEvent>
 }
 
 const fmtCompact = new Intl.NumberFormat('en-US', {
@@ -180,7 +195,7 @@ export function CompanyPage() {
     )
   }
 
-  const { company, latestAnnual, executives } = data
+  const { company, latestAnnual, executives, directors, insiderTrades, recentEvents } = data
   const { headline, markdown: summaryText } = extractRollupText(
     latestAnnual?.summary.executive_summary,
   )
@@ -355,9 +370,15 @@ export function CompanyPage() {
           maxHeight={200}
         />
 
+        <LeadershipSection executives={executives} directors={directors} />
+
+        <InsiderTradingTable trades={insiderTrades} />
+
+        <RecentEventsList events={recentEvents} />
+
         <Text c="slate.6" size="xs" ta="center">
-          Leadership, full financial statements, insider trading, and 8-K
-          events will render here in subsequent PRs.
+          Full XBRL financial statements and the multi-ring income sunburst
+          will land in subsequent PRs.
         </Text>
       </Stack>
     </Container>
