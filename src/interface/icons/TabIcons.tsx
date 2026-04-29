@@ -1,13 +1,9 @@
-/**
- * Tab icons — web version using phosphor-react.
- * The .native.tsx counterpart uses phosphor-react-native.
- */
 import {
   MagnifyingGlass,
   Buildings,
   CurrencyDollar,
   UserCircle,
-} from 'phosphor-react'
+} from 'phosphor-react-native'
 
 interface IconProps {
   size?: number

@@ -20,7 +20,6 @@
         "expo-dev-client": "~6.0.20",
         "expo-router": "~6.0.23",
         "expo-updates": "~29.0.16",
-        "phosphor-react": "^1.4.1",
         "phosphor-react-native": "^3.0.3",
         "react": "19.1.0",
         "react-dom": "19.1.0",
@@ -30,7 +29,6 @@
         "react-native-safe-area-context": "~5.6.0",
         "react-native-screens": "~4.16.0",
         "react-native-svg": "15.12.1",
-        "react-native-web": "~0.21.0",
         "react-native-worklets": "0.5.1",
         "react-native-worklets-core": "^1.6.3",
         "tamagui": "^2.0.0-rc.15",
@@ -1834,8 +1832,6 @@
     "pathe": ["pathe@2.0.3", "", {}, "sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w=="],
 
     "pathval": ["pathval@2.0.1", "", {}, "sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ=="],
-
-    "phosphor-react": ["phosphor-react@1.4.1", "", { "peerDependencies": { "react": ">=16" } }, "sha512-gO5j7U0xZrdglTAYDYPACU4xDOFBTJmptrrB/GeR+tHhCZF3nUMyGmV/0hnloKjuTrOmpSFlbfOY78H39rgjUQ=="],
 
     "phosphor-react-native": ["phosphor-react-native@3.0.3", "", { "peerDependencies": { "react": "*", "react-native": "*", "react-native-svg": "*" } }, "sha512-h8UIIG/V4pgm20uvkt7L8G/GsOWKaU7rnyu2jnGt1vKmaigE0GZWXOHoEw9wZcfATHwvUpr/mkubEG/nbKeJkg=="],
 
