@@ -18,6 +18,12 @@ import {
 import { BarChart, DonutChart } from '@mantine/charts'
 import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 import { MarkdownContent } from '~/components/MarkdownContent'
+import { TextSummaryCard } from '~/components/TextSummaryCard'
+import {
+  asEmployeeImpact,
+  asString,
+  formatEmployeeImpact,
+} from '~/lib/summary-helpers'
 
 interface CompanyInfo {
   id: string
@@ -192,6 +198,20 @@ export function CompanyPage() {
   const topExec = topExecs[0]
   const breakdownData = topExec ? buildCompBreakdown(topExec) : []
 
+  // Text sections — every value lives on latestAnnual.summary keyed by
+  // section name. Most prompts return strings; employee_impact returns a
+  // structured object that we format into markdown for display.
+  const summary = latestAnnual?.summary ?? {}
+  const mdaText = asString(summary.mda)
+  const riskFactorsText = asString(summary.risk_factors)
+  const businessOverviewText = asString(summary.business_overview)
+  const legalProceedingsText = asString(summary.legal_proceedings)
+  const footnotesText = asString(summary.footnotes)
+  const employeeImpact = asEmployeeImpact(summary.employee_impact)
+  const employeeImpactText = employeeImpact
+    ? formatEmployeeImpact(employeeImpact)
+    : undefined
+
   return (
     <Container size="lg" py="xl">
       <Stack gap="xl">
@@ -304,9 +324,40 @@ export function CompanyPage() {
           </Card>
         </SimpleGrid>
 
+        <TextSummaryCard
+          title="Management Discussion & Analysis"
+          content={mdaText}
+          maxHeight={280}
+        />
+        <TextSummaryCard
+          title="Risk Factors"
+          content={riskFactorsText}
+          maxHeight={280}
+        />
+        <TextSummaryCard
+          title="Business Overview"
+          content={businessOverviewText}
+          maxHeight={240}
+        />
+        <TextSummaryCard
+          title="What does this mean for employees?"
+          content={employeeImpactText}
+          maxHeight={320}
+        />
+        <TextSummaryCard
+          title="Legal Proceedings"
+          content={legalProceedingsText}
+          maxHeight={200}
+        />
+        <TextSummaryCard
+          title="Notable Footnotes"
+          content={footnotesText}
+          maxHeight={200}
+        />
+
         <Text c="slate.6" size="xs" ta="center">
-          Leadership, financial statements, risk factors, and 8-K events will
-          render here as additional sections in a follow-up PR.
+          Leadership, full financial statements, insider trading, and 8-K
+          events will render here in subsequent PRs.
         </Text>
       </Stack>
     </Container>
