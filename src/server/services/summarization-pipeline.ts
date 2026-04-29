@@ -254,6 +254,7 @@ async function summarizeSingleFiling(
     companyId,
     companyName,
     sectionMapByCode,
+    successfulWrites,
     rollupSummary,
     ai,
   )
@@ -488,6 +489,7 @@ async function buildRollups(
   companyId: string,
   companyName: string,
   sectionMapByCode: Map<string, string>,
+  sectionWrites: ReadonlyArray<SectionWriteResult>,
   rollupOut: Record<string, unknown>,
   ai: ClaudeClient,
 ): Promise<{ inputTokens: number; outputTokens: number }> {
@@ -554,7 +556,37 @@ async function buildRollups(
     outputTokens += execComp.usage.outputTokens
   }
 
+  // 8-K rollup — combine the per-section event_8k summaries into a single
+  // markdown narrative on rollupOut.event_summary. The dashboard's Recent
+  // Events card reads this exact key from filing_summaries.ai_summary; without
+  // it, the row appears summarized (ai_summary != null) but renders blank.
+  if (filing.filingType === '8-K') {
+    const aggregated = aggregate8KEvents(sectionWrites, filing.filingType)
+    if (aggregated) rollupOut.event_summary = aggregated
+  }
+
   return { inputTokens, outputTokens }
+}
+
+/**
+ * Combine all per-section event_8k summaries for one 8-K filing into a single
+ * markdown string. Each item gets its friendly heading (e.g. "Item 5.02
+ * Departure of Directors") followed by the AI summary. Returns null when no
+ * event_8k sections were produced (e.g. all items skipped or pass_through).
+ */
+function aggregate8KEvents(
+  sectionWrites: ReadonlyArray<SectionWriteResult>,
+  filingType: string,
+): string | null {
+  const events = sectionWrites.filter(
+    (w): w is SectionWriteResult & { summaryText: string } =>
+      w.promptKind === 'event_8k' && typeof w.summaryText === 'string' && w.summaryText.trim().length > 0,
+  )
+  if (events.length === 0) return null
+
+  return events
+    .map((w) => `### ${getSectionFriendlyName(w.sectionCode, filingType)}\n\n${w.summaryText.trim()}`)
+    .join('\n\n---\n\n')
 }
 
 interface ExecCompSummary {
