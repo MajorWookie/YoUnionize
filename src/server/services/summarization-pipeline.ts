@@ -808,6 +808,14 @@ async function generateAllEmbeddings(
   const db = getDb()
   const jobs: Array<ChunkJob> = []
 
+  // Track section-chunk hashes so rollup chunks that are byte-equivalent
+  // to a section chunk (e.g. exec_comp rollup `.analysis` lifted from the
+  // part1item7 section summary in PR 2) get skipped instead of producing
+  // a near-duplicate vector. The DB-level dedup at the insert site is
+  // kept as a second-line defence, but checking here saves the Voyage
+  // embedding API call and the duplicate row entirely.
+  const sectionContentHashes = new Set<string>()
+
   // Per-section jobs: only summaries with extractable text.
   for (const write of sectionWrites) {
     if (write.status === 'skipped' || !write.summaryText) continue
@@ -816,12 +824,14 @@ async function generateAllEmbeddings(
     const label = buildSectionEmbeddingLabel(write.sectionCode, ctx.filingType, write.promptKind)
     const chunks = chunkText(write.summaryText)
     for (let i = 0; i < chunks.length; i++) {
+      const contentHash = createHash('sha256').update(chunks[i]).digest('hex')
+      sectionContentHashes.add(contentHash)
       jobs.push({
         filingId,
         sectionCode: write.sectionCode,
         promptKind: write.promptKind,
         chunk: chunks[i],
-        contentHash: createHash('sha256').update(chunks[i]).digest('hex'),
+        contentHash,
         chunkIndex: i,
         totalChunks: chunks.length,
         label,
@@ -837,12 +847,19 @@ async function generateAllEmbeddings(
     const label = SECTION_LABELS[key] ?? key
     const chunks = chunkText(text)
     for (let i = 0; i < chunks.length; i++) {
+      const contentHash = createHash('sha256').update(chunks[i]).digest('hex')
+      if (sectionContentHashes.has(contentHash)) {
+        console.info(
+          `[Summarize] Skipping duplicate embedding chunk for rollup '${key}' (matches a section chunk) — filing ${filingId}`,
+        )
+        continue
+      }
       jobs.push({
         filingId,
         sectionCode: null,
         promptKind: key,
         chunk: chunks[i],
-        contentHash: createHash('sha256').update(chunks[i]).digest('hex'),
+        contentHash,
         chunkIndex: i,
         totalChunks: chunks.length,
         label,
@@ -856,12 +873,19 @@ async function generateAllEmbeddings(
   if (execComp?.analysis && execComp.analysis.trim().length >= 50) {
     const chunks = chunkText(execComp.analysis)
     for (let i = 0; i < chunks.length; i++) {
+      const contentHash = createHash('sha256').update(chunks[i]).digest('hex')
+      if (sectionContentHashes.has(contentHash)) {
+        console.info(
+          `[Summarize] Skipping duplicate embedding chunk for rollup 'executive_compensation' (matches a section chunk) — filing ${filingId}`,
+        )
+        continue
+      }
       jobs.push({
         filingId,
         sectionCode: null,
         promptKind: 'executive_compensation',
         chunk: chunks[i],
-        contentHash: createHash('sha256').update(chunks[i]).digest('hex'),
+        contentHash,
         chunkIndex: i,
         totalChunks: chunks.length,
         label: SECTION_LABELS.executive_compensation,
