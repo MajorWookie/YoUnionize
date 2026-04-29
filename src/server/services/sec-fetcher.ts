@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { getDb, rawSecResponses, companies } from '@younionize/postgres'
 import { getSectionItemsForFilingType } from '@younionize/sec-api'
 import type { Filing, SectionItemInfo } from '@younionize/sec-api'
+import { pMapSettled } from '@younionize/helpers'
 import { getSecApiClient } from '../sec-api-client'
 import type { CompanyRecord } from './company-lookup'
 
@@ -126,11 +127,16 @@ export async function fetchAllSecData(company: CompanyRecord): Promise<FetchResu
 
   for (const filing of sectionFilings) {
     const sectionItems = getSectionItemsForFilingType(filing.formType)
-    const sectionResults = await Promise.allSettled(
-      sectionItems.map(async (item: SectionItemInfo) => {
+    // Cap concurrent extractor calls per filing — see SECTION_EXTRACT_CONCURRENCY
+    // in scripts/seed-companies.ts for the rationale (sec-api's async
+    // extractor queue floods when 17-21 sections fire simultaneously).
+    const sectionResults = await pMapSettled(
+      sectionItems,
+      async (item: SectionItemInfo) => {
         const text = await client.extractSection(filing.linkToFilingDetails!, item.code)
         return { item, text }
-      }),
+      },
+      4,
     )
 
     // Iterate by index so each rejection retains its `item` context — the prior

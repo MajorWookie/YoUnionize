@@ -41,9 +41,15 @@ const BACKOFF_MULTIPLIER = 2
 // 2026-04-29: 717 rows of filing_sections.text were the literal placeholder
 // because we treated "processing" as a successful body. We now poll inside
 // extractSection — typical resolution is one or two retries.
+//
+// Budget tuning: at 10 polls × initial 750ms × 1.5^n, total wait is roughly
+// 57s. Single-company runs land most sections in <5s; the longer tail is
+// only exercised when many filings extract in parallel and overwhelm the
+// upstream async pipeline. Anything that exceeds the budget falls through
+// to fetch_status='error' and is recoverable via `seed-companies.ts --retry`.
 const PROCESSING_PLACEHOLDER = 'processing'
-const PROCESSING_MAX_POLLS = 6
-const PROCESSING_INITIAL_DELAY_MS = 1000
+const PROCESSING_MAX_POLLS = 10
+const PROCESSING_INITIAL_DELAY_MS = 750
 const PROCESSING_BACKOFF_MULTIPLIER = 1.5
 
 /**
@@ -189,6 +195,10 @@ export class SecApiClient {
    * processing after N polls") if extraction never completes within the
    * polling budget — the caller can persist that as a regular fetch error
    * and the retry job (`sec-retry.ts`) can replay later.
+   *
+   * Logs a one-line warning once an individual call crosses 4 polls so a
+   * long-running retry doesn't look stuck. Healthy sections (ready on the
+   * first hit) stay silent.
    */
   async extractSection(
     url: string,
