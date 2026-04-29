@@ -22,7 +22,6 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 |---|---|---|
 | Structured "company health" card (headline, key numbers, red flags, opportunities) | [company-summary.ts](../../packages/ai/src/prompts/company-summary.ts) | `POST /api/companies/[ticker]/summarize` |
 | Worker-impact analysis (job security, H-1B, geography mismatch) | [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts) | `POST /api/companies/[ticker]/summarize` |
-| Generic filing summary (used when a structured summary isn't needed) | [filing-summary.ts](../../packages/ai/src/prompts/filing-summary.ts) | Internal `generateFilingSummary()` |
 | Per-section summaries (risk factors, MD&A, business overview, etc.) | [section-summary.ts](../../packages/ai/src/prompts/section-summary.ts) | `POST /api/companies/[ticker]/summarize` |
 | MD&A markdown breakdown (rendered as the MD&A card) | [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts) | `POST /api/companies/[ticker]/summarize` |
 | Pay fairness analysis (1–100 score, comparisons, recommendations) | [compensation-analysis.ts](../../packages/ai/src/prompts/compensation-analysis.ts) | `POST /api/analysis/compensation-fairness` |
@@ -61,25 +60,18 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 3. Generic Filing Summary — [filing-summary.ts](../../packages/ai/src/prompts/filing-summary.ts)
-
-**What it produces:** an older, simpler filing summary (executive summary, key numbers, plain-language explanation, red flags, opportunities, employee relevance). Newer code prefers `company-summary.ts` and `employee-impact.ts` instead.
-
-**When to edit:** mostly legacy. Only edit if you're keeping the older summary path alive somewhere.
-
----
-
-### 4. Section Summary — [section-summary.ts](../../packages/ai/src/prompts/section-summary.ts)
+### 3. Section Summary — [section-summary.ts](../../packages/ai/src/prompts/section-summary.ts)
 
 **What it produces:** a short (under 150 words) plain-text summary of a single filing section.
 
-**Special structure:** uses a `SECTION_GUIDANCE` lookup table (lines 8–50) that switches behavior based on which section is being summarized:
+**Special structure:** uses a `SECTION_GUIDANCE` lookup table that switches behavior based on which section is being summarized:
 - `riskFactors`
-- `mdAndA`
 - `businessOverview`
 - `legalProceedings`
 - `financialStatements`
 - `executiveCompensation`
+
+(The `mdAndA` key was removed — MD&A now uses the dedicated [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts) prompt instead.)
 
 **When to edit:**
 - To change how a *specific* section is summarized, edit only its entry in `SECTION_GUIDANCE` — leave the rest alone.
@@ -88,7 +80,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 5. MD&A Summary — [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts)
+### 4. MD&A Summary — [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts)
 
 **What it produces:** **markdown** (not JSON) — the structured MD&A card on the dashboard. Renders through `MarkdownContent` / `react-native-markdown-display`.
 
@@ -109,7 +101,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 6. Compensation Analysis — [compensation-analysis.ts](../../packages/ai/src/prompts/compensation-analysis.ts)
+### 5. Compensation Analysis — [compensation-analysis.ts](../../packages/ai/src/prompts/compensation-analysis.ts)
 
 **What it produces:** the fairness gauge. Returns JSON with `fairness_score` (1–100), `explanation`, `comparisons[]`, `recommendations[]`.
 
@@ -122,7 +114,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 7. What This Means — [what-this-means.ts](../../packages/ai/src/prompts/what-this-means.ts)
+### 6. What This Means — [what-this-means.ts](../../packages/ai/src/prompts/what-this-means.ts)
 
 **What it produces:** the personalized "explaining this to a friend over a beer" overlay. Plain-text prose, 1–3 paragraphs, no markdown.
 
@@ -133,7 +125,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 ---
 
-### 8. RAG Answer — [rag-answer.ts](../../packages/ai/src/prompts/rag-answer.ts) ⚠️ AND [supabase/functions/ask/index.ts](../../supabase/functions/ask/index.ts#L32)
+### 7. RAG Answer — [rag-answer.ts](../../packages/ai/src/prompts/rag-answer.ts) ⚠️ AND [supabase/functions/ask/index.ts](../../supabase/functions/ask/index.ts#L32)
 
 **What it produces:** the answer to a user's chat question, grounded in retrieved filing chunks.
 

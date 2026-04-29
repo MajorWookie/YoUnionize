@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  filingSummarySystemPrompt,
-  filingSummaryUserPrompt,
-} from '../prompts/filing-summary'
-import {
   sectionSummarySystemPrompt,
   sectionSummaryUserPrompt,
 } from '../prompts/section-summary'
@@ -13,45 +9,11 @@ import {
 } from '../prompts/compensation-analysis'
 import { ragAnswerSystemPrompt, ragAnswerUserPrompt } from '../prompts/rag-answer'
 
-describe('filing-summary prompts', () => {
-  it('system prompt contains output JSON structure', () => {
-    const prompt = filingSummarySystemPrompt()
-    expect(prompt).toContain('executive_summary')
-    expect(prompt).toContain('key_numbers')
-    expect(prompt).toContain('red_flags')
-    expect(prompt).toContain('opportunities')
-    expect(prompt).toContain('employee_relevance')
-    expect(prompt).toContain('plain_language_explanation')
-  })
-
-  it('system prompt targets non-finance audience', () => {
-    const prompt = filingSummarySystemPrompt()
-    expect(prompt).toContain('NOT finance professionals')
-  })
-
-  it('user prompt includes company name, filing type, and data', () => {
-    const prompt = filingSummaryUserPrompt({
-      companyName: 'Tesla Inc.',
-      filingType: '10-K',
-      rawData: '{"revenue": 81000000000}',
-    })
-    expect(prompt).toContain('Tesla Inc.')
-    expect(prompt).toContain('10-K')
-    expect(prompt).toContain('81000000000')
-  })
-})
-
 describe('section-summary prompts', () => {
   it('uses section-specific guidance for riskFactors', () => {
     const prompt = sectionSummarySystemPrompt('riskFactors')
     expect(prompt).toContain('Job security')
     expect(prompt).toContain('riskFactors')
-  })
-
-  it('uses section-specific guidance for mdAndA', () => {
-    const prompt = sectionSummarySystemPrompt('mdAndA')
-    expect(prompt).toContain('Cash flow')
-    expect(prompt).toContain('revenue')
   })
 
   it('uses section-specific guidance for businessOverview', () => {

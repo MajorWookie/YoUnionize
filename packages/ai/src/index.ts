@@ -13,11 +13,6 @@ export type {
 } from './types'
 export { CURRENT_SUMMARY_VERSION } from './types'
 export {
-  filingSummarySystemPrompt,
-  filingSummaryUserPrompt,
-} from './prompts/filing-summary'
-export type { FilingSummaryParams } from './prompts/filing-summary'
-export {
   sectionSummarySystemPrompt,
   sectionSummaryUserPrompt,
 } from './prompts/section-summary'
