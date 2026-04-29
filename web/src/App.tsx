@@ -1,4 +1,5 @@
-import { MantineProvider } from '@mantine/core'
+import { lazy, Suspense } from 'react'
+import { Center, Loader, MantineProvider } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { SupabaseClientProvider } from '@younionize/hooks'
@@ -7,9 +8,19 @@ import { supabase } from '~/lib/supabase'
 import { theme } from '~/theme'
 import { Layout } from '~/components/Layout'
 import { AuthLayout } from '~/components/AuthLayout'
+import { AuthGuard } from '~/components/AuthGuard'
 import { HomePage } from '~/routes/home'
 import { SignInPage } from '~/routes/sign-in'
 import { SignUpPage } from '~/routes/sign-up'
+
+// Data-heavy routes are code-split — landing + auth pages stay eager since
+// they're the first paint and tiny respectively.
+const DiscoverPage = lazy(() =>
+  import('~/routes/discover').then((m) => ({ default: m.DiscoverPage })),
+)
+const CompanyPage = lazy(() =>
+  import('~/routes/company').then((m) => ({ default: m.CompanyPage })),
+)
 
 configureApiClient({
   getSession: async () => {
@@ -18,21 +29,47 @@ configureApiClient({
   },
 })
 
+function RouteFallback() {
+  return (
+    <Center mih="60vh">
+      <Loader />
+    </Center>
+  )
+}
+
 export function App() {
   return (
     <MantineProvider theme={theme} defaultColorScheme="auto">
       <Notifications />
       <SupabaseClientProvider client={supabase}>
         <BrowserRouter>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<HomePage />} />
-            </Route>
-            <Route element={<AuthLayout />}>
-              <Route path="/sign-in" element={<SignInPage />} />
-              <Route path="/sign-up" element={<SignUpPage />} />
-            </Route>
-          </Routes>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/" element={<HomePage />} />
+                <Route
+                  path="/discover"
+                  element={
+                    <AuthGuard>
+                      <DiscoverPage />
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/companies/:ticker"
+                  element={
+                    <AuthGuard>
+                      <CompanyPage />
+                    </AuthGuard>
+                  }
+                />
+              </Route>
+              <Route element={<AuthLayout />}>
+                <Route path="/sign-in" element={<SignInPage />} />
+                <Route path="/sign-up" element={<SignUpPage />} />
+              </Route>
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </SupabaseClientProvider>
     </MantineProvider>
