@@ -1,7 +1,7 @@
 # SEC Filing Sections — Reference Key
 
 This document is a user-facing key for the section codes that appear inside each
-SEC filing type YoUnion ingests. It maps each code returned by sec-api.io to a
+SEC filing type YoUnionize ingests. It maps each code returned by sec-api.io to a
 human-readable name, with a one-line description of what that section contains.
 
 The codes are the source of truth in

@@ -343,9 +343,9 @@ export default function ProfileScreen() {
 
       {/* About */}
       <Card mb="$4" gap="$2">
-        <Paragraph fontWeight="600">About YoUnion</Paragraph>
+        <Paragraph fontWeight="600">About YoUnionize</Paragraph>
         <Paragraph color="$color8" fontSize={13} lineHeight={20}>
-          YoUnion helps employees understand their compensation in context. We analyze
+          YoUnionize helps employees understand their compensation in context. We analyze
           public SEC filings — executive pay, financial performance, risk factors — and
           use AI to translate complex financial documents into plain language so you can
           make informed decisions about your career and pay.

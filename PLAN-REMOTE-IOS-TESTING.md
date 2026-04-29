@@ -1,6 +1,6 @@
 # Remote iOS Testing — Free Sideload + EAS Update + Hosted Supabase
 
-> Goal: Test YoUnion on a physical iPhone from anywhere. No active laptop connection needed. No Apple Developer Program ($99). Just open the app and use it.
+> Goal: Test YoUnionize on a physical iPhone from anywhere. No active laptop connection needed. No Apple Developer Program ($99). Just open the app and use it.
 
 ---
 
@@ -28,7 +28,7 @@
 ┌──────────────────────────────────────────────────────────────┐
 │  TESTING (from anywhere, no laptop needed)                   │
 │                                                              │
-│  Open YoUnion on your iPhone                                 │
+│  Open YoUnionize on your iPhone                                 │
 │  • App downloads latest JS bundle from Expo CDN              │
 │  • All API calls go to hosted Supabase                       │
 │  • Works on any network — WiFi, cellular, anywhere           │
@@ -68,7 +68,7 @@ Add both plugins and configure updates:
 ```json
 {
   "expo": {
-    "name": "YoUnion",
+    "name": "YoUnionize",
     "slug": "younion",
     "scheme": "younion",
     "version": "0.1.0",
@@ -179,8 +179,8 @@ npx expo prebuild --platform ios --clean
 
 ### 2.3 Configure signing in Xcode
 
-1. Open **`ios/YoUnion.xcworkspace`** in Xcode (not `.xcodeproj`)
-2. Select the **YoUnion** target
+1. Open **`ios/YoUnionize.xcworkspace`** in Xcode (not `.xcodeproj`)
+2. Select the **YoUnionize** target
 3. Go to **Signing & Capabilities** tab
 4. Check **Automatically manage signing**
 5. Set **Team** to your Personal Team (your Apple ID)
@@ -361,7 +361,7 @@ eas login
 eas build:configure            # creates eas.json
 eas update:configure           # registers project, sets update URL
 npx expo prebuild --platform ios --clean
-# Open ios/YoUnion.xcworkspace → set signing → connect phone → ⌘R
+# Open ios/YoUnionize.xcworkspace → set signing → connect phone → ⌘R
 
 # === PUSH CODE CHANGES (from your desk, ~30 sec) ===
 dotenvx run -f .env.remote -- eas update --branch development --message "what changed"

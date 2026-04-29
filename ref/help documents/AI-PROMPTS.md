@@ -1,6 +1,6 @@
 # AI Prompts — Where to Edit Them
 
-This is your hand-edit reference for every AI prompt in YoUnion. If you want to change how the AI summarizes filings, scores fairness, answers questions, or explains things to users, you change the files listed here.
+This is your hand-edit reference for every AI prompt in YoUnionize. If you want to change how the AI summarizes filings, scores fairness, answers questions, or explains things to users, you change the files listed here.
 
 ---
 

@@ -1,6 +1,6 @@
-# YoUnion
+# YoUnionize
 
-Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. YoUnion ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
+Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. YoUnionize ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
 
 ## Features
 
@@ -53,7 +53,7 @@ Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url> && cd YoUnion
+git clone <repo-url> && cd YoUnionize
 bun install
 ```
 
@@ -191,7 +191,7 @@ bun run android
 ## Project Structure
 
 ```
-YoUnion/
+YoUnionize/
 ├── app/                    # Expo Router file-based routes
 │   ├── _layout.tsx         #   Root layout
 │   ├── index.tsx           #   Home / Discover screen
@@ -233,7 +233,7 @@ YoUnion/
 
 ## Edge Functions
 
-YoUnion's API layer runs on [Supabase Edge Functions](https://supabase.com/docs/guides/functions) (Deno runtime). There are 18 endpoints covering health checks, user management, company data, SEC ingestion, AI summarization, RAG Q&A, and compensation analysis.
+YoUnionize's API layer runs on [Supabase Edge Functions](https://supabase.com/docs/guides/functions) (Deno runtime). There are 18 endpoints covering health checks, user management, company data, SEC ingestion, AI summarization, RAG Q&A, and compensation analysis.
 
 ```bash
 # Run locally (requires local Supabase running)
@@ -333,7 +333,7 @@ These are retained for backwards compatibility but not required for new setups:
 
 ## Design
 
-- [Figma — UI Screens & Components](https://www.figma.com/design/sOaLnijKNhnXQ9uq6sdcno/YoUnion-%E2%80%94-UI-Screens---Components?m=auto&t=wcLayY2d4xtX48si-1)
+- [Figma — UI Screens & Components](https://www.figma.com/design/sOaLnijKNhnXQ9uq6sdcno/YoUnionize-%E2%80%94-UI-Screens---Components?m=auto&t=wcLayY2d4xtX48si-1)
 
 ## Documentation
 

@@ -9,7 +9,7 @@ export function HomePage() {
           Analyze SEC filings with AI
         </Title>
         <Text size="lg" c="slate.7" maw={560}>
-          YoUnion helps you understand executive compensation, risk factors,
+          YoUnionize helps you understand executive compensation, risk factors,
           and management commentary from SEC filings — and benchmark them
           against your own pay.
         </Text>
