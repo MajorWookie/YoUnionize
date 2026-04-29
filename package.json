@@ -6,7 +6,8 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "app"
+    "app",
+    "web"
   ],
   "packageManager": "bun@1.2.22",
   "scripts": {
@@ -26,6 +27,9 @@
     "prebuild": "npx expo prebuild",
     "ios": "npx expo run:ios",
     "dev": "supabase start && npx expo start",
+    "dev:web": "cd web && bun run dev",
+    "build:web": "cd web && bun run build",
+    "preview:web": "cd web && bun run preview",
     "dev:functions": "supabase functions serve",
     "deploy:functions": "supabase functions deploy",
     "lint": "oxlint src app packages",
