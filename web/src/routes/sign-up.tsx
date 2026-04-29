@@ -42,8 +42,7 @@ export function SignUpPage() {
       if (signUpError) {
         setError(signUpError.message ?? 'Sign up failed')
       } else {
-        // TODO: redirect to /onboarding once that route exists.
-        navigate('/sign-in')
+        navigate('/onboarding')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
