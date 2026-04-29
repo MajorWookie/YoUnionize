@@ -20,7 +20,7 @@ export default function HomePage() {
 
   return (
     <YStack flex={1} items="center" justify="center" p="$4" gap="$4">
-      <H1>YoUnion</H1>
+      <H1>YoUnionize</H1>
       <Paragraph color="$color8">
         Understand your company. Know your worth.
       </Paragraph>

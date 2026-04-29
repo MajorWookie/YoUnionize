@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "YoUnion.app"
-               BlueprintName = "YoUnion"
-               ReferencedContainer = "container:YoUnion.xcodeproj">
+               BuildableName = "YoUnionize.app"
+               BlueprintName = "YoUnionize"
+               ReferencedContainer = "container:YoUnionize.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -35,7 +35,7 @@
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
                BuildableName = "YoUnionTests.xctest"
                BlueprintName = "YoUnionTests"
-               ReferencedContainer = "container:YoUnion.xcodeproj">
+               ReferencedContainer = "container:YoUnionize.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "YoUnion.app"
-            BlueprintName = "YoUnion"
-            ReferencedContainer = "container:YoUnion.xcodeproj">
+            BuildableName = "YoUnionize.app"
+            BlueprintName = "YoUnionize"
+            ReferencedContainer = "container:YoUnionize.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "YoUnion.app"
-            BlueprintName = "YoUnion"
-            ReferencedContainer = "container:YoUnion.xcodeproj">
+            BuildableName = "YoUnionize.app"
+            BlueprintName = "YoUnionize"
+            ReferencedContainer = "container:YoUnionize.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

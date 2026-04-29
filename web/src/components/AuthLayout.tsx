@@ -14,7 +14,7 @@ export function AuthLayout() {
             size="xl"
             c="navy.6"
           >
-            YoUnion
+            YoUnionize
           </Anchor>
           <Paper withBorder shadow="sm" p="xl" radius="md" w="100%">
             <Outlet />

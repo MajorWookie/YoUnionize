@@ -1,8 +1,8 @@
-# CLAUDE.md — YoUnion
+# CLAUDE.md — YoUnionize
 
 ## Project Overview
 
-YoUnion is a cross-platform application (iOS-first, then Android, then Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. It ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
+YoUnionize is a cross-platform application (iOS-first, then Android, then Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. It ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
 
 ## Tech Stack
 

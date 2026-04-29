@@ -1,7 +1,7 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
 /**
- * SST v3 Infrastructure-as-Code for YoUnion
+ * SST v3 Infrastructure-as-Code for YoUnionize
  *
  * Resources:
  *   - ECS Fargate service (One web app)

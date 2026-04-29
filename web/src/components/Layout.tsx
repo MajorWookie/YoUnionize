@@ -23,7 +23,7 @@ export function Layout() {
             size="xl"
             c="navy.6"
           >
-            YoUnion
+            YoUnionize
           </Anchor>
           <Group gap="xs">
             {user ? (

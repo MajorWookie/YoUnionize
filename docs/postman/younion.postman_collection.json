@@ -1,17 +1,35 @@
 {
   "info": {
-    "name": "YoUnion — Supabase PostgREST + Edge Functions",
-    "description": "Inspect the YoUnion Supabase project end-to-end:\n- **PostgREST tables** for ad-hoc SQL-style reads against the database.\n- **Edge Functions** for the human review pipeline (write-side: apply human edits, verify AI summaries, override raw payloads).\n\n## Setup\n1. Import `younion.postman_environment.json` (local) or `younion.postman_environment.remote.json` (hosted) alongside this collection.\n2. Set `supabase_url` (e.g. `http://127.0.0.1:54321` for local, your project URL for hosted).\n3. Set `supabase_key` to your **publishable** key (`SUPABASE_KEY` in `.env`).\n4. **Run Auth → Sign in with password.** This captures a JWT into `{{user_jwt}}` and `{{user_id}}`. Without it, every other request returns 401 or `[]` — see RLS posture below.\n\n## Access model (RLS)\nRLS is on for every public-schema table. Three tiers:\n\n| Tier | Tables | Caller |\n| --- | --- | --- |\n| Public SEC data — readable to any authenticated user | companies, filing_summaries, directors, executive_compensation, insider_trades, form_8k_events | needs `{{user_jwt}}` |\n| User-owned — readable only to the row's owner | users, user_profiles, user_cost_of_living, compensation_analyses, personalized_summaries | needs `{{user_jwt}}`, owner-only |\n| Service-only — RLS-deny + GRANT revoked, **invisible to PostgREST** | raw_sec_responses, embeddings, jobs, filing_sections | reachable only via Edge Functions or psql |\n\nThe anon publishable key alone now returns `[]` for everything. **Sign in first.** The collection-level `Authorization` is set to `Bearer {{user_jwt}}` so one sign-in unlocks everything; the publishable key continues to identify the project via the `apikey` header.\n\n## Headers\n- `apikey`: identifies the project. Always the publishable key (`{{supabase_key}}`).\n- `Authorization: Bearer ...`: a user JWT after sign-in (`{{user_jwt}}`).\n\n## Query DSL cheatsheet (PostgREST)\n- `?select=col1,col2` — projection\n- `?col=eq.value` — equality (`gt`, `lt`, `gte`, `lte`, `neq`, `like`, `ilike`, `in.(a,b)`, `is.null`)\n- `?order=col.desc.nullslast`\n- `?limit=25&offset=50`\n- `?select=*,related_table(*)` — embed FK relations\n- Header `Prefer: count=exact` — total row count in `Content-Range` response header\n- Header `Accept: application/vnd.pgrst.object+json` — return single object instead of array (406 if 0 or >1 rows)\n\n## Recent schema changes reflected here\n- **filing_sections** — section text (MD&A, risk factors, etc.) was moved out of `filing_summaries.raw_data.extractedSections` into a dedicated table (one row per filing × section). Service-only — see the `filing_sections` folder for the query shape, and the **Review Pipeline (Edge Functions)** folder for the human-curated read path.\n- **Review pipeline columns** on `filing_summaries`: `summarization_status`, `human_summary`, `raw_data_override`, `summary_version` (`0` = pending re-summarization, `-1` = failed), `optimistic_lock_version`, `summarization_updated_at`/`_by`. New requests in the **filing_summaries** folder demonstrate filtering and projection; mutations live in the **Review Pipeline (Edge Functions)** folder.",
+    "name": "YoUnionize — Supabase PostgREST + Edge Functions",
+    "description": "Inspect the YoUnionize Supabase project end-to-end:\n- **PostgREST tables** for ad-hoc SQL-style reads against the database.\n- **Edge Functions** for the human review pipeline (write-side: apply human edits, verify AI summaries, override raw payloads).\n\n## Setup\n1. Import `younion.postman_environment.json` (local) or `younion.postman_environment.remote.json` (hosted) alongside this collection.\n2. Set `supabase_url` (e.g. `http://127.0.0.1:54321` for local, your project URL for hosted).\n3. Set `supabase_key` to your **publishable** key (`SUPABASE_KEY` in `.env`).\n4. **Run Auth → Sign in with password.** This captures a JWT into `{{user_jwt}}` and `{{user_id}}`. Without it, every other request returns 401 or `[]` — see RLS posture below.\n\n## Access model (RLS)\nRLS is on for every public-schema table. Three tiers:\n\n| Tier | Tables | Caller |\n| --- | --- | --- |\n| Public SEC data — readable to any authenticated user | companies, filing_summaries, directors, executive_compensation, insider_trades, form_8k_events | needs `{{user_jwt}}` |\n| User-owned — readable only to the row's owner | users, user_profiles, user_cost_of_living, compensation_analyses, personalized_summaries | needs `{{user_jwt}}`, owner-only |\n| Service-only — RLS-deny + GRANT revoked, **invisible to PostgREST** | raw_sec_responses, embeddings, jobs, filing_sections | reachable only via Edge Functions or psql |\n\nThe anon publishable key alone now returns `[]` for everything. **Sign in first.** The collection-level `Authorization` is set to `Bearer {{user_jwt}}` so one sign-in unlocks everything; the publishable key continues to identify the project via the `apikey` header.\n\n## Headers\n- `apikey`: identifies the project. Always the publishable key (`{{supabase_key}}`).\n- `Authorization: Bearer ...`: a user JWT after sign-in (`{{user_jwt}}`).\n\n## Query DSL cheatsheet (PostgREST)\n- `?select=col1,col2` — projection\n- `?col=eq.value` — equality (`gt`, `lt`, `gte`, `lte`, `neq`, `like`, `ilike`, `in.(a,b)`, `is.null`)\n- `?order=col.desc.nullslast`\n- `?limit=25&offset=50`\n- `?select=*,related_table(*)` — embed FK relations\n- Header `Prefer: count=exact` — total row count in `Content-Range` response header\n- Header `Accept: application/vnd.pgrst.object+json` — return single object instead of array (406 if 0 or >1 rows)\n\n## Recent schema changes reflected here\n- **filing_sections** — section text (MD&A, risk factors, etc.) was moved out of `filing_summaries.raw_data.extractedSections` into a dedicated table (one row per filing × section). Service-only — see the `filing_sections` folder for the query shape, and the **Review Pipeline (Edge Functions)** folder for the human-curated read path.\n- **Review pipeline columns** on `filing_summaries`: `summarization_status`, `human_summary`, `raw_data_override`, `summary_version` (`0` = pending re-summarization, `-1` = failed), `optimistic_lock_version`, `summarization_updated_at`/`_by`. New requests in the **filing_summaries** folder demonstrate filtering and projection; mutations live in the **Review Pipeline (Edge Functions)** folder.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{user_jwt}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
-    { "key": "rest_path", "value": "/rest/v1", "type": "string" },
-    { "key": "auth_path", "value": "/auth/v1", "type": "string" },
-    { "key": "functions_path", "value": "/functions/v1", "type": "string" }
+    {
+      "key": "rest_path",
+      "value": "/rest/v1",
+      "type": "string"
+    },
+    {
+      "key": "auth_path",
+      "value": "/auth/v1",
+      "type": "string"
+    },
+    {
+      "key": "functions_path",
+      "value": "/functions/v1",
+      "type": "string"
+    }
   ],
   "item": [
     {
@@ -23,31 +41,65 @@
           "description": "**SQL equivalent:** `SELECT * FROM companies LIMIT 5;`\n\n**What you're looking at**\n- The response is a JSON array, one element per row.\n- `select=*` means \"all columns\". You'll see id (uuid), ticker, name, cik, sector, industry, exchange, last_fetch_at, created_at, updated_at.\n- `limit=5` caps the result. Without it, you'd get every company in the DB. **Always start with a limit** when exploring an unfamiliar table.\n\n**Try this**\n- Change `limit` to `1`. Notice the response is still an array (`[{ ... }]`), just shorter.\n- Change `limit` to `100`. Watch how long it takes.\n- Remove `limit` entirely. Read the warning about why this is a bad idea on big tables.\n\n**Concept**\nEvery PostgREST request returns an array unless you opt into single-object mode (you'll learn that in Lesson 04).",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}", "description": "Your Supabase publishable key. Identifies the project. Required on every request." }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}",
+                "description": "Your Supabase publishable key. Identifies the project. Required on every request."
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=5",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "*", "description": "Project all columns. The asterisk is interpreted by PostgREST, not the URL — no escaping needed." },
-                { "key": "limit", "value": "5", "description": "Max rows to return. Defaults to no limit. ALWAYS set this when exploring a new table." }
+                {
+                  "key": "select",
+                  "value": "*",
+                  "description": "Project all columns. The asterisk is interpreted by PostgREST, not the URL — no escaping needed."
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Max rows to return. Defaults to no limit. ALWAYS set this when exploring a new table."
+                }
               ]
             }
           }
         },
         {
           "name": "Lesson 02 — Pick specific columns (projection)",
-          "description": "**SQL equivalent:** `SELECT ticker, name, sector FROM companies LIMIT 5;`\n\n**What you're looking at**\nReturning every column is wasteful when you only need three. Projection trims the response.\n\n**Why this matters for precision**\nMany tables in YoUnion have fat jsonb columns:\n- `filing_summaries.raw_data` — verbatim SEC API JSON, can be megabytes\n- `filing_summaries.ai_summary` — Claude-generated summary blob\n- `companies` is small, but the same principle applies everywhere\n\nProjecting only the columns you need is the single biggest performance win in PostgREST.\n\n**Try this**\n- Add `created_at` to the select list. Format: comma-separated, no spaces.\n- Try `select=*,sector` — yes, you can mix `*` with extra fields (rarely useful, but legal).\n- Try `select=name:legal_name` to alias a column. The response will have a key `legal_name` instead of `name`. Useful when consuming the response programmatically.",
+          "description": "**SQL equivalent:** `SELECT ticker, name, sector FROM companies LIMIT 5;`\n\n**What you're looking at**\nReturning every column is wasteful when you only need three. Projection trims the response.\n\n**Why this matters for precision**\nMany tables in YoUnionize have fat jsonb columns:\n- `filing_summaries.raw_data` — verbatim SEC API JSON, can be megabytes\n- `filing_summaries.ai_summary` — Claude-generated summary blob\n- `companies` is small, but the same principle applies everywhere\n\nProjecting only the columns you need is the single biggest performance win in PostgREST.\n\n**Try this**\n- Add `created_at` to the select list. Format: comma-separated, no spaces.\n- Try `select=*,sector` — yes, you can mix `*` with extra fields (rarely useful, but legal).\n- Try `select=name:legal_name` to alias a column. The response will have a key `legal_name` instead of `name`. Useful when consuming the response programmatically.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=ticker,name,sector&limit=5",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "ticker,name,sector", "description": "Comma-separated column list. No spaces between names. To rename a column on output: `output_name:db_column`." },
-                { "key": "limit", "value": "5" }
+                {
+                  "key": "select",
+                  "value": "ticker,name,sector",
+                  "description": "Comma-separated column list. No spaces between names. To rename a column on output: `output_name:db_column`."
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
               ]
             }
           }
@@ -57,14 +109,30 @@
           "description": "**SQL equivalent:** `SELECT ticker, name FROM companies WHERE ticker = 'AAPL';`\n\n**What you're looking at**\nA filter is just `column=op.value` in the URL. The operator is the *prefix* before the dot.\n\nThis request returns an array — even if only one row matches — because that's the default shape. Lesson 04 shows you how to ask for an object.\n\n**The full operator menu**\n| Operator | Meaning | Example |\n| --- | --- | --- |\n| `eq` | equals | `ticker=eq.AAPL` |\n| `neq` | not equal | `ticker=neq.AAPL` |\n| `gt`/`gte` | greater than (or equal) | `cik=gt.1000000` |\n| `lt`/`lte` | less than (or equal) | `cik=lt.9999999` |\n| `like`/`ilike` | SQL LIKE / case-insensitive (`*` is wildcard) | `name=ilike.*apple*` |\n| `in` | value in list | `ticker=in.(AAPL,MSFT,GOOGL)` |\n| `is` | IS NULL / IS TRUE / IS FALSE | `sector=is.null` |\n\n**Try this**\n- Change to `ticker=eq.MSFT`. Then `ticker=eq.NONEXISTENT` — note the empty array `[]`, not an error.\n- Try `sector=eq.Technology` to filter by sector.\n- Try `name=ilike.*apple*` for substring search (case-insensitive).\n- Multiple filters AND together: `&sector=eq.Technology&exchange=eq.NASDAQ`.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=ticker,name,sector,exchange",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "ticker", "value": "eq.AAPL", "description": "Filter where ticker equals 'AAPL'. The format is always `column=operator.value`." },
-                { "key": "select", "value": "ticker,name,sector,exchange" }
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL",
+                  "description": "Filter where ticker equals 'AAPL'. The format is always `column=operator.value`."
+                },
+                {
+                  "key": "select",
+                  "value": "ticker,name,sector,exchange"
+                }
               ]
             }
           }
@@ -75,16 +143,33 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json", "description": "Strip the array wrapper. Returns a single object. 406 if rows matched != 1." }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json",
+                "description": "Strip the array wrapper. Returns a single object. 406 if rows matched != 1."
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "ticker", "value": "eq.AAPL" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -95,39 +180,85 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=name",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "ticker", "value": "eq.AAPL", "description": "Narrow to one row." },
-                { "key": "select", "value": "name", "description": "Project one column. Response shape: {\"name\": \"...\"}." }
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL",
+                  "description": "Narrow to one row."
+                },
+                {
+                  "key": "select",
+                  "value": "name",
+                  "description": "Project one column. Response shape: {\"name\": \"...\"}."
+                }
               ]
             }
           }
         },
         {
           "name": "Lesson 06 — Drill into a jsonb column (sub-field extraction)",
-          "description": "**SQL equivalent:** `SELECT raw_data->'formType' FROM filing_summaries WHERE company_id = '...' AND filing_type = '10-K' ORDER BY filed_at DESC LIMIT 1;`\n\n**What you're looking at**\nMost interesting data in YoUnion lives inside jsonb columns:\n- `filing_summaries.raw_data` — the verbatim SEC API JSON for a filing\n- `filing_summaries.ai_summary` — Claude's structured summary\n- `directors.committees`, `directors.qualifications` — list-shaped metadata\n\nPostgREST exposes Postgres's jsonb arrow operators directly in the select clause:\n- `column->key` — returns the value as **jsonb** (preserves nested structure)\n- `column->>key` — returns the value as **text** (stringifies it)\n- `column->idx` — for jsonb arrays (numeric index)\n- `column#>'{a,b,c}'` — path drill (jsonb)\n- `column#>>'{a,b,c}'` — path drill (text)\n\n**Why this matters for precision**\nInstead of pulling the entire 5MB `raw_data` blob and parsing it client-side, you can ask the database to extract just the field you want. The wire payload shrinks dramatically.\n\n**Try this**\n- This request pulls only `raw_data->>'formType'` for the latest 10-K.\n- Edit the select to `raw_data->>'cik'` to get the CIK from inside the SEC JSON.\n- Try `ai_summary->>'summary'` (if AI summary is populated) to pull the summary text.\n- Use `value:raw_data->>'formType'` to alias the output field to `value`.\n\n**Requires `{{company_id}}` in your environment.** Run a Lesson 03 query against `companies` first, then copy an `id` into the env.\n\n**Heads-up — schema change (2026-04):** filing section text (MD&A, risk factors, etc.) used to live at `filing_summaries.raw_data.extractedSections`. It now lives in a dedicated `filing_sections` table — see that folder for queries against the new shape. The drill examples here still work for non-section sub-fields like `formType`, `cik`, `periodOfReport`.",
+          "description": "**SQL equivalent:** `SELECT raw_data->'formType' FROM filing_summaries WHERE company_id = '...' AND filing_type = '10-K' ORDER BY filed_at DESC LIMIT 1;`\n\n**What you're looking at**\nMost interesting data in YoUnionize lives inside jsonb columns:\n- `filing_summaries.raw_data` — the verbatim SEC API JSON for a filing\n- `filing_summaries.ai_summary` — Claude's structured summary\n- `directors.committees`, `directors.qualifications` — list-shaped metadata\n\nPostgREST exposes Postgres's jsonb arrow operators directly in the select clause:\n- `column->key` — returns the value as **jsonb** (preserves nested structure)\n- `column->>key` — returns the value as **text** (stringifies it)\n- `column->idx` — for jsonb arrays (numeric index)\n- `column#>'{a,b,c}'` — path drill (jsonb)\n- `column#>>'{a,b,c}'` — path drill (text)\n\n**Why this matters for precision**\nInstead of pulling the entire 5MB `raw_data` blob and parsing it client-side, you can ask the database to extract just the field you want. The wire payload shrinks dramatically.\n\n**Try this**\n- This request pulls only `raw_data->>'formType'` for the latest 10-K.\n- Edit the select to `raw_data->>'cik'` to get the CIK from inside the SEC JSON.\n- Try `ai_summary->>'summary'` (if AI summary is populated) to pull the summary text.\n- Use `value:raw_data->>'formType'` to alias the output field to `value`.\n\n**Requires `{{company_id}}` in your environment.** Run a Lesson 03 query against `companies` first, then copy an `id` into the env.\n\n**Heads-up — schema change (2026-04):** filing section text (MD&A, risk factors, etc.) used to live at `filing_summaries.raw_data.extractedSections`. It now lives in a dedicated `filing_sections` table — see that folder for queries against the new shape. The drill examples here still work for non-section sub-fields like `formType`, `cik`, `periodOfReport`.",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&select=accession_number,filed_at,form_type:raw_data->>formType&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}", "description": "Set this env var first by running a companies query and copying an id." },
-                { "key": "filing_type", "value": "eq.10-K", "description": "Annual report. Other values: 10-Q (quarterly), 8-K (current event), DEF 14A (proxy)." },
-                { "key": "select", "value": "accession_number,filed_at,form_type:raw_data->>formType", "description": "Pull two regular columns plus one extracted from inside the raw_data jsonb. `->>` returns text; `->` would return jsonb." },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}",
+                  "description": "Set this env var first by running a companies query and copying an id."
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.10-K",
+                  "description": "Annual report. Other values: 10-Q (quarterly), 8-K (current event), DEF 14A (proxy)."
+                },
+                {
+                  "key": "select",
+                  "value": "accession_number,filed_at,form_type:raw_data->>formType",
+                  "description": "Pull two regular columns plus one extracted from inside the raw_data jsonb. `->>` returns text; `->` would return jsonb."
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -137,17 +268,45 @@
           "description": "**SQL equivalent:** `SELECT executive_name, title, total_compensation FROM executive_compensation WHERE fiscal_year >= 2022 AND total_compensation >= 10000000 ORDER BY total_compensation DESC LIMIT 25;`\n\n**What you're looking at**\nMultiple top-level filters AND together. Each is a separate `column=op.value` query parameter. Order doesn't matter.\n\nThis pulls execs paid $10M+ since 2022, ranked by total comp.\n\n**Try this**\n- Bump the floor to `total_compensation=gte.50000000` for the top earners only.\n- Add `&title=ilike.*CEO*` to scope to CEOs.\n- Negate: `&title=not.ilike.*CEO*` to exclude CEOs.\n- OR groups (rather than AND): `or=(title.ilike.*CEO*,title.ilike.*CFO*)`.\n\n**Edge cases**\n- `is.null` for nulls, NOT `eq.null` (which would look for the literal string 'null').\n- For `in`: `?ticker=in.(AAPL,MSFT,GOOGL)` — parens required, comma-separated.\n- Strings with commas: quote them — `in.(\"foo,bar\",baz)`.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?fiscal_year=gte.2022&total_compensation=gte.10000000&select=executive_name,title,fiscal_year,total_compensation,companies(ticker)&order=total_compensation.desc.nullslast&limit=25",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "fiscal_year", "value": "gte.2022", "description": "Greater-than-or-equal. Use gt/gte/lt/lte for ranges." },
-                { "key": "total_compensation", "value": "gte.10000000", "description": "Stored in dollars (bigint). Bump this to narrow further." },
-                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker)", "description": "Note `companies(ticker)` — that's a foreign-key embed. Lesson 09 covers this." },
-                { "key": "order", "value": "total_compensation.desc.nullslast", "description": "Push nulls to the bottom. `nullsfirst` is the alternative." },
-                { "key": "limit", "value": "25" }
+                {
+                  "key": "fiscal_year",
+                  "value": "gte.2022",
+                  "description": "Greater-than-or-equal. Use gt/gte/lt/lte for ranges."
+                },
+                {
+                  "key": "total_compensation",
+                  "value": "gte.10000000",
+                  "description": "Stored in dollars (bigint). Bump this to narrow further."
+                },
+                {
+                  "key": "select",
+                  "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker)",
+                  "description": "Note `companies(ticker)` — that's a foreign-key embed. Lesson 09 covers this."
+                },
+                {
+                  "key": "order",
+                  "value": "total_compensation.desc.nullslast",
+                  "description": "Push nulls to the bottom. `nullsfirst` is the alternative."
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
               ]
             }
           }
@@ -158,18 +317,44 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact", "disabled": true, "description": "Enable to get total row count in the `Content-Range` response header. Slow on huge tables." }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact",
+                "disabled": true,
+                "description": "Enable to get total row count in the `Content-Range` response header. Slow on huge tables."
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=ticker,name&order=ticker.asc&limit=25&offset=0",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "ticker,name" },
-                { "key": "order", "value": "ticker.asc", "description": "Direction defaults to asc if omitted. Add `.nullsfirst` or `.nullslast` to control null placement." },
-                { "key": "limit", "value": "25" },
-                { "key": "offset", "value": "0", "description": "Page 0. Increment by `limit` to walk through results." }
+                {
+                  "key": "select",
+                  "value": "ticker,name"
+                },
+                {
+                  "key": "order",
+                  "value": "ticker.asc",
+                  "description": "Direction defaults to asc if omitted. Add `.nullsfirst` or `.nullslast` to control null placement."
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Page 0. Increment by `limit` to walk through results."
+                }
               ]
             }
           }
@@ -179,14 +364,30 @@
           "description": "**SQL equivalent:** `SELECT d.name, d.title, c.ticker, c.name AS company_name FROM directors d JOIN companies c ON c.id = d.company_id LIMIT 10;`\n\n**What you're looking at**\nPostgREST 'embeds' related rows into the response by detecting foreign-key relationships from your schema. Drizzle's `.references(() => companies.id)` gives PostgREST the FK metadata it needs — you don't have to do anything else.\n\nThe syntax is `select=...,related_table_name(column_list)`. Examples:\n- `select=name,title,companies(ticker,name)` — pull the parent company alongside each director\n- `select=*,directors(*)` — get a company AND all its directors in one round trip\n- `select=*,directors(*),executive_compensation(*)` — multiple embeds at once\n\nYou can even apply filters/orders/limits *inside* the embed:\n- `directors.title=eq.CEO` — filter embedded directors\n- `directors.order=name.asc` — order embedded directors\n- `directors.limit=5` — cap embedded rows per parent\n\n**Why this matters for precision**\nOne embed = one round trip = no N+1 query problem. If you want a company plus its top 3 paid execs plus its directors, you can do it all in a single GET.\n\n**Try this**\n- Flip the direction: `companies?select=*,directors(*),executive_compensation(*)&ticker=eq.AAPL` — Apple plus everything related.\n- Filter inside the embed: `companies?select=name,executive_compensation(executive_name,title,total_compensation)&executive_compensation.fiscal_year=eq.2024&executive_compensation.order=total_compensation.desc&executive_compensation.limit=3&ticker=eq.AAPL`.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/directors?select=name,title,companies(ticker,name)&limit=10",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["directors"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "directors"
+              ],
               "query": [
-                { "key": "select", "value": "name,title,companies(ticker,name)", "description": "The `companies(...)` part is a foreign-key embed. PostgREST detects the FK from `directors.company_id` and joins automatically." },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "select",
+                  "value": "name,title,companies(ticker,name)",
+                  "description": "The `companies(...)` part is a foreign-key embed. PostgREST detects the FK from `directors.company_id` and joins automatically."
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           }
@@ -197,16 +398,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact", "description": "Tell PostgREST to compute and return the total row count. Look for `Content-Range` in the response headers." }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact",
+                "description": "Tell PostgREST to compute and return the total row count. Look for `Content-Range` in the response headers."
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=0",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "0", "description": "Return zero rows — we only care about the count in the response header. Saves wire bytes." }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "0",
+                  "description": "Return zero rows — we only care about the count in the response header. Saves wire bytes."
+                }
               ]
             }
           }
@@ -217,20 +436,50 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&title=ilike.*CEO*&fiscal_year=eq.2024&select=executive_name,title,total_compensation,companies(ticker,name)&order=total_compensation.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "title", "value": "ilike.*CEO*", "description": "Case-insensitive substring. Catches 'Chief Executive Officer', 'CEO', etc." },
-                { "key": "fiscal_year", "value": "eq.2024", "description": "Adjust per company's available years. Pull distinct years from the table first if unsure." },
-                { "key": "select", "value": "executive_name,title,total_compensation,companies(ticker,name)" },
-                { "key": "order", "value": "total_compensation.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "title",
+                  "value": "ilike.*CEO*",
+                  "description": "Case-insensitive substring. Catches 'Chief Executive Officer', 'CEO', etc."
+                },
+                {
+                  "key": "fiscal_year",
+                  "value": "eq.2024",
+                  "description": "Adjust per company's available years. Pull distinct years from the table first if unsure."
+                },
+                {
+                  "key": "select",
+                  "value": "executive_name,title,total_compensation,companies(ticker,name)"
+                },
+                {
+                  "key": "order",
+                  "value": "total_compensation.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -247,16 +496,34 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=id,ticker,name,sector,industry,exchange,cik,last_fetch_at",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "ticker", "value": "eq.AAPL", "description": "Change to any ticker. Tickers are stored uppercase." },
-                { "key": "select", "value": "id,ticker,name,sector,industry,exchange,cik,last_fetch_at", "description": "Note `id` is the UUID you need for {{company_id}}. The `last_fetch_at` shows the freshness of SEC data." }
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL",
+                  "description": "Change to any ticker. Tickers are stored uppercase."
+                },
+                {
+                  "key": "select",
+                  "value": "id,ticker,name,sector,industry,exchange,cik,last_fetch_at",
+                  "description": "Note `id` is the UUID you need for {{company_id}}. The `last_fetch_at` shows the freshness of SEC data."
+                }
               ]
             }
           }
@@ -266,15 +533,35 @@
           "description": "**UI surface:** the fiscal-year selector on the leadership panel.\n\n**The Edge Function** uses `selectDistinct({ year })` from Drizzle. PostgREST has no DISTINCT — so the closest equivalent is to project + order, then dedupe client-side, OR write a Postgres function exposed as RPC.\n\nThis request uses the *project + order* approach: get every fiscal_year row sorted desc; the consumer dedupes. For a company with 5 execs over 3 years, you'll get 15 rows where you only need 3 distinct values. That's the price of skipping RPC.\n\n**The clean way** (for production code): create a SQL function in Supabase like `get_fiscal_years(company_uuid)` and call it via `POST /rest/v1/rpc/get_fiscal_years`.\n\n**To narrow:** there's nothing to narrow — distinct values are the entire purpose.\n**To broaden:** drop the `company_id` filter to see fiscal years across all companies.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&select=fiscal_year&order=fiscal_year.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "fiscal_year", "description": "Project just the year. The response is an array with duplicates — dedupe client-side." },
-                { "key": "order", "value": "fiscal_year.desc", "description": "Newest first, matching the dashboard's default selection." }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "fiscal_year",
+                  "description": "Project just the year. The response is an array with duplicates — dedupe client-side."
+                },
+                {
+                  "key": "order",
+                  "value": "fiscal_year.desc",
+                  "description": "Newest first, matching the dashboard's default selection."
+                }
               ]
             }
           }
@@ -284,17 +571,43 @@
           "description": "**UI surface:** the leadership/executive compensation table on the company detail page.\n\n**The Edge Function** runs this exact pattern: filter by company + selected fiscal year, sort by total compensation desc, cap at 20.\n\n**To narrow:** add `&title=ilike.*CEO*` to scope to one role.\n**To broaden:** drop `fiscal_year` to see all years for this company. Or drop `company_id` to compare execs across the entire DB (warning — large response).",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&fiscal_year=eq.2024&select=*&order=total_compensation.desc.nullslast&limit=20",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "fiscal_year", "value": "eq.2024", "description": "Adjust to a year that exists for this company (use the previous request to discover available years)." },
-                { "key": "select", "value": "*", "description": "Returns full comp breakdown: salary, bonus, stock_awards, option_awards, non_equity_incentive, other_compensation, ceo_pay_ratio, total_compensation." },
-                { "key": "order", "value": "total_compensation.desc.nullslast" },
-                { "key": "limit", "value": "20" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "fiscal_year",
+                  "value": "eq.2024",
+                  "description": "Adjust to a year that exists for this company (use the previous request to discover available years)."
+                },
+                {
+                  "key": "select",
+                  "value": "*",
+                  "description": "Returns full comp breakdown: salary, bonus, stock_awards, option_awards, non_equity_incentive, other_compensation, ceo_pay_ratio, total_compensation."
+                },
+                {
+                  "key": "order",
+                  "value": "total_compensation.desc.nullslast"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
               ]
             }
           }
@@ -305,20 +618,50 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&title=ilike.*CEO*&fiscal_year=eq.2024&select=executive_name,title,fiscal_year,total_compensation,salary,bonus,stock_awards,option_awards,ceo_pay_ratio&order=total_compensation.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "title", "value": "ilike.*CEO*", "description": "Substring, case-insensitive. Catches multiple title variants." },
-                { "key": "fiscal_year", "value": "eq.2024" },
-                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,salary,bonus,stock_awards,option_awards,ceo_pay_ratio", "description": "All comp components — useful if the UI shows a breakdown bar/donut." },
-                { "key": "order", "value": "total_compensation.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "title",
+                  "value": "ilike.*CEO*",
+                  "description": "Substring, case-insensitive. Catches multiple title variants."
+                },
+                {
+                  "key": "fiscal_year",
+                  "value": "eq.2024"
+                },
+                {
+                  "key": "select",
+                  "value": "executive_name,title,fiscal_year,total_compensation,salary,bonus,stock_awards,option_awards,ceo_pay_ratio",
+                  "description": "All comp components — useful if the UI shows a breakdown bar/donut."
+                },
+                {
+                  "key": "order",
+                  "value": "total_compensation.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -328,15 +671,34 @@
           "description": "**UI surface:** the board-of-directors panel.\n\nNo fiscal-year filter — directors are stored as a single set per company (the most recent extraction). If a director left the board, they may still appear; check `tenure_start`.\n\n**To narrow:** `&is_independent=is.true` for independent directors only. Or `&title=ilike.*Chair*` for chair/co-chair.\n**To broaden:** drop the company filter to see all directors across the DB.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/directors?company_id=eq.{{company_id}}&select=name,title,role,is_independent,age,tenure_start,committees,director_class&order=name.asc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["directors"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "directors"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "name,title,role,is_independent,age,tenure_start,committees,director_class", "description": "`committees` is jsonb — array of committee names. Use jsonb arrows to drill in if needed." },
-                { "key": "order", "value": "name.asc" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "name,title,role,is_independent,age,tenure_start,committees,director_class",
+                  "description": "`committees` is jsonb — array of committee names. Use jsonb arrows to drill in if needed."
+                },
+                {
+                  "key": "order",
+                  "value": "name.asc"
+                }
               ]
             }
           }
@@ -346,15 +708,34 @@
           "description": "**UI surface:** the filings timeline / list view.\n\nThe Edge Function projects only metadata — never the bulky `raw_data` jsonb. Replicate that here. If you want to inspect a single filing's body, use the next request and pass the `id`.\n\n**To narrow:** add `&filing_type=eq.10-K` to scope to one type.\n**To broaden:** drop `company_id` for cross-company filings (large response).",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=id,filing_type,period_end,filed_at,accession_number,summary_version,summarization_status&order=filed_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "id,filing_type,period_end,filed_at,accession_number,summary_version,summarization_status", "description": "Deliberately excludes raw_data, ai_summary, human_summary — those can be megabytes each." },
-                { "key": "order", "value": "filed_at.desc" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "id,filing_type,period_end,filed_at,accession_number,summary_version,summarization_status",
+                  "description": "Deliberately excludes raw_data, ai_summary, human_summary — those can be megabytes each."
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                }
               ]
             }
           }
@@ -365,20 +746,49 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&ai_summary=not.is.null&select=*&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "filing_type", "value": "eq.10-K" },
-                { "key": "ai_summary", "value": "not.is.null", "description": "Only filings that have been processed through AI summarization. The `not.` prefix negates `is.null`." },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.10-K"
+                },
+                {
+                  "key": "ai_summary",
+                  "value": "not.is.null",
+                  "description": "Only filings that have been processed through AI summarization. The `not.` prefix negates `is.null`."
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -389,20 +799,48 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-Q&ai_summary=not.is.null&select=*&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "filing_type", "value": "eq.10-Q" },
-                { "key": "ai_summary", "value": "not.is.null" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.10-Q"
+                },
+                {
+                  "key": "ai_summary",
+                  "value": "not.is.null"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -413,20 +851,49 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.DEF 14A&ai_summary=not.is.null&select=*&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "filing_type", "value": "eq.DEF 14A", "description": "The space in 'DEF 14A' is significant — Postman URL-encodes it automatically. If you copy the curl manually, that becomes `DEF%2014A`." },
-                { "key": "ai_summary", "value": "not.is.null" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.DEF 14A",
+                  "description": "The space in 'DEF 14A' is significant — Postman URL-encodes it automatically. If you copy the curl manually, that becomes `DEF%2014A`."
+                },
+                {
+                  "key": "ai_summary",
+                  "value": "not.is.null"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -436,18 +903,45 @@
           "description": "**UI surface:** the \"recent events\" card stack on the dashboard.\n\nNote: there are TWO sources of 8-K data:\n- `filing_summaries` rows where `filing_type=eq.8-K` — the AI-summarized version\n- `form_8k_events` table — parsed item-level events (next request)\n\nThis request gives the AI summary side. Use the next one for structured event types.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.8-K&ai_summary=not.is.null&select=id,filed_at,accession_number,ai_summary&order=filed_at.desc&limit=5",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "filing_type", "value": "eq.8-K" },
-                { "key": "ai_summary", "value": "not.is.null" },
-                { "key": "select", "value": "id,filed_at,accession_number,ai_summary" },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "5" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.8-K"
+                },
+                {
+                  "key": "ai_summary",
+                  "value": "not.is.null"
+                },
+                {
+                  "key": "select",
+                  "value": "id,filed_at,accession_number,ai_summary"
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
               ]
             }
           }
@@ -457,16 +951,37 @@
           "description": "**UI surface:** the structured 8-K event list (where each row carries an item type like 'Item 5.02 — Departure of Directors').\n\nThis pulls from the dedicated `form_8k_events` table, which has one row per (filing, item type). Useful when you want to filter by event category — `item_type=eq.5.02` for executive departures, etc.\n\n**To narrow:** `&item_type=eq.5.02` for executive officer changes, `&item_type=eq.7.01` for Reg FD disclosures.\n**To broaden:** drop `company_id` for cross-company event sweeps.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/form_8k_events?company_id=eq.{{company_id}}&select=*&order=filed_at.desc&limit=25",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["form_8k_events"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "form_8k_events"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "25" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
               ]
             }
           }
@@ -476,16 +991,38 @@
           "description": "**UI surface:** the insider trading activity table.\n\nForm 4 filings — when officers/directors buy or sell stock.\n\n**To narrow:**\n- `&transaction_type=eq.S` for sales only\n- `&filer_name=ilike.*Tim Cook*` for one named insider\n- `&total_value=gte.1000000` for trades over $1M\n\n**To broaden:** raise the limit, or drop `company_id`.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/insider_trades?company_id=eq.{{company_id}}&select=filer_name,filer_title,transaction_date,transaction_type,shares,price_per_share,total_value,direct_or_indirect&order=transaction_date.desc&limit=50",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["insider_trades"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "insider_trades"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "filer_name,filer_title,transaction_date,transaction_type,shares,price_per_share,total_value,direct_or_indirect", "description": "transaction_type values per Form 4: 'P'=purchase, 'S'=sale, 'A'=grant/award, 'M'=option exercise, etc." },
-                { "key": "order", "value": "transaction_date.desc" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "filer_name,filer_title,transaction_date,transaction_type,shares,price_per_share,total_value,direct_or_indirect",
+                  "description": "transaction_type values per Form 4: 'P'=purchase, 'S'=sale, 'A'=grant/award, 'M'=option exercise, etc."
+                },
+                {
+                  "key": "order",
+                  "value": "transaction_date.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           }
@@ -496,20 +1033,49 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&ai_summary=not.is.null&select=accession_number,filed_at,extracted:ai_summary->your_field&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "filing_type", "value": "eq.10-K" },
-                { "key": "ai_summary", "value": "not.is.null" },
-                { "key": "select", "value": "accession_number,filed_at,extracted:ai_summary->your_field", "description": "Replace `your_field` with the actual key inside ai_summary. Use `->` for jsonb (preserves nesting), `->>` for text. The `extracted:` prefix renames the output column." },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.10-K"
+                },
+                {
+                  "key": "ai_summary",
+                  "value": "not.is.null"
+                },
+                {
+                  "key": "select",
+                  "value": "accession_number,filed_at,extracted:ai_summary->your_field",
+                  "description": "Replace `your_field` with the actual key inside ai_summary. Use `->` for jsonb (preserves nesting), `->>` for text. The `extracted:` prefix renames the output column."
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -520,19 +1086,45 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&select=accession_number,form_type:raw_data->>formType,period:raw_data->>periodOfReport,cik:raw_data->>cik&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "filing_type", "value": "eq.10-K" },
-                { "key": "select", "value": "accession_number,form_type:raw_data->>formType,period:raw_data->>periodOfReport,cik:raw_data->>cik", "description": "Three jsonb extractions in one select. Each uses `->>` because we want strings. Each is aliased so the response keys are clean." },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.10-K"
+                },
+                {
+                  "key": "select",
+                  "value": "accession_number,form_type:raw_data->>formType,period:raw_data->>periodOfReport,cik:raw_data->>cik",
+                  "description": "Three jsonb extractions in one select. Each uses `->>` because we want strings. Each is aliased so the response keys are clean."
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -543,20 +1135,50 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=ticker,name,sector,executive_compensation(executive_name,title,total_compensation),directors(name,title,is_independent)&executive_compensation.fiscal_year=eq.2024&executive_compensation.order=total_compensation.desc&executive_compensation.limit=10&directors.order=name.asc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "ticker", "value": "eq.AAPL" },
-                { "key": "select", "value": "ticker,name,sector,executive_compensation(executive_name,title,total_compensation),directors(name,title,is_independent)", "description": "Embed two related tables. Each parenthesized clause is an embed with its own column projection." },
-                { "key": "executive_compensation.fiscal_year", "value": "eq.2024", "description": "EMBED FILTER — applies inside the embedded executive_compensation rows only. Format: `<embed>.<col>=<op>.<value>`." },
-                { "key": "executive_compensation.order", "value": "total_compensation.desc" },
-                { "key": "executive_compensation.limit", "value": "10" },
-                { "key": "directors.order", "value": "name.asc" }
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL"
+                },
+                {
+                  "key": "select",
+                  "value": "ticker,name,sector,executive_compensation(executive_name,title,total_compensation),directors(name,title,is_independent)",
+                  "description": "Embed two related tables. Each parenthesized clause is an embed with its own column projection."
+                },
+                {
+                  "key": "executive_compensation.fiscal_year",
+                  "value": "eq.2024",
+                  "description": "EMBED FILTER — applies inside the embedded executive_compensation rows only. Format: `<embed>.<col>=<op>.<value>`."
+                },
+                {
+                  "key": "executive_compensation.order",
+                  "value": "total_compensation.desc"
+                },
+                {
+                  "key": "executive_compensation.limit",
+                  "value": "10"
+                },
+                {
+                  "key": "directors.order",
+                  "value": "name.asc"
+                }
               ]
             }
           }
@@ -588,11 +1210,19 @@
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -600,9 +1230,18 @@
             },
             "url": {
               "raw": "{{supabase_url}}{{auth_path}}/token?grant_type=password",
-              "host": ["{{supabase_url}}{{auth_path}}"],
-              "path": ["token"],
-              "query": [{ "key": "grant_type", "value": "password" }]
+              "host": [
+                "{{supabase_url}}{{auth_path}}"
+              ],
+              "path": [
+                "token"
+              ],
+              "query": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                }
+              ]
             }
           }
         },
@@ -611,14 +1250,29 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_jwt}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{auth_path}}/user",
-              "host": ["{{supabase_url}}{{auth_path}}"],
-              "path": ["user"]
+              "host": [
+                "{{supabase_url}}{{auth_path}}"
+              ],
+              "path": [
+                "user"
+              ]
             }
           }
         }
@@ -632,17 +1286,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=25&order=ticker.asc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "ticker.asc" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "order",
+                  "value": "ticker.asc"
+                }
               ]
             }
           }
@@ -652,16 +1325,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "ticker", "value": "eq.AAPL" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -670,15 +1359,33 @@
           "name": "Search by name (ilike)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?name=ilike.*apple*&select=ticker,name,cik&limit=10",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "name", "value": "ilike.*apple*" },
-                { "key": "select", "value": "ticker,name,cik" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "name",
+                  "value": "ilike.*apple*"
+                },
+                {
+                  "key": "select",
+                  "value": "ticker,name,cik"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           }
@@ -693,16 +1400,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/directors?select=*&limit=25",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["directors"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "directors"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
               ]
             }
           }
@@ -711,15 +1434,33 @@
           "name": "By company_id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/directors?company_id=eq.{{company_id}}&select=*&order=name.asc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["directors"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "directors"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "name.asc" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "name.asc"
+                }
               ]
             }
           }
@@ -734,17 +1475,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?select=*&limit=25&order=fiscal_year.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "fiscal_year.desc" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "order",
+                  "value": "fiscal_year.desc"
+                }
               ]
             }
           }
@@ -753,15 +1513,33 @@
           "name": "By company_id and fiscal_year",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?company_id=eq.{{company_id}}&fiscal_year=eq.2023&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "fiscal_year", "value": "eq.2023" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "fiscal_year",
+                  "value": "eq.2023"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -770,15 +1548,33 @@
           "name": "Top earners (total_compensation desc)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?select=executive_name,title,fiscal_year,total_compensation,companies(ticker,name)&order=total_compensation.desc.nullslast&limit=20",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker,name)" },
-                { "key": "order", "value": "total_compensation.desc.nullslast" },
-                { "key": "limit", "value": "20" }
+                {
+                  "key": "select",
+                  "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker,name)"
+                },
+                {
+                  "key": "order",
+                  "value": "total_compensation.desc.nullslast"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
               ]
             }
           }
@@ -794,19 +1590,50 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json", "description": "Strip the array wrapper — return the row as an object. 406 if 0 or >1 rows match (limit=1 prevents the >1 case)." }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json",
+                "description": "Strip the array wrapper — return the row as an object. 406 if 0 or >1 rows match (limit=1 prevents the >1 case)."
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=raw_data&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "raw_data", "description": "Project only this column. Massive payload reduction since `raw_data` already is the SEC response — `select=*` would also pull ai_summary, human_summary, etc." },
-                { "key": "order", "value": "filed_at.desc", "description": "Most recent SEC filing first. Alt: `created_at.desc` (DB row creation order)." },
-                { "key": "limit", "value": "1", "description": "Single row." },
-                { "key": "filing_type", "value": "eq.10-K", "disabled": true, "description": "Optional filter — narrow to a specific filing type (e.g. 10-K, 10-Q, 8-K, DEF 14A)." }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "raw_data",
+                  "description": "Project only this column. Massive payload reduction since `raw_data` already is the SEC response — `select=*` would also pull ai_summary, human_summary, etc."
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc",
+                  "description": "Most recent SEC filing first. Alt: `created_at.desc` (DB row creation order)."
+                },
+                {
+                  "key": "limit",
+                  "value": "1",
+                  "description": "Single row."
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.10-K",
+                  "disabled": true,
+                  "description": "Optional filter — narrow to a specific filing type (e.g. 10-K, 10-Q, 8-K, DEF 14A)."
+                }
               ]
             }
           }
@@ -817,18 +1644,41 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=value:raw_data->your_field&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "value:raw_data->your_field", "description": "Pull a sub-field of the raw_data jsonb. Use `->>` instead of `->` if you want it as a plain string rather than nested json. The `value:` prefix renames the column in the response." },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "value:raw_data->your_field",
+                  "description": "Pull a sub-field of the raw_data jsonb. Use `->>` instead of `->` if you want it as a plain string rather than nested json. The `value:` prefix renames the column in the response."
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -838,17 +1688,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?select=*&limit=25&order=created_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "created_at.desc" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "order",
+                  "value": "created_at.desc"
+                }
               ]
             }
           }
@@ -857,15 +1726,33 @@
           "name": "By company_id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&select=*&order=created_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "created_at.desc" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "created_at.desc"
+                }
               ]
             }
           }
@@ -876,18 +1763,41 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?summarization_status=eq.ai_generated&select=id,filing_type,filed_at,accession_number,summarization_status,summarization_updated_at,companies(ticker)&order=summarization_updated_at.desc&limit=50",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "summarization_status", "value": "eq.ai_generated", "description": "Try `eq.human_verified`, `eq.human_edited`, `eq.human_authored`, or `in.(human_edited,human_authored)`." },
-                { "key": "select", "value": "id,filing_type,filed_at,accession_number,summarization_status,summarization_updated_at,companies(ticker)" },
-                { "key": "order", "value": "summarization_updated_at.desc" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "summarization_status",
+                  "value": "eq.ai_generated",
+                  "description": "Try `eq.human_verified`, `eq.human_edited`, `eq.human_authored`, or `in.(human_edited,human_authored)`."
+                },
+                {
+                  "key": "select",
+                  "value": "id,filing_type,filed_at,accession_number,summarization_status,summarization_updated_at,companies(ticker)"
+                },
+                {
+                  "key": "order",
+                  "value": "summarization_updated_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           }
@@ -898,18 +1808,41 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?summary_version=eq.0&select=id,filing_type,filed_at,accession_number,companies(ticker)&order=filed_at.desc&limit=50",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "summary_version", "value": "eq.0", "description": "`>0` = current AI version, `0` = pending, `-1` = last re-summarize failed." },
-                { "key": "select", "value": "id,filing_type,filed_at,accession_number,companies(ticker)" },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "summary_version",
+                  "value": "eq.0",
+                  "description": "`>0` = current AI version, `0` = pending, `-1` = last re-summarize failed."
+                },
+                {
+                  "key": "select",
+                  "value": "id,filing_type,filed_at,accession_number,companies(ticker)"
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           }
@@ -919,16 +1852,37 @@
           "description": "Filings whose last re-summarization run failed. The `review list --status failed` CLI surfaces these for manual intervention.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?summary_version=eq.-1&select=id,filing_type,filed_at,accession_number,summarization_updated_at,companies(ticker)&order=summarization_updated_at.desc&limit=50",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "summary_version", "value": "eq.-1" },
-                { "key": "select", "value": "id,filing_type,filed_at,accession_number,summarization_updated_at,companies(ticker)" },
-                { "key": "order", "value": "summarization_updated_at.desc" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "summary_version",
+                  "value": "eq.-1"
+                },
+                {
+                  "key": "select",
+                  "value": "id,filing_type,filed_at,accession_number,summarization_updated_at,companies(ticker)"
+                },
+                {
+                  "key": "order",
+                  "value": "summarization_updated_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           }
@@ -939,19 +1893,45 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_summaries?company_id=eq.{{company_id}}&filing_type=eq.10-K&select=id,filed_at,summarization_status,summary_version,optimistic_lock_version,ai_summary,human_summary&order=filed_at.desc&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_summaries"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "filing_type", "value": "eq.10-K" },
-                { "key": "select", "value": "id,filed_at,summarization_status,summary_version,optimistic_lock_version,ai_summary,human_summary", "description": "Both summaries side by side. `optimistic_lock_version` feeds `expectedLockVersion` on the review-* Edge Function calls." },
-                { "key": "order", "value": "filed_at.desc" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "filing_type",
+                  "value": "eq.10-K"
+                },
+                {
+                  "key": "select",
+                  "value": "id,filed_at,summarization_status,summary_version,optimistic_lock_version,ai_summary,human_summary",
+                  "description": "Both summaries side by side. `optimistic_lock_version` feeds `expectedLockVersion` on the review-* Edge Function calls."
+                },
+                {
+                  "key": "order",
+                  "value": "filed_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }
@@ -967,15 +1947,35 @@
           "description": "All extracted sections for a single filing. Set `{{filing_id}}` first by running a filing_summaries query and copying an `id`.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_sections?filing_id=eq.{{filing_id}}&select=section_code,fetch_status,fetch_error,extracted_at&order=section_code.asc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_sections"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_sections"
+              ],
               "query": [
-                { "key": "filing_id", "value": "eq.{{filing_id}}", "description": "filing_summaries.id (UUID)." },
-                { "key": "select", "value": "section_code,fetch_status,fetch_error,extracted_at", "description": "Excludes `text` — that column can be very large. Add it to the projection only when you actually need the body." },
-                { "key": "order", "value": "section_code.asc" }
+                {
+                  "key": "filing_id",
+                  "value": "eq.{{filing_id}}",
+                  "description": "filing_summaries.id (UUID)."
+                },
+                {
+                  "key": "select",
+                  "value": "section_code,fetch_status,fetch_error,extracted_at",
+                  "description": "Excludes `text` — that column can be very large. Add it to the projection only when you actually need the body."
+                },
+                {
+                  "key": "order",
+                  "value": "section_code.asc"
+                }
               ]
             }
           }
@@ -986,17 +1986,37 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_sections?filing_id=eq.{{filing_id}}&section_code=eq.7&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_sections"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_sections"
+              ],
               "query": [
-                { "key": "filing_id", "value": "eq.{{filing_id}}" },
-                { "key": "section_code", "value": "eq.7", "description": "10-K MD&A. Swap to `part1item2` for 10-Q, `part1item7` for DEF 14A executive compensation." },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "filing_id",
+                  "value": "eq.{{filing_id}}"
+                },
+                {
+                  "key": "section_code",
+                  "value": "eq.7",
+                  "description": "10-K MD&A. Swap to `part1item2` for 10-Q, `part1item7` for DEF 14A executive compensation."
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -1007,18 +2027,40 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_sections?fetch_status=eq.error&select=filing_id,section_code,fetch_error,extracted_at&order=extracted_at.desc&limit=50",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_sections"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_sections"
+              ],
               "query": [
-                { "key": "fetch_status", "value": "eq.error" },
-                { "key": "select", "value": "filing_id,section_code,fetch_error,extracted_at" },
-                { "key": "order", "value": "extracted_at.desc" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "fetch_status",
+                  "value": "eq.error"
+                },
+                {
+                  "key": "select",
+                  "value": "filing_id,section_code,fetch_error,extracted_at"
+                },
+                {
+                  "key": "order",
+                  "value": "extracted_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           }
@@ -1028,17 +2070,43 @@
           "description": "Embed the parent `filing_summaries` row (filing_type, filed_at, accession_number, company_id) into each section. PostgREST detects the FK from `filing_id`. Useful when scanning sections across many filings without doing two round trips.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/filing_sections?section_code=eq.7&select=section_code,extracted_at,filing_summaries(id,filing_type,filed_at,accession_number,company_id)&filing_summaries.filing_type=eq.10-K&order=extracted_at.desc&limit=10",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["filing_sections"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "filing_sections"
+              ],
               "query": [
-                { "key": "section_code", "value": "eq.7" },
-                { "key": "select", "value": "section_code,extracted_at,filing_summaries(id,filing_type,filed_at,accession_number,company_id)", "description": "Embed the parent filing. Add `text` to the outer projection if you want the body." },
-                { "key": "filing_summaries.filing_type", "value": "eq.10-K", "description": "Embed-side filter — narrows the join to 10-K filings." },
-                { "key": "order", "value": "extracted_at.desc" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "section_code",
+                  "value": "eq.7"
+                },
+                {
+                  "key": "select",
+                  "value": "section_code,extracted_at,filing_summaries(id,filing_type,filed_at,accession_number,company_id)",
+                  "description": "Embed the parent filing. Add `text` to the outer projection if you want the body."
+                },
+                {
+                  "key": "filing_summaries.filing_type",
+                  "value": "eq.10-K",
+                  "description": "Embed-side filter — narrows the join to 10-K filings."
+                },
+                {
+                  "key": "order",
+                  "value": "extracted_at.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           }
@@ -1053,17 +2121,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/insider_trades?select=*&limit=25&order=transaction_date.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["insider_trades"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "insider_trades"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "transaction_date.desc" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "order",
+                  "value": "transaction_date.desc"
+                }
               ]
             }
           }
@@ -1072,16 +2159,37 @@
           "name": "By company_id (recent)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/insider_trades?company_id=eq.{{company_id}}&select=*&order=transaction_date.desc&limit=50",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["insider_trades"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "insider_trades"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "transaction_date.desc" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "transaction_date.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             }
           }
@@ -1096,17 +2204,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/compensation_analyses?select=*&limit=25&order=created_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["compensation_analyses"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "compensation_analyses"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "created_at.desc" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "order",
+                  "value": "created_at.desc"
+                }
               ]
             }
           }
@@ -1121,17 +2248,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/form_8k_events?select=*&limit=25&order=event_date.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["form_8k_events"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "form_8k_events"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "event_date.desc" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "order",
+                  "value": "event_date.desc"
+                }
               ]
             }
           }
@@ -1140,15 +2286,33 @@
           "name": "By company_id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/form_8k_events?company_id=eq.{{company_id}}&select=*&order=event_date.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["form_8k_events"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "form_8k_events"
+              ],
               "query": [
-                { "key": "company_id", "value": "eq.{{company_id}}" },
-                { "key": "select", "value": "*" },
-                { "key": "order", "value": "event_date.desc" }
+                {
+                  "key": "company_id",
+                  "value": "eq.{{company_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "order",
+                  "value": "event_date.desc"
+                }
               ]
             }
           }
@@ -1163,17 +2327,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/personalized_summaries?select=*&limit=25&order=created_at.desc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["personalized_summaries"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "personalized_summaries"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" },
-                { "key": "order", "value": "created_at.desc" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                },
+                {
+                  "key": "order",
+                  "value": "created_at.desc"
+                }
               ]
             }
           }
@@ -1189,15 +2372,37 @@
           "description": "GET /functions/v1/review-list — paginated review queue.\n\n**Query params** (all optional):\n- `ticker` — narrow to one company\n- `status` — comma-separated; values: `ai_generated`, `human_verified`, `human_edited`, `human_authored`, `failed` (virtual — = `summary_version=-1`)\n- `limit` — 1–500, default 200",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{functions_path}}/review-list?status=ai_generated&limit=50",
-              "host": ["{{supabase_url}}{{functions_path}}"],
-              "path": ["review-list"],
+              "host": [
+                "{{supabase_url}}{{functions_path}}"
+              ],
+              "path": [
+                "review-list"
+              ],
               "query": [
-                { "key": "status", "value": "ai_generated", "description": "Comma-separated. e.g. `ai_generated,failed` for both untouched AI output and broken filings." },
-                { "key": "limit", "value": "50", "description": "1–500. Default 200." },
-                { "key": "ticker", "value": "AAPL", "disabled": true, "description": "Optional — narrow to one company." }
+                {
+                  "key": "status",
+                  "value": "ai_generated",
+                  "description": "Comma-separated. e.g. `ai_generated,failed` for both untouched AI output and broken filings."
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "1–500. Default 200."
+                },
+                {
+                  "key": "ticker",
+                  "value": "AAPL",
+                  "disabled": true,
+                  "description": "Optional — narrow to one company."
+                }
               ]
             }
           }
@@ -1207,13 +2412,26 @@
           "description": "GET /functions/v1/review-get?id=<filing_summary_id> — full review item plus a value-only `changeRatio` between `ai_summary` and the current `human_summary` (if any).\n\n**Response shape:** `{ item: {...}, diff: { changeRatio, humanAuthoredThreshold, wouldBeAuthored } }`.\n\nA `changeRatio >= humanAuthoredThreshold` (0.8) means the next save would be classified `human_authored`; below it = `human_edited`.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{functions_path}}/review-get?id={{filing_id}}",
-              "host": ["{{supabase_url}}{{functions_path}}"],
-              "path": ["review-get"],
+              "host": [
+                "{{supabase_url}}{{functions_path}}"
+              ],
+              "path": [
+                "review-get"
+              ],
               "query": [
-                { "key": "id", "value": "{{filing_id}}", "description": "filing_summaries.id (UUID). Set the `filing_id` env var first by running a filing_summaries query and copying an id." }
+                {
+                  "key": "id",
+                  "value": "{{filing_id}}",
+                  "description": "filing_summaries.id (UUID). Set the `filing_id` env var first by running a filing_summaries query and copying an id."
+                }
               ]
             }
           }
@@ -1224,8 +2442,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1233,8 +2457,12 @@
             },
             "url": {
               "raw": "{{supabase_url}}{{functions_path}}/review-verify",
-              "host": ["{{supabase_url}}{{functions_path}}"],
-              "path": ["review-verify"]
+              "host": [
+                "{{supabase_url}}{{functions_path}}"
+              ],
+              "path": [
+                "review-verify"
+              ]
             }
           }
         },
@@ -1244,8 +2472,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1253,8 +2487,12 @@
             },
             "url": {
               "raw": "{{supabase_url}}{{functions_path}}/review-summary",
-              "host": ["{{supabase_url}}{{functions_path}}"],
-              "path": ["review-summary"]
+              "host": [
+                "{{supabase_url}}{{functions_path}}"
+              ],
+              "path": [
+                "review-summary"
+              ]
             }
           }
         },
@@ -1264,8 +2502,14 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1273,8 +2517,12 @@
             },
             "url": {
               "raw": "{{supabase_url}}{{functions_path}}/review-summary",
-              "host": ["{{supabase_url}}{{functions_path}}"],
-              "path": ["review-summary"]
+              "host": [
+                "{{supabase_url}}{{functions_path}}"
+              ],
+              "path": [
+                "review-summary"
+              ]
             }
           }
         },
@@ -1284,8 +2532,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1293,8 +2547,12 @@
             },
             "url": {
               "raw": "{{supabase_url}}{{functions_path}}/review-raw-override",
-              "host": ["{{supabase_url}}{{functions_path}}"],
-              "path": ["review-raw-override"]
+              "host": [
+                "{{supabase_url}}{{functions_path}}"
+              ],
+              "path": [
+                "review-raw-override"
+              ]
             }
           }
         },
@@ -1304,8 +2562,14 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1313,8 +2577,12 @@
             },
             "url": {
               "raw": "{{supabase_url}}{{functions_path}}/review-raw-override",
-              "host": ["{{supabase_url}}{{functions_path}}"],
-              "path": ["review-raw-override"]
+              "host": [
+                "{{supabase_url}}{{functions_path}}"
+              ],
+              "path": [
+                "review-raw-override"
+              ]
             }
           }
         }
@@ -1325,21 +2593,42 @@
       "description": "Requires authenticated session. Run Auth → Sign in with password first.",
       "auth": {
         "type": "bearer",
-        "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{user_jwt}}",
+            "type": "string"
+          }
+        ]
       },
       "item": [
         {
           "name": "List (limited by RLS to your row)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/users?select=*&limit=25",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["users"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "25" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
               ]
             }
           }
@@ -1350,7 +2639,13 @@
       "name": "user_profiles (RLS — needs user_jwt)",
       "auth": {
         "type": "bearer",
-        "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{user_jwt}}",
+            "type": "string"
+          }
+        ]
       },
       "item": [
         {
@@ -1358,16 +2653,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/user_profiles?user_id=eq.{{user_id}}&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["user_profiles"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "user_profiles"
+              ],
               "query": [
-                { "key": "user_id", "value": "eq.{{user_id}}" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "user_id",
+                  "value": "eq.{{user_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -1378,7 +2689,13 @@
       "name": "user_cost_of_living (RLS — needs user_jwt)",
       "auth": {
         "type": "bearer",
-        "bearer": [{ "key": "token", "value": "{{user_jwt}}", "type": "string" }]
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{user_jwt}}",
+            "type": "string"
+          }
+        ]
       },
       "item": [
         {
@@ -1386,16 +2703,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/user_cost_of_living?user_id=eq.{{user_id}}&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["user_cost_of_living"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "user_cost_of_living"
+              ],
               "query": [
-                { "key": "user_id", "value": "eq.{{user_id}}" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "user_id",
+                  "value": "eq.{{user_id}}"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -1411,17 +2744,36 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Range", "value": "0-24" },
-              { "key": "Prefer", "value": "count=exact" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Range",
+                "value": "0-24"
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=ticker,name&order=ticker.asc",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "ticker,name" },
-                { "key": "order", "value": "ticker.asc" }
+                {
+                  "key": "select",
+                  "value": "ticker,name"
+                },
+                {
+                  "key": "order",
+                  "value": "ticker.asc"
+                }
               ]
             }
           }
@@ -1431,14 +2783,29 @@
           "description": "Bring back parent company alongside each director using FK relationship traversal.",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/directors?select=name,title,companies(ticker,name)&limit=10",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["directors"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "directors"
+              ],
               "query": [
-                { "key": "select", "value": "name,title,companies(ticker,name)" },
-                { "key": "limit", "value": "10" }
+                {
+                  "key": "select",
+                  "value": "name,title,companies(ticker,name)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
               ]
             }
           }
@@ -1447,17 +2814,41 @@
           "name": "Multiple filters (AND)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/executive_compensation?fiscal_year=gte.2022&total_compensation=gte.10000000&select=executive_name,title,fiscal_year,total_compensation,companies(ticker)&order=total_compensation.desc&limit=25",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["executive_compensation"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "executive_compensation"
+              ],
               "query": [
-                { "key": "fiscal_year", "value": "gte.2022" },
-                { "key": "total_compensation", "value": "gte.10000000" },
-                { "key": "select", "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker)" },
-                { "key": "order", "value": "total_compensation.desc" },
-                { "key": "limit", "value": "25" }
+                {
+                  "key": "fiscal_year",
+                  "value": "gte.2022"
+                },
+                {
+                  "key": "total_compensation",
+                  "value": "gte.10000000"
+                },
+                {
+                  "key": "select",
+                  "value": "executive_name,title,fiscal_year,total_compensation,companies(ticker)"
+                },
+                {
+                  "key": "order",
+                  "value": "total_compensation.desc"
+                },
+                {
+                  "key": "limit",
+                  "value": "25"
+                }
               ]
             }
           }
@@ -1466,14 +2857,29 @@
           "name": "OR filter",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?or=(ticker.eq.AAPL,ticker.eq.MSFT,ticker.eq.GOOGL)&select=ticker,name",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "or", "value": "(ticker.eq.AAPL,ticker.eq.MSFT,ticker.eq.GOOGL)" },
-                { "key": "select", "value": "ticker,name" }
+                {
+                  "key": "or",
+                  "value": "(ticker.eq.AAPL,ticker.eq.MSFT,ticker.eq.GOOGL)"
+                },
+                {
+                  "key": "select",
+                  "value": "ticker,name"
+                }
               ]
             }
           }
@@ -1483,16 +2889,32 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}" },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json" }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json"
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?ticker=eq.AAPL&select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "ticker", "value": "eq.AAPL" },
-                { "key": "select", "value": "*" }
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL"
+                },
+                {
+                  "key": "select",
+                  "value": "*"
+                }
               ]
             }
           }
@@ -1502,73 +2924,344 @@
           "description": "Hit Send as-is and you get the full companies table (only `select=*` is enabled). Every other row is a disabled example of a PostgREST query parameter you can enable. Substitute real column names from the table you're targeting.\n\nPostgREST docs: https://postgrest.org/en/stable/references/api/tables_views.html",
           "request": {
             "method": "GET",
-            "header": [{ "key": "apikey", "value": "{{supabase_key}}" }],
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}"
+              }
+            ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=*",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "*", "description": "PROJECTION — return all columns. Default if omitted." },
-                { "key": "select", "value": "ticker,name,cik", "disabled": true, "description": "PROJECTION — explicit column list. Cheaper than `*` for wide tables." },
-                { "key": "select", "value": "ticker,legal_name:name", "disabled": true, "description": "PROJECTION — alias columns: `output_name:db_column`." },
-                { "key": "select", "value": "ticker,cik::text", "disabled": true, "description": "PROJECTION — cast a column to another type using `column::type`." },
-                { "key": "select", "value": "raw_data->>field_name", "disabled": true, "description": "PROJECTION — extract jsonb field as text. Use `->` for jsonb subobject, `->>` for text." },
-                { "key": "select", "value": "*,directors(*)", "disabled": true, "description": "EMBED — pull the related directors rows for each company via FK relationship." },
-                { "key": "select", "value": "*,directors(name,title)", "disabled": true, "description": "EMBED — relation with column projection on the embedded table." },
-                { "key": "select", "value": "*,directors!directors_company_id_fkey(*)", "disabled": true, "description": "EMBED — disambiguate which FK to follow when there are multiple FKs between the same two tables." },
-                { "key": "select", "value": "*,directors(*),executive_compensation(*)", "disabled": true, "description": "EMBED — multiple relations in one request." },
-                { "key": "select", "value": "*,director_count:directors(count)", "disabled": true, "description": "EMBED — return only the count of related rows." },
-
-                { "key": "ticker", "value": "eq.AAPL", "disabled": true, "description": "FILTER eq — equals." },
-                { "key": "ticker", "value": "neq.AAPL", "disabled": true, "description": "FILTER neq — not equal." },
-                { "key": "cik", "value": "gt.1000000", "disabled": true, "description": "FILTER gt — greater than." },
-                { "key": "cik", "value": "gte.1000000", "disabled": true, "description": "FILTER gte — greater than or equal." },
-                { "key": "cik", "value": "lt.9999999", "disabled": true, "description": "FILTER lt — less than." },
-                { "key": "cik", "value": "lte.9999999", "disabled": true, "description": "FILTER lte — less than or equal." },
-                { "key": "name", "value": "like.Apple*", "disabled": true, "description": "FILTER like — SQL LIKE, case-sensitive. `*` is the wildcard (URL-friendly substitute for `%`)." },
-                { "key": "name", "value": "ilike.*apple*", "disabled": true, "description": "FILTER ilike — case-insensitive LIKE. Most commonly used for substring search." },
-                { "key": "name", "value": "match.^Apple", "disabled": true, "description": "FILTER match — POSIX regex, case-sensitive." },
-                { "key": "name", "value": "imatch.^apple", "disabled": true, "description": "FILTER imatch — POSIX regex, case-insensitive." },
-                { "key": "ticker", "value": "in.(AAPL,MSFT,GOOGL)", "disabled": true, "description": "FILTER in — value in list. Comma-separated, parens required. Quote strings with commas: `in.(\"a,b\",c)`." },
-                { "key": "cik", "value": "is.null", "disabled": true, "description": "FILTER is — IS NULL. Also: `is.true`, `is.false`, `is.unknown`." },
-                { "key": "cik", "value": "isdistinct.123", "disabled": true, "description": "FILTER isdistinct — IS DISTINCT FROM (null-safe inequality)." },
-                { "key": "name", "value": "fts.iphone", "disabled": true, "description": "FILTER fts — full-text search using `to_tsquery`. Combine words with `&`, `|`, `!`." },
-                { "key": "name", "value": "plfts.iphone", "disabled": true, "description": "FILTER plfts — plain full-text search via `plainto_tsquery` (no operator parsing)." },
-                { "key": "name", "value": "phfts.apple iphone", "disabled": true, "description": "FILTER phfts — phrase full-text search via `phraseto_tsquery`. Words must appear in order." },
-                { "key": "name", "value": "wfts.apple OR iphone", "disabled": true, "description": "FILTER wfts — websearch FTS via `websearch_to_tsquery`. Google-style operators." },
-                { "key": "tags", "value": "cs.{apple,tech}", "disabled": true, "description": "FILTER cs — contains. For arrays/jsonb/range. e.g. array contains `{apple,tech}`." },
-                { "key": "tags", "value": "cd.{apple,tech,phone}", "disabled": true, "description": "FILTER cd — contained by." },
-                { "key": "tags", "value": "ov.{apple,tech}", "disabled": true, "description": "FILTER ov — overlap (any element in common)." },
-                { "key": "period", "value": "sl.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER sl — strictly left of (range type)." },
-                { "key": "period", "value": "sr.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER sr — strictly right of." },
-                { "key": "period", "value": "nxr.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER nxr — does not extend right." },
-                { "key": "period", "value": "nxl.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER nxl — does not extend left." },
-                { "key": "period", "value": "adj.(2024-01-01,2024-12-31)", "disabled": true, "description": "FILTER adj — adjacent to." },
-
-                { "key": "ticker", "value": "not.eq.AAPL", "disabled": true, "description": "NEGATION — prefix any operator with `not.`. Works with ilike, in, is, etc." },
-                { "key": "name", "value": "not.ilike.*apple*", "disabled": true, "description": "NEGATION — `not.ilike` excludes substring matches." },
-
-                { "key": "or", "value": "(ticker.eq.AAPL,ticker.eq.MSFT)", "disabled": true, "description": "LOGICAL or — comma-separated conditions inside parens. Equivalent to SQL OR." },
-                { "key": "and", "value": "(cik.gt.0,cik.lt.9999999)", "disabled": true, "description": "LOGICAL and — explicit AND group. Multiple top-level params already AND together; this is mainly used inside `or`." },
-                { "key": "or", "value": "(name.ilike.*apple*,and(cik.gt.1000,cik.lt.2000))", "disabled": true, "description": "LOGICAL nested — combine `or` with nested `and(...)` for complex predicates." },
-                { "key": "or", "value": "(ticker.eq.AAPL,not.and(cik.gt.1000,cik.lt.2000))", "disabled": true, "description": "LOGICAL nested with negation — `not.and(...)` inverts a sub-group." },
-
-                { "key": "order", "value": "name.asc", "disabled": true, "description": "ORDER — ascending by column. `asc` is default; can omit." },
-                { "key": "order", "value": "name.desc", "disabled": true, "description": "ORDER — descending." },
-                { "key": "order", "value": "name.asc.nullsfirst", "disabled": true, "description": "ORDER — control null placement: `nullsfirst` or `nullslast`." },
-                { "key": "order", "value": "cik.desc.nullslast,name.asc", "disabled": true, "description": "ORDER — multi-column, comma-separated. First column is primary sort." },
-
-                { "key": "limit", "value": "25", "disabled": true, "description": "PAGINATION — cap rows returned. Pair with `offset` or use the `Range` header." },
-                { "key": "offset", "value": "50", "disabled": true, "description": "PAGINATION — skip N rows. Combine with `limit`." },
-
-                { "key": "directors.order", "value": "name.asc", "disabled": true, "description": "EMBED MODIFIER — order rows inside the embedded `directors(...)` relation." },
-                { "key": "directors.limit", "value": "5", "disabled": true, "description": "EMBED MODIFIER — limit rows inside the embedded relation." },
-                { "key": "directors.offset", "value": "0", "disabled": true, "description": "EMBED MODIFIER — offset inside the embedded relation." },
-                { "key": "directors.title", "value": "eq.CEO", "disabled": true, "description": "EMBED MODIFIER — filter the embedded relation. Format: `<relation>.<col>=<op>.<value>`." },
-                { "key": "directors.select", "value": "name,title", "disabled": true, "description": "EMBED MODIFIER — alternate way to project columns on the embedded relation (also can be done inside the select itself)." },
-
-                { "key": "on_conflict", "value": "ticker", "disabled": true, "description": "WRITE-ONLY — for POST upserts: name the unique column to match on. Pair with `Prefer: resolution=merge-duplicates`." },
-                { "key": "columns", "value": "ticker,name", "disabled": true, "description": "WRITE-ONLY — for POST: limit which columns are inserted from the body." }
+                {
+                  "key": "select",
+                  "value": "*",
+                  "description": "PROJECTION — return all columns. Default if omitted."
+                },
+                {
+                  "key": "select",
+                  "value": "ticker,name,cik",
+                  "disabled": true,
+                  "description": "PROJECTION — explicit column list. Cheaper than `*` for wide tables."
+                },
+                {
+                  "key": "select",
+                  "value": "ticker,legal_name:name",
+                  "disabled": true,
+                  "description": "PROJECTION — alias columns: `output_name:db_column`."
+                },
+                {
+                  "key": "select",
+                  "value": "ticker,cik::text",
+                  "disabled": true,
+                  "description": "PROJECTION — cast a column to another type using `column::type`."
+                },
+                {
+                  "key": "select",
+                  "value": "raw_data->>field_name",
+                  "disabled": true,
+                  "description": "PROJECTION — extract jsonb field as text. Use `->` for jsonb subobject, `->>` for text."
+                },
+                {
+                  "key": "select",
+                  "value": "*,directors(*)",
+                  "disabled": true,
+                  "description": "EMBED — pull the related directors rows for each company via FK relationship."
+                },
+                {
+                  "key": "select",
+                  "value": "*,directors(name,title)",
+                  "disabled": true,
+                  "description": "EMBED — relation with column projection on the embedded table."
+                },
+                {
+                  "key": "select",
+                  "value": "*,directors!directors_company_id_fkey(*)",
+                  "disabled": true,
+                  "description": "EMBED — disambiguate which FK to follow when there are multiple FKs between the same two tables."
+                },
+                {
+                  "key": "select",
+                  "value": "*,directors(*),executive_compensation(*)",
+                  "disabled": true,
+                  "description": "EMBED — multiple relations in one request."
+                },
+                {
+                  "key": "select",
+                  "value": "*,director_count:directors(count)",
+                  "disabled": true,
+                  "description": "EMBED — return only the count of related rows."
+                },
+                {
+                  "key": "ticker",
+                  "value": "eq.AAPL",
+                  "disabled": true,
+                  "description": "FILTER eq — equals."
+                },
+                {
+                  "key": "ticker",
+                  "value": "neq.AAPL",
+                  "disabled": true,
+                  "description": "FILTER neq — not equal."
+                },
+                {
+                  "key": "cik",
+                  "value": "gt.1000000",
+                  "disabled": true,
+                  "description": "FILTER gt — greater than."
+                },
+                {
+                  "key": "cik",
+                  "value": "gte.1000000",
+                  "disabled": true,
+                  "description": "FILTER gte — greater than or equal."
+                },
+                {
+                  "key": "cik",
+                  "value": "lt.9999999",
+                  "disabled": true,
+                  "description": "FILTER lt — less than."
+                },
+                {
+                  "key": "cik",
+                  "value": "lte.9999999",
+                  "disabled": true,
+                  "description": "FILTER lte — less than or equal."
+                },
+                {
+                  "key": "name",
+                  "value": "like.Apple*",
+                  "disabled": true,
+                  "description": "FILTER like — SQL LIKE, case-sensitive. `*` is the wildcard (URL-friendly substitute for `%`)."
+                },
+                {
+                  "key": "name",
+                  "value": "ilike.*apple*",
+                  "disabled": true,
+                  "description": "FILTER ilike — case-insensitive LIKE. Most commonly used for substring search."
+                },
+                {
+                  "key": "name",
+                  "value": "match.^Apple",
+                  "disabled": true,
+                  "description": "FILTER match — POSIX regex, case-sensitive."
+                },
+                {
+                  "key": "name",
+                  "value": "imatch.^apple",
+                  "disabled": true,
+                  "description": "FILTER imatch — POSIX regex, case-insensitive."
+                },
+                {
+                  "key": "ticker",
+                  "value": "in.(AAPL,MSFT,GOOGL)",
+                  "disabled": true,
+                  "description": "FILTER in — value in list. Comma-separated, parens required. Quote strings with commas: `in.(\"a,b\",c)`."
+                },
+                {
+                  "key": "cik",
+                  "value": "is.null",
+                  "disabled": true,
+                  "description": "FILTER is — IS NULL. Also: `is.true`, `is.false`, `is.unknown`."
+                },
+                {
+                  "key": "cik",
+                  "value": "isdistinct.123",
+                  "disabled": true,
+                  "description": "FILTER isdistinct — IS DISTINCT FROM (null-safe inequality)."
+                },
+                {
+                  "key": "name",
+                  "value": "fts.iphone",
+                  "disabled": true,
+                  "description": "FILTER fts — full-text search using `to_tsquery`. Combine words with `&`, `|`, `!`."
+                },
+                {
+                  "key": "name",
+                  "value": "plfts.iphone",
+                  "disabled": true,
+                  "description": "FILTER plfts — plain full-text search via `plainto_tsquery` (no operator parsing)."
+                },
+                {
+                  "key": "name",
+                  "value": "phfts.apple iphone",
+                  "disabled": true,
+                  "description": "FILTER phfts — phrase full-text search via `phraseto_tsquery`. Words must appear in order."
+                },
+                {
+                  "key": "name",
+                  "value": "wfts.apple OR iphone",
+                  "disabled": true,
+                  "description": "FILTER wfts — websearch FTS via `websearch_to_tsquery`. Google-style operators."
+                },
+                {
+                  "key": "tags",
+                  "value": "cs.{apple,tech}",
+                  "disabled": true,
+                  "description": "FILTER cs — contains. For arrays/jsonb/range. e.g. array contains `{apple,tech}`."
+                },
+                {
+                  "key": "tags",
+                  "value": "cd.{apple,tech,phone}",
+                  "disabled": true,
+                  "description": "FILTER cd — contained by."
+                },
+                {
+                  "key": "tags",
+                  "value": "ov.{apple,tech}",
+                  "disabled": true,
+                  "description": "FILTER ov — overlap (any element in common)."
+                },
+                {
+                  "key": "period",
+                  "value": "sl.(2024-01-01,2024-12-31)",
+                  "disabled": true,
+                  "description": "FILTER sl — strictly left of (range type)."
+                },
+                {
+                  "key": "period",
+                  "value": "sr.(2024-01-01,2024-12-31)",
+                  "disabled": true,
+                  "description": "FILTER sr — strictly right of."
+                },
+                {
+                  "key": "period",
+                  "value": "nxr.(2024-01-01,2024-12-31)",
+                  "disabled": true,
+                  "description": "FILTER nxr — does not extend right."
+                },
+                {
+                  "key": "period",
+                  "value": "nxl.(2024-01-01,2024-12-31)",
+                  "disabled": true,
+                  "description": "FILTER nxl — does not extend left."
+                },
+                {
+                  "key": "period",
+                  "value": "adj.(2024-01-01,2024-12-31)",
+                  "disabled": true,
+                  "description": "FILTER adj — adjacent to."
+                },
+                {
+                  "key": "ticker",
+                  "value": "not.eq.AAPL",
+                  "disabled": true,
+                  "description": "NEGATION — prefix any operator with `not.`. Works with ilike, in, is, etc."
+                },
+                {
+                  "key": "name",
+                  "value": "not.ilike.*apple*",
+                  "disabled": true,
+                  "description": "NEGATION — `not.ilike` excludes substring matches."
+                },
+                {
+                  "key": "or",
+                  "value": "(ticker.eq.AAPL,ticker.eq.MSFT)",
+                  "disabled": true,
+                  "description": "LOGICAL or — comma-separated conditions inside parens. Equivalent to SQL OR."
+                },
+                {
+                  "key": "and",
+                  "value": "(cik.gt.0,cik.lt.9999999)",
+                  "disabled": true,
+                  "description": "LOGICAL and — explicit AND group. Multiple top-level params already AND together; this is mainly used inside `or`."
+                },
+                {
+                  "key": "or",
+                  "value": "(name.ilike.*apple*,and(cik.gt.1000,cik.lt.2000))",
+                  "disabled": true,
+                  "description": "LOGICAL nested — combine `or` with nested `and(...)` for complex predicates."
+                },
+                {
+                  "key": "or",
+                  "value": "(ticker.eq.AAPL,not.and(cik.gt.1000,cik.lt.2000))",
+                  "disabled": true,
+                  "description": "LOGICAL nested with negation — `not.and(...)` inverts a sub-group."
+                },
+                {
+                  "key": "order",
+                  "value": "name.asc",
+                  "disabled": true,
+                  "description": "ORDER — ascending by column. `asc` is default; can omit."
+                },
+                {
+                  "key": "order",
+                  "value": "name.desc",
+                  "disabled": true,
+                  "description": "ORDER — descending."
+                },
+                {
+                  "key": "order",
+                  "value": "name.asc.nullsfirst",
+                  "disabled": true,
+                  "description": "ORDER — control null placement: `nullsfirst` or `nullslast`."
+                },
+                {
+                  "key": "order",
+                  "value": "cik.desc.nullslast,name.asc",
+                  "disabled": true,
+                  "description": "ORDER — multi-column, comma-separated. First column is primary sort."
+                },
+                {
+                  "key": "limit",
+                  "value": "25",
+                  "disabled": true,
+                  "description": "PAGINATION — cap rows returned. Pair with `offset` or use the `Range` header."
+                },
+                {
+                  "key": "offset",
+                  "value": "50",
+                  "disabled": true,
+                  "description": "PAGINATION — skip N rows. Combine with `limit`."
+                },
+                {
+                  "key": "directors.order",
+                  "value": "name.asc",
+                  "disabled": true,
+                  "description": "EMBED MODIFIER — order rows inside the embedded `directors(...)` relation."
+                },
+                {
+                  "key": "directors.limit",
+                  "value": "5",
+                  "disabled": true,
+                  "description": "EMBED MODIFIER — limit rows inside the embedded relation."
+                },
+                {
+                  "key": "directors.offset",
+                  "value": "0",
+                  "disabled": true,
+                  "description": "EMBED MODIFIER — offset inside the embedded relation."
+                },
+                {
+                  "key": "directors.title",
+                  "value": "eq.CEO",
+                  "disabled": true,
+                  "description": "EMBED MODIFIER — filter the embedded relation. Format: `<relation>.<col>=<op>.<value>`."
+                },
+                {
+                  "key": "directors.select",
+                  "value": "name,title",
+                  "disabled": true,
+                  "description": "EMBED MODIFIER — alternate way to project columns on the embedded relation (also can be done inside the select itself)."
+                },
+                {
+                  "key": "on_conflict",
+                  "value": "ticker",
+                  "disabled": true,
+                  "description": "WRITE-ONLY — for POST upserts: name the unique column to match on. Pair with `Prefer: resolution=merge-duplicates`."
+                },
+                {
+                  "key": "columns",
+                  "value": "ticker,name",
+                  "disabled": true,
+                  "description": "WRITE-ONLY — for POST: limit which columns are inserted from the body."
+                }
               ]
             }
           }
@@ -1579,37 +3272,161 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "apikey", "value": "{{supabase_key}}", "description": "AUTH — Supabase project key. Always required." },
-              { "key": "Accept", "value": "application/json", "disabled": true, "description": "RESPONSE FORMAT — default. JSON array of rows." },
-              { "key": "Accept", "value": "application/vnd.pgrst.object+json", "disabled": true, "description": "RESPONSE FORMAT — single object instead of array. 406 if 0 or >1 rows match." },
-              { "key": "Accept", "value": "text/csv", "disabled": true, "description": "RESPONSE FORMAT — CSV output." },
-              { "key": "Accept", "value": "application/openapi+json", "disabled": true, "description": "RESPONSE FORMAT — at the API root, returns the OpenAPI spec describing every table and RPC." },
-              { "key": "Accept-Profile", "value": "public", "disabled": true, "description": "SCHEMA — read from a non-default Postgres schema (must be exposed via `db-schemas` setting)." },
-              { "key": "Content-Profile", "value": "public", "disabled": true, "description": "SCHEMA — for writes: target a non-default schema." },
-              { "key": "Prefer", "value": "count=exact", "disabled": true, "description": "COUNT — total row count returned in `Content-Range` response header. Slow on large tables." },
-              { "key": "Prefer", "value": "count=planned", "disabled": true, "description": "COUNT — fast estimate from query planner. Cheap but approximate." },
-              { "key": "Prefer", "value": "count=estimated", "disabled": true, "description": "COUNT — exact when small, planned when large. Good default for unknown sizes." },
-              { "key": "Prefer", "value": "return=representation", "disabled": true, "description": "WRITE — include the inserted/updated/deleted row(s) in the response body." },
-              { "key": "Prefer", "value": "return=minimal", "disabled": true, "description": "WRITE — don't return a body. Default for inserts." },
-              { "key": "Prefer", "value": "return=headers-only", "disabled": true, "description": "WRITE — return only Location header pointing at the new row." },
-              { "key": "Prefer", "value": "resolution=merge-duplicates", "disabled": true, "description": "UPSERT — on conflict, UPDATE the existing row. Pair with `on_conflict=<col>` query param." },
-              { "key": "Prefer", "value": "resolution=ignore-duplicates", "disabled": true, "description": "UPSERT — on conflict, leave existing row alone." },
-              { "key": "Prefer", "value": "missing=default", "disabled": true, "description": "WRITE — when a column is missing from the body, use its DB default instead of NULL." },
-              { "key": "Prefer", "value": "tx=commit", "disabled": true, "description": "TRANSACTION — commit (default)." },
-              { "key": "Prefer", "value": "tx=rollback", "disabled": true, "description": "TRANSACTION — execute and roll back. Useful for dry-run testing of writes." },
-              { "key": "Prefer", "value": "handling=strict", "disabled": true, "description": "VALIDATION — error on unknown query parameters or headers. Default is `lenient`." },
-              { "key": "Prefer", "value": "timezone=America/New_York", "disabled": true, "description": "TIMEZONE — set the session timezone for this request (affects timestamp formatting)." },
-              { "key": "Range", "value": "0-24", "disabled": true, "description": "PAGINATION — alternative to `limit`/`offset`. Inclusive 0-indexed range. Pair with `Prefer: count=exact` to get totals." },
-              { "key": "Range-Unit", "value": "items", "disabled": true, "description": "PAGINATION — must be `items` (the only supported unit)." },
-              { "key": "If-Match", "value": "\"<etag>\"", "disabled": true, "description": "CONCURRENCY — only act if the resource ETag matches (optimistic locking)." }
+              {
+                "key": "apikey",
+                "value": "{{supabase_key}}",
+                "description": "AUTH — Supabase project key. Always required."
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": true,
+                "description": "RESPONSE FORMAT — default. JSON array of rows."
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.pgrst.object+json",
+                "disabled": true,
+                "description": "RESPONSE FORMAT — single object instead of array. 406 if 0 or >1 rows match."
+              },
+              {
+                "key": "Accept",
+                "value": "text/csv",
+                "disabled": true,
+                "description": "RESPONSE FORMAT — CSV output."
+              },
+              {
+                "key": "Accept",
+                "value": "application/openapi+json",
+                "disabled": true,
+                "description": "RESPONSE FORMAT — at the API root, returns the OpenAPI spec describing every table and RPC."
+              },
+              {
+                "key": "Accept-Profile",
+                "value": "public",
+                "disabled": true,
+                "description": "SCHEMA — read from a non-default Postgres schema (must be exposed via `db-schemas` setting)."
+              },
+              {
+                "key": "Content-Profile",
+                "value": "public",
+                "disabled": true,
+                "description": "SCHEMA — for writes: target a non-default schema."
+              },
+              {
+                "key": "Prefer",
+                "value": "count=exact",
+                "disabled": true,
+                "description": "COUNT — total row count returned in `Content-Range` response header. Slow on large tables."
+              },
+              {
+                "key": "Prefer",
+                "value": "count=planned",
+                "disabled": true,
+                "description": "COUNT — fast estimate from query planner. Cheap but approximate."
+              },
+              {
+                "key": "Prefer",
+                "value": "count=estimated",
+                "disabled": true,
+                "description": "COUNT — exact when small, planned when large. Good default for unknown sizes."
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation",
+                "disabled": true,
+                "description": "WRITE — include the inserted/updated/deleted row(s) in the response body."
+              },
+              {
+                "key": "Prefer",
+                "value": "return=minimal",
+                "disabled": true,
+                "description": "WRITE — don't return a body. Default for inserts."
+              },
+              {
+                "key": "Prefer",
+                "value": "return=headers-only",
+                "disabled": true,
+                "description": "WRITE — return only Location header pointing at the new row."
+              },
+              {
+                "key": "Prefer",
+                "value": "resolution=merge-duplicates",
+                "disabled": true,
+                "description": "UPSERT — on conflict, UPDATE the existing row. Pair with `on_conflict=<col>` query param."
+              },
+              {
+                "key": "Prefer",
+                "value": "resolution=ignore-duplicates",
+                "disabled": true,
+                "description": "UPSERT — on conflict, leave existing row alone."
+              },
+              {
+                "key": "Prefer",
+                "value": "missing=default",
+                "disabled": true,
+                "description": "WRITE — when a column is missing from the body, use its DB default instead of NULL."
+              },
+              {
+                "key": "Prefer",
+                "value": "tx=commit",
+                "disabled": true,
+                "description": "TRANSACTION — commit (default)."
+              },
+              {
+                "key": "Prefer",
+                "value": "tx=rollback",
+                "disabled": true,
+                "description": "TRANSACTION — execute and roll back. Useful for dry-run testing of writes."
+              },
+              {
+                "key": "Prefer",
+                "value": "handling=strict",
+                "disabled": true,
+                "description": "VALIDATION — error on unknown query parameters or headers. Default is `lenient`."
+              },
+              {
+                "key": "Prefer",
+                "value": "timezone=America/New_York",
+                "disabled": true,
+                "description": "TIMEZONE — set the session timezone for this request (affects timestamp formatting)."
+              },
+              {
+                "key": "Range",
+                "value": "0-24",
+                "disabled": true,
+                "description": "PAGINATION — alternative to `limit`/`offset`. Inclusive 0-indexed range. Pair with `Prefer: count=exact` to get totals."
+              },
+              {
+                "key": "Range-Unit",
+                "value": "items",
+                "disabled": true,
+                "description": "PAGINATION — must be `items` (the only supported unit)."
+              },
+              {
+                "key": "If-Match",
+                "value": "\"<etag>\"",
+                "disabled": true,
+                "description": "CONCURRENCY — only act if the resource ETag matches (optimistic locking)."
+              }
             ],
             "url": {
               "raw": "{{supabase_url}}{{rest_path}}/companies?select=*&limit=1",
-              "host": ["{{supabase_url}}{{rest_path}}"],
-              "path": ["companies"],
+              "host": [
+                "{{supabase_url}}{{rest_path}}"
+              ],
+              "path": [
+                "companies"
+              ],
               "query": [
-                { "key": "select", "value": "*" },
-                { "key": "limit", "value": "1" }
+                {
+                  "key": "select",
+                  "value": "*"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
               ]
             }
           }

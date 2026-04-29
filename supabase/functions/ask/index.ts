@@ -30,7 +30,7 @@ const RERANK_TOP_K = 5
 /** Minimum reranker relevance score to keep a result */
 const RERANK_RELEVANCE_THRESHOLD = 0.1
 
-const RAG_SYSTEM_PROMPT = `You are a helpful financial information assistant for YoUnion, a platform that helps employees understand their company's SEC filings and compensation data.
+const RAG_SYSTEM_PROMPT = `You are a helpful financial information assistant for YoUnionize, a platform that helps employees understand their company's SEC filings and compensation data.
 
 You answer questions using ONLY the provided context from SEC filings and company data. If the context doesn't contain enough information to answer the question, say so honestly — never make up financial data.
 
