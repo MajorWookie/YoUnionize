@@ -52,7 +52,13 @@
       "Bash(grep \"\\\\.ts$\")",
       "Bash(git mv *)",
       "Bash(bun --cwd web run typecheck)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(grep -n \"^### Table$\\\\|^## Table$\" .agents/skills/mantine/references/llms-full.md)",
+      "Bash(awk '/^### BarChart/,/^### [A-Z]/' .agents/skills/mantine/references/llms-full.md)",
+      "Bash(sed -i '' \"s|import type { FinancialStatement, FinancialLineItem } from '../types'|import type { FinancialStatement, FinancialLineItem } from '~/lib/financial-types'|\" web/src/lib/income-data-extractor.ts)",
+      "Bash(sed -i '' \"s|import { formatFinancial } from '../format'|import { formatDollarsCompact as formatFinancial } from '~/lib/format'|\" web/src/lib/income-data-extractor.ts)",
+      "Bash(git log *)",
+      "Bash(yes)"
     ]
   },
   "enableAllProjectMcpServers": true,
