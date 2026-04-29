@@ -10,7 +10,7 @@ import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { Card } from '~/interface/display/Card'
 import { LoadingState } from '~/interface/display/LoadingState'
 import { ErrorState } from '~/interface/display/ErrorState'
-import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 import { formatDollars, getInitials } from '~/features/company/format'
 import type {
   CompanyDetailResponse,

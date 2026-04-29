@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Paragraph, Spinner, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
 import { useToast } from '~/interface/feedback/ToastProvider'
-import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 
 interface Props {
   ticker: string

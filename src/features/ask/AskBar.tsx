@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Button, Input, Paragraph, Spinner, XStack, YStack } from 'tamagui'
 import { Card } from '~/interface/display/Card'
-import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 
 interface Source {
   filingType: string

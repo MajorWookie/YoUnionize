@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'expo-router'
 import { Button, H2, Paragraph, Spinner, View, XStack, YStack } from 'tamagui'
-import { fetchWithRetry } from '~/lib/api-client'
+import { fetchWithRetry } from '@younionize/api-client'
 import { ScreenContainer } from '~/interface/layout/ScreenContainer'
 import { TextField } from '~/interface/form/TextField'
 import { SelectField } from '~/interface/form/SelectField'

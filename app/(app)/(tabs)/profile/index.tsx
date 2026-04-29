@@ -9,7 +9,7 @@ import { TextField } from '~/interface/form/TextField'
 import { SelectField } from '~/interface/form/SelectField'
 import { CurrencyInput } from '~/interface/form/CurrencyInput'
 import { useToast } from '~/interface/feedback/ToastProvider'
-import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 import { CompanyTypeahead } from '~/features/onboarding/CompanyTypeahead'
 import {
   ORG_LEVELS,

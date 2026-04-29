@@ -11,6 +11,7 @@
         "@supabase/supabase-js": "^2.99.2",
         "@tamagui/config": "^2.0.0-rc.15",
         "@younionize/ai": "workspace:*",
+        "@younionize/api-client": "workspace:*",
         "@younionize/helpers": "workspace:*",
         "@younionize/hooks": "workspace:*",
         "@younionize/postgres": "workspace:*",
@@ -64,6 +65,18 @@
       "devDependencies": {
         "oxfmt": "^0.16.0",
         "oxlint": "^1.31.0",
+      },
+    },
+    "packages/api-client": {
+      "name": "@younionize/api-client",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@supabase/supabase-js": "^2.99.2",
+        "oxfmt": "^0.16.0",
+        "oxlint": "^1.31.0",
+      },
+      "peerDependencies": {
+        "@supabase/supabase-js": "^2.0.0",
       },
     },
     "packages/helpers": {
@@ -998,6 +1011,8 @@
     "@xmldom/xmldom": ["@xmldom/xmldom@0.8.11", "", {}, "sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw=="],
 
     "@younionize/ai": ["@younionize/ai@workspace:packages/ai"],
+
+    "@younionize/api-client": ["@younionize/api-client@workspace:packages/api-client"],
 
     "@younionize/app": ["@younionize/app@workspace:app"],
 

@@ -11,7 +11,7 @@ import { FairnessGauge } from '~/interface/charts/FairnessGauge'
 import { WaterfallChart } from '~/interface/charts/WaterfallChart'
 import { MyPayIcon } from '~/interface/icons/TabIcons'
 import { useToast } from '~/interface/feedback/ToastProvider'
-import { extractErrorMessage, fetchWithRetry } from '~/lib/api-client'
+import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 import { formatDate } from '~/features/company/format'
 import { COST_OF_LIVING_FIELDS, type CostOfLivingKey } from '~/features/onboarding/constants'
 
