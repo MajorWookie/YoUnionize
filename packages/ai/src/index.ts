@@ -5,6 +5,8 @@ export type {
   FilingSummaryResult,
   CompanySummaryResult,
   EmployeeImpactResult,
+  EmployeeOutlookResult,
+  WorkforceSignalsResult,
   KeyNumber,
   CompensationAnalysisResult,
   CompensationComparison,
@@ -12,11 +14,6 @@ export type {
   TokenUsage,
 } from './types'
 export { CURRENT_SUMMARY_VERSION } from './types'
-export {
-  filingSummarySystemPrompt,
-  filingSummaryUserPrompt,
-} from './prompts/filing-summary'
-export type { FilingSummaryParams } from './prompts/filing-summary'
 export {
   sectionSummarySystemPrompt,
   sectionSummaryUserPrompt,
@@ -42,6 +39,11 @@ export {
   employeeImpactUserPrompt,
 } from './prompts/employee-impact'
 export type { EmployeeImpactParams } from './prompts/employee-impact'
+export {
+  workforceSignalsSystemPrompt,
+  workforceSignalsUserPrompt,
+} from './prompts/workforce-signals'
+export type { WorkforceSignalsParams } from './prompts/workforce-signals'
 export {
   mdaSummarySystemPrompt,
   mdaSummaryUserPrompt,

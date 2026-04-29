@@ -13,13 +13,6 @@ const SECTION_GUIDANCE: Record<string, string> = {
 - Financial risks that suggest the company might struggle to pay workers
 Skip boilerplate legal language. Highlight NEW risks added since last filing if possible.`,
 
-  mdAndA: `Focus on the company's actual financial performance in plain terms:
-- Is the company making more or less money than before?
-- What's driving revenue up or down?
-- Are they spending more on employees or cutting costs?
-- Cash flow: can they afford to keep operating, hire, and give raises?
-Translate accounting terms into everyday language.`,
-
   businessOverview: `Explain what this company actually does in simple terms:
 - What products/services do they sell?
 - Who are their customers?

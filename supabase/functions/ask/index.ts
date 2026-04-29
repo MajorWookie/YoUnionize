@@ -6,6 +6,7 @@ import { getDb } from '../_shared/db.ts'
 import {
   companies,
   filingSummaries,
+  filingSections,
   embeddings,
   userProfiles,
 } from '../_shared/schema.ts'
@@ -149,21 +150,7 @@ Deno.serve(async (req) => {
 
         for (let i = 0; i < vectorResults.length; i++) {
           const result = vectorResults[i]
-          const [filing] = await db
-            .select({
-              id: filingSummaries.id,
-              aiSummary: filingSummaries.aiSummary,
-            })
-            .from(filingSummaries)
-            .where(eq(filingSummaries.id, result.sourceId))
-            .limit(1)
-
-          if (!filing?.aiSummary) continue
-
-          const metadata = result.metadata ?? {}
-          const section = (metadata.section as string) ?? 'unknown'
-          const summary = filing.aiSummary as Record<string, unknown>
-          const text = extractSectionText(summary[section])
+          const text = await resolveEmbeddingText(db, result.sourceId, result.metadata ?? {})
 
           if (text.length > 0) {
             candidateTexts.push(text.slice(0, 2000))
@@ -227,31 +214,28 @@ Deno.serve(async (req) => {
           id: filingSummaries.id,
           filingType: filingSummaries.filingType,
           periodEnd: filingSummaries.periodEnd,
-          aiSummary: filingSummaries.aiSummary,
         })
         .from(filingSummaries)
         .where(eq(filingSummaries.id, result.sourceId))
         .limit(1)
 
-      if (!filing?.aiSummary) continue
+      if (!filing) continue
+
+      const text = await resolveEmbeddingText(db, result.sourceId, metadata)
+      if (text.length === 0) continue
 
       const ticker = (metadata.companyTicker as string) ?? companyTicker ?? ''
-      const summary = filing.aiSummary as Record<string, unknown>
-      const text = extractSectionText(summary[section])
-
-      if (text.length > 0) {
-        contextChunks.push(
-          `[${ticker} ${filing.filingType} — ${section}${filing.periodEnd ? ` (${filing.periodEnd})` : ''}]\n${text}`,
-        )
-        sources.push({
-          filingId: filing.id,
-          filingType: filing.filingType,
-          section,
-          periodEnd: filing.periodEnd,
-          companyTicker: ticker,
-          similarity: result.similarity,
-        })
-      }
+      contextChunks.push(
+        `[${ticker} ${filing.filingType} — ${section}${filing.periodEnd ? ` (${filing.periodEnd})` : ''}]\n${text}`,
+      )
+      sources.push({
+        filingId: filing.id,
+        filingType: filing.filingType,
+        section,
+        periodEnd: filing.periodEnd,
+        companyTicker: ticker,
+        similarity: result.similarity,
+      })
     }
 
     // Step 3b: Fallback — direct text retrieval from recent filings
@@ -364,6 +348,51 @@ Deno.serve(async (req) => {
 })
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Resolve the readable text for one embedding result. Per-section embeddings
+ * (metadata.sectionCode set) live on filing_sections.ai_summary; rollup
+ * embeddings (sectionCode null) live on filing_summaries.ai_summary[section].
+ *
+ * Until this branch existed, every per-section embedding silently fell out
+ * of context: metadata.section held a prompt kind like 'risk_factors' while
+ * filing_summaries.ai_summary only ever holds rollup keys. extractSectionText
+ * returned '' and the candidate was dropped.
+ */
+async function resolveEmbeddingText(
+  db: ReturnType<typeof getDb>,
+  sourceId: string,
+  metadata: Record<string, unknown>,
+): Promise<string> {
+  const sectionCode = (metadata.sectionCode as string | null | undefined) ?? null
+
+  if (sectionCode) {
+    // Per-section embedding — index hit on filing_sections_filing_code_idx.
+    const [row] = await db
+      .select({ aiSummary: filingSections.aiSummary })
+      .from(filingSections)
+      .where(
+        and(
+          eq(filingSections.filingId, sourceId),
+          eq(filingSections.sectionCode, sectionCode),
+        ),
+      )
+      .limit(1)
+    if (!row?.aiSummary) return ''
+    return extractSectionText(row.aiSummary)
+  }
+
+  // Rollup embedding — look up filing_summaries.ai_summary[section].
+  const section = (metadata.section as string) ?? 'unknown'
+  const [filing] = await db
+    .select({ aiSummary: filingSummaries.aiSummary })
+    .from(filingSummaries)
+    .where(eq(filingSummaries.id, sourceId))
+    .limit(1)
+  if (!filing?.aiSummary) return ''
+  const summary = filing.aiSummary as Record<string, unknown>
+  return extractSectionText(summary[section])
+}
 
 /** Extract readable text from an AI summary section value (handles multiple shapes). */
 function extractSectionText(content: unknown): string {

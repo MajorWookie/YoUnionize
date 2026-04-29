@@ -1,45 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ClaudeClient } from '../claude'
-import type { FilingSummaryResult, CompensationAnalysisResult } from '../types'
+import type { CompensationAnalysisResult } from '../types'
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
-
-const MOCK_FILING_SUMMARY: FilingSummaryResult = {
-  executive_summary:
-    'Apple reported record revenue of $394 billion for fiscal year 2024, up 2% from last year. Profits grew modestly despite increased R&D spending.',
-  key_numbers: [
-    {
-      label: 'Annual Revenue',
-      value: '$394.3 billion',
-      context:
-        "That's roughly $1.08 billion per day — more than most countries' GDP",
-    },
-    {
-      label: 'Net Income',
-      value: '$97 billion',
-      context:
-        'The company keeps about 25 cents of every dollar it earns as profit',
-    },
-    {
-      label: 'Employees',
-      value: '161,000',
-      context:
-        'Revenue per employee is about $2.4 million — extremely high for any industry',
-    },
-  ],
-  plain_language_explanation:
-    'Apple had a strong year financially. Revenue grew slightly, driven by services (iCloud, App Store, Apple Music) rather than iPhone sales, which were flat. The company spent more on research and development, which could mean new products are coming.',
-  red_flags: [
-    'iPhone revenue was flat year-over-year, suggesting market saturation',
-    'China revenue declined 8% amid geopolitical tensions',
-  ],
-  opportunities: [
-    'Services revenue grew 14% and has higher profit margins than hardware',
-    'Company has $162 billion in cash reserves',
-  ],
-  employee_relevance:
-    'Apple remains very profitable, which is good for job security and potential raises. The shift toward services means the company may hire more software engineers and fewer hardware designers.',
-}
 
 const MOCK_COMPENSATION_ANALYSIS: CompensationAnalysisResult = {
   fairness_score: 42,
@@ -146,74 +109,19 @@ describe('ClaudeClient', () => {
 
     it('uses section-specific guidance in system prompt', async () => {
       getMockCreate().mockResolvedValueOnce(
-        createMockAnthropicResponse('Summary of MD&A section'),
+        createMockAnthropicResponse('Summary of risk factors section'),
       )
 
       await client.summarizeSection({
-        section: 'Management discussion...',
-        sectionType: 'mdAndA',
+        section: 'The Company faces several risks...',
+        sectionType: 'riskFactors',
         companyName: 'Tesla Inc.',
         filingType: '10-K',
       })
 
       const systemPrompt = getMockCreate().mock.calls[0][0].system
-      expect(systemPrompt).toContain('mdAndA')
-      expect(systemPrompt).toContain('Cash flow')
-    })
-  })
-
-  // ─── generateFilingSummary ──────────────────────────────────────────
-
-  describe('generateFilingSummary', () => {
-    it('returns parsed FilingSummaryResult', async () => {
-      getMockCreate().mockResolvedValueOnce(
-        createMockAnthropicResponse(JSON.stringify(MOCK_FILING_SUMMARY)),
-      )
-
-      const result = await client.generateFilingSummary({
-        rawData: { ticker: 'AAPL', revenue: 394000000000 },
-        filingType: '10-K',
-        companyName: 'Apple Inc.',
-      })
-
-      expect(result.data.executive_summary).toContain('record revenue')
-      expect(result.data.key_numbers).toHaveLength(3)
-      expect(result.data.red_flags).toHaveLength(2)
-      expect(result.data.opportunities).toHaveLength(2)
-      expect(result.data.employee_relevance).toContain('profitable')
-    })
-
-    it('handles JSON wrapped in code fences', async () => {
-      const fencedJson = '```json\n' + JSON.stringify(MOCK_FILING_SUMMARY) + '\n```'
-      getMockCreate().mockResolvedValueOnce(
-        createMockAnthropicResponse(fencedJson),
-      )
-
-      const result = await client.generateFilingSummary({
-        rawData: { ticker: 'AAPL' },
-        filingType: '10-K',
-        companyName: 'Apple Inc.',
-      })
-
-      expect(result.data.executive_summary).toBeTruthy()
-    })
-
-    it('uses filing-summary prompts', async () => {
-      getMockCreate().mockResolvedValueOnce(
-        createMockAnthropicResponse(JSON.stringify(MOCK_FILING_SUMMARY)),
-      )
-
-      await client.generateFilingSummary({
-        rawData: { formType: '10-K' },
-        filingType: '10-K',
-        companyName: 'Tesla Inc.',
-      })
-
-      const call = getMockCreate().mock.calls[0][0]
-      expect(call.system).toContain('SEC filings in plain language')
-      expect(call.system).toContain('executive_summary')
-      expect(call.messages[0].content).toContain('Tesla Inc.')
-      expect(call.messages[0].content).toContain('10-K')
+      expect(systemPrompt).toContain('riskFactors')
+      expect(systemPrompt).toContain('Job security')
     })
   })
 

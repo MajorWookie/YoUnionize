@@ -21,8 +21,8 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 | What it does | File | Triggered by |
 |---|---|---|
 | Structured "company health" card (headline, key numbers, red flags, opportunities) | [company-summary.ts](../../packages/ai/src/prompts/company-summary.ts) | `POST /api/companies/[ticker]/summarize` |
-| Worker-impact analysis (job security, H-1B, geography mismatch) | [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts) | `POST /api/companies/[ticker]/summarize` |
-| Generic filing summary (used when a structured summary isn't needed) | [filing-summary.ts](../../packages/ai/src/prompts/filing-summary.ts) | Internal `generateFilingSummary()` |
+| Worker outlook (job security, comp, growth — handled by aggregated section input) | [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts) | `POST /api/companies/[ticker]/summarize` |
+| Workforce geography + H-1B/visa dependency (raw section text) | [workforce-signals.ts](../../packages/ai/src/prompts/workforce-signals.ts) | `POST /api/companies/[ticker]/summarize` |
 | Per-section summaries (risk factors, MD&A, business overview, etc.) | [section-summary.ts](../../packages/ai/src/prompts/section-summary.ts) | `POST /api/companies/[ticker]/summarize` |
 | MD&A markdown breakdown (rendered as the MD&A card) | [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts) | `POST /api/companies/[ticker]/summarize` |
 | Pay fairness analysis (1–100 score, comparisons, recommendations) | [compensation-analysis.ts](../../packages/ai/src/prompts/compensation-analysis.ts) | `POST /api/analysis/compensation-fairness` |
@@ -43,29 +43,33 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 - Tighten or loosen what counts as a "red flag" vs. "opportunity"
 - Adjust the reading level (currently 8th-grade)
 
-**Input data:** the entire filing JSON (XBRL financials, etc.), truncated to ~100k chars by `truncateForContext()` in `claude.ts:371`.
+**Input data:** the markdown-aggregated view of the filing's per-section AI summaries built by `buildAggregatedContext()` in `summarization-pipeline.ts`. Includes filing meta, ordered section summaries (Business Overview → MD&A → Risk Factors → …), and one-line XBRL serialisations. **Not** the raw filing JSON — the prompt explicitly instructs Claude that it's reading pre-summarised content.
 
 ---
 
-### 2. Employee Impact — [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts)
+### 2. Employee Outlook — [employee-impact.ts](../../packages/ai/src/prompts/employee-impact.ts)
 
-**What it produces:** the longest and most opinionated prompt. Returns JSON with `overall_outlook`, `job_security`, `compensation_signals`, `growth_opportunities`, `workforce_geography`, `h1b_and_visa_dependency`, `watch_items[]`.
+**What it produces:** the outlook portion of the worker-impact card: `overall_outlook`, `job_security`, `compensation_signals`, `growth_opportunities`, `watch_items[]`. Geography and visa-dependency are handled by [workforce-signals.ts](../../packages/ai/src/prompts/workforce-signals.ts) — a focused prompt that needs raw text, not summaries.
 
 **When to edit:**
-- Add new "signal categories" (currently 6: Job Security, Compensation, Growth, Culture, Workforce Geography, H-1B/Visa)
-- Adjust how aggressively the model flags H-1B/visa concerns (currently scans for ~10 specific terms and flags reliance as a concern)
-- Change the geographic-revenue-vs-headcount mismatch threshold (currently flags any noticeable disproportion)
-- Add or remove the "show your work" requirement that forces the model to quote raw filing text
+- Add new outlook signal categories (currently 4: Job Security, Compensation, Growth, Culture)
+- Adjust how aggressively the model flags concerns
+- Tweak the "be direct, don't hedge" instruction
 
-**Input data:** filing JSON + optional `riskFactors` text + optional `mdaText`.
+**Input data:** the same aggregated section context that company-summary uses. The pipeline merges this prompt's output with `workforce-signals` output into a single `EmployeeImpactResult` for frontend backwards compatibility.
 
 ---
 
-### 3. Generic Filing Summary — [filing-summary.ts](../../packages/ai/src/prompts/filing-summary.ts)
+### 3. Workforce Signals — [workforce-signals.ts](../../packages/ai/src/prompts/workforce-signals.ts)
 
-**What it produces:** an older, simpler filing summary (executive summary, key numbers, plain-language explanation, red flags, opportunities, employee relevance). Newer code prefers `company-summary.ts` and `employee-impact.ts` instead.
+**What it produces:** the geography + visa portion of the worker-impact card: `workforce_geography`, `h1b_and_visa_dependency`, `watch_items[]`. Output is merged with `generateEmployeeImpact` into the `employee_impact` rollup.
 
-**When to edit:** mostly legacy. Only edit if you're keeping the older summary path alive somewhere.
+**When to edit:**
+- Adjust how aggressively the model flags H-1B/visa concerns (scans for specific terms; flags reliance as concern)
+- Change the geographic-revenue-vs-headcount mismatch threshold
+- Tweak the "show your work" / direct-quote requirements
+
+**Input data:** raw text of the `business_overview` (Item 1) and `risk_factors` (Item 1A) sections. Raw text — not the summary — because direct quotes and exact figures matter for these signals. The pipeline finds these sections by `promptKind` lookup so it works across 10-K (`'1'` / `'1A'`) and 10-Q (`'part2item1a'`) filings.
 
 ---
 
@@ -73,13 +77,14 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 
 **What it produces:** a short (under 150 words) plain-text summary of a single filing section.
 
-**Special structure:** uses a `SECTION_GUIDANCE` lookup table (lines 8–50) that switches behavior based on which section is being summarized:
+**Special structure:** uses a `SECTION_GUIDANCE` lookup table that switches behavior based on which section is being summarized:
 - `riskFactors`
-- `mdAndA`
 - `businessOverview`
 - `legalProceedings`
 - `financialStatements`
 - `executiveCompensation`
+
+(The `mdAndA` key was removed — MD&A now uses the dedicated [mda-summary.ts](../../packages/ai/src/prompts/mda-summary.ts) prompt instead.)
 
 **When to edit:**
 - To change how a *specific* section is summarized, edit only its entry in `SECTION_GUIDANCE` — leave the rest alone.
