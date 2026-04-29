@@ -789,6 +789,7 @@ function buildEmbeddingText(
 
 interface ChunkJob {
   filingId: string
+  filingSectionId: string | null // null for filing-level rollups
   sectionCode: string | null // null for filing-level rollups
   promptKind: SectionPromptKind | RollupKey
   chunk: string
@@ -828,6 +829,7 @@ async function generateAllEmbeddings(
       sectionContentHashes.add(contentHash)
       jobs.push({
         filingId,
+        filingSectionId: write.rowId,
         sectionCode: write.sectionCode,
         promptKind: write.promptKind,
         chunk: chunks[i],
@@ -856,6 +858,7 @@ async function generateAllEmbeddings(
       }
       jobs.push({
         filingId,
+        filingSectionId: null,
         sectionCode: null,
         promptKind: key,
         chunk: chunks[i],
@@ -882,6 +885,7 @@ async function generateAllEmbeddings(
       }
       jobs.push({
         filingId,
+        filingSectionId: null,
         sectionCode: null,
         promptKind: 'executive_compensation',
         chunk: chunks[i],
@@ -922,6 +926,7 @@ async function generateAllEmbeddings(
         metadata: {
           section: job.promptKind,
           sectionCode: job.sectionCode,
+          filingSectionId: job.filingSectionId,
           filingId,
           chunkIndex: job.chunkIndex,
           totalChunks: job.totalChunks,
