@@ -43,7 +43,13 @@
       "Bash(git push *)",
       "Bash(gh pr create --title 'Normalize SEC filing sections into filing_sections table' --body ' *)",
       "Bash(supabase projects *)",
-      "mcp__supabase__execute_sql"
+      "mcp__supabase__execute_sql",
+      "Bash(gh pr create --title 'refactor\\(ai\\): remove dead filing-summary prompt and mdAndA guidance' --body ' *)",
+      "Bash(gh pr *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(grep \"\\\\.ts$\")"
     ]
   },
   "enableAllProjectMcpServers": true,

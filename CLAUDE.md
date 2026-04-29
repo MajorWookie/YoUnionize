@@ -16,7 +16,7 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 - **AI**: Anthropic Claude via @anthropic-ai/sdk 0.39
 - **Embeddings**: Voyage AI (voyage-4-lite for dev, voyage-finance-2 for prod), 1024 dimensions
 - **SEC Data**: sec-api.io (filings, XBRL, company search)
-- **API Layer**: Supabase Edge Functions (Deno runtime, 18 endpoints)
+- **API Layer**: Supabase Edge Functions (Deno runtime, 22 endpoints)
 - **Background Jobs**: PostgreSQL-backed job queue
 - **Validation**: Valibot 1.0 (NOT Zod)
 - **Linting**: oxlint + oxfmt (NOT ESLint/Prettier)
@@ -43,17 +43,17 @@ YoUnion is a cross-platform application (iOS-first, then Android, then Web) for 
 │  └─────────────────┘  └──────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────┤
 │     supabase/functions/ (Edge Functions — Deno)          │
-│  18 API endpoints: health, user, companies, ask, etc.    │
+│  22 API endpoints: health, user, companies, ask, etc.    │
 │  _shared/: db, auth, cors, schema, api-utils,            │
 │            sec-fetch, sec-ingest                          │
 ├─────────────────────────────────────────────────────────┤
 │                   packages/ (workspace)                   │
-│  @union/ai       — Claude API wrapper + prompts + extractJson │
-│  @union/postgres  — Drizzle DB client (postgres-js)       │
-│  @union/sec-api   — SEC EDGAR API client + schemas        │
-│  @union/helpers   — Shared utilities (ensureEnv, types,   │
-│                     concurrency, normalizeName, nicknames)│
-│  @union/hooks     — React hooks (useAuth, useDebounce)    │
+│  @younionize/ai       — Claude API wrapper + prompts + extractJson │
+│  @younionize/postgres  — Drizzle DB client (postgres-js)       │
+│  @younionize/sec-api   — SEC EDGAR API client + schemas        │
+│  @younionize/helpers   — Shared utilities (ensureEnv, types,   │
+│                          concurrency, normalizeName, nicknames)│
+│  @younionize/hooks     — React hooks (useAuth, useDebounce)    │
 └─────────────────────────────────────────────────────────┘
          │                    │                  │
     Supabase Auth      PostgreSQL + pgvector    SEC API
@@ -71,7 +71,7 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
 5. **Summarization** → `POST /api/companies/[ticker]/summarize` → routes sections to specialized prompts → stores summaries + 1024-dim Voyage AI embeddings
 6. **RAG Q&A** → `POST /api/ask` → Voyage AI embed (`input_type: 'query'`) → vector search (cosine ≥ 0.3) → optional reranking → Claude generates answer
 7. **Compensation analysis** → `POST /api/analysis/compensation-fairness` → user profile + exec comp → Claude fairness analysis
-8. **Personalized summary** → `POST /api/company-personalize` → cached per-user "what this means for you" via Claude Haiku
+8. **Personalized summary** → `POST /api/company-personalize` → cached per-user "what this means for you" via Claude (`claude-haiku-4-5`)
 
 ## Conventions
 
@@ -99,8 +99,8 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
 - **Markdown**: `MarkdownContent` wraps `react-native-markdown-display` with Tamagui theme tokens. Enable via `markdown` prop on `TextSummaryCard`.
 
 ### Name Normalization & Deduplication
-- **`normalizeName()`** in `@union/helpers` — lowercase, trim, strip honorific suffixes. Used for people dedup across filings.
-- **`getCanonicalFirstName()`** in `@union/helpers` — maps nicknames to formal names (e.g., "Bill" → "William") via static `nickname-map.ts`. Used in enrichment layer only (not in `normalizeName()`) to avoid false positives in dedup indexes.
+- **`normalizeName()`** in `@younionize/helpers` — lowercase, trim, strip honorific suffixes. Used for people dedup across filings.
+- **`getCanonicalFirstName()`** in `@younionize/helpers` — maps nicknames to formal names (e.g., "Bill" → "William") via static `nickname-map.ts`. Used in enrichment layer only (not in `normalizeName()`) to avoid false positives in dedup indexes.
 - **Dedup indexes**: `directors_dedup_idx` (company_id, normalized_name) and `exec_comp_dedup_idx` (company_id, normalized_name, fiscal_year).
 - **Sync requirement**: The SQL migration and `normalizeName()` helper use the same regex — keep them in sync.
 
@@ -116,12 +116,14 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
 
 ### AI/API Patterns
 - Claude API calls centralized in `packages/ai/` — don't scatter across components.
-- **Prompt templates** in `packages/ai/src/prompts/` — one file per prompt, 8th-grade reading level, define financial terms.
-- **Summary versioning**: `CURRENT_SUMMARY_VERSION = 2`. `CompanySummaryCard` handles v1/v2 via `isV2Summary()`.
-- **ClaudeClient methods**: `summarizeSection()`, `generateCompanySummary()`, `generateEmployeeImpact()`, `summarizeMda()`, `generateWhatThisMeans()`, `analyzeCompensation()`, `generateRagResponse()`. All use exponential backoff (5 retries, handles 429/529).
-- **`extractJson()`** in `@union/ai` — parses JSON from Claude responses, handling markdown fences and prose wrapping. Used by structured prompt responses (company-summary, employee-impact).
-- Embeddings: always pass `input_type: 'document'` when storing, `input_type: 'query'` when searching.
-- The `/ask` Edge Function calls Voyage AI directly (not `ClaudeClient`) because Edge Functions run on Deno.
+- **Prompt templates** in `packages/ai/src/prompts/` — one file per prompt, 8th-grade reading level, define financial terms. See `docs/PROMPTS.md` for the full prompt map, dispatch table, and per-section vs. rollup grain.
+- **Per-section grain**: AI summaries for individual SEC items live on `filing_sections.ai_summary`; filing-level rollups (executive_summary, employee_impact, XBRL statements, 8-K event_summary) live on `filing_summaries.ai_summary`. Dispatch is owned by `packages/sec-api/src/section-prompts.ts`.
+- **Summary versioning**: `CURRENT_SUMMARY_VERSION = 2` in `packages/ai/src/types.ts` gates the rendered shape (`CompanySummaryCard.isV2Summary()` chooses v1 vs v2). `PROMPT_VERSIONS` in `packages/sec-api/src/section-prompts.ts` is finer-grained — bump the per-kind suffix (e.g. `risk_factors@v1` → `@v2`) to invalidate just that prompt's rows for re-summarization.
+- **ClaudeClient methods**: `summarizeSection()`, `summarizeMda()`, `generateCompanySummary()`, `generateEmployeeImpact()`, `generateFilingSummary()`, `generateWhatThisMeans()`, `generateCompensationAnalysis()`, `ragQuery()`, `generateEmbedding()`. All chat methods use exponential backoff with ±25% jitter (5 retries; honors `retry-after` on 429, also handles 529). Default model `claude-haiku-4-5`.
+- **`extractJson()`** in `@younionize/ai` — parses JSON from Claude responses, handling markdown fences and prose wrapping. Used by every JSON-returning prompt: `company-summary`, `employee-impact`, `compensation-analysis`, `filing-summary`.
+- **Edge Function prompt duplication**: `/ask`, `/company-personalize`, and `/compensation-fairness` instantiate `Anthropic` directly (Deno can't import Bun packages) and inline their system prompts. The matching `rag-answer.ts`, `what-this-means.ts`, `compensation-analysis.ts` files in `packages/ai/` are not loaded at runtime by those endpoints — keep both copies in sync when editing. Note: the Edge Function `compensation-fairness` uses a 1–10 fairness scale, while the package's `compensation-analysis.ts` uses 1–100.
+- **Embeddings**: always pass `input_type: 'document'` when storing, `input_type: 'query'` when searching.
+- The `/ask` Edge Function calls Voyage AI directly for embedding AND `Anthropic` directly for generation (not `ClaudeClient`) because Edge Functions run on Deno.
 - RAG pipeline components (embedding, retrieval, generation) must be clearly separated.
 
 ### File Organization
@@ -136,8 +138,8 @@ Documented in `docs/adrs/`. Key active decisions: Tamagui (not web-only UI libs)
 
 - **Unit tests**: Vitest — `bun test` or `bun run test:unit`
 - **Test setup**: `src/test/setup.ts` (env defaults), `src/test/factories.ts` (data factories)
-- **Coverage**: ~13 test suites (api-utils, xbrl, compensation-math, api-client, auth, AI prompts, sec-api, helpers, enrichment, company format)
-- **Not tested**: Ingestion services, summarization pipeline, DB operations, React components
+- **Coverage**: 19 test files spanning api-utils, xbrl-transformer, compensation-math, raw-data-processor-helpers, api-client, ensureAuth, prompts + extract-json + ClaudeClient (mocked) in `@younionize/ai`, sec-api client/sections, helpers (normalize-name, ensureEnv, nickname-map), enrichment (compensation-name, director-role), income-data-extractor, and company format.
+- **Not tested**: Summarization pipeline (end-to-end), live DB operations, React components, Edge Function handlers.
 - **CI**: Lint → type-check → unit tests on every PR (`.github/workflows/ci.yml`)
 
 ## Gotchas
@@ -190,5 +192,10 @@ Setup instructions in `README.md`. Tech debt tracked in `docs/TECH-DEBT.md`.
 - No production deployment yet — local dev and staging only
 
 ### Reference Docs
+- `docs/PROMPTS.md` — AI prompt templates, dispatch table, per-section vs. rollup grain, Edge-Function inline-prompt duplication
+- `docs/MODULE-MAP.md` — Detailed module/directory descriptions
+- `docs/FILING-SECTIONS.md` — SEC filing section codes and friendly names
+- `docs/TECH-DEBT.md` — Known cleanup items
+- `docs/adrs/` — Architecture decision records
 - `SEED.md` — Seed script usage
 - `PLAN-REMOTE-IOS-TESTING.md` — Remote iOS testing setup plan
