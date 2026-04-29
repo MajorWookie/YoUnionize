@@ -1,40 +1,26 @@
-import { useState } from 'react'
-import { Button, Code, Container, Stack, Text, Title } from '@mantine/core'
-import { fetchWithRetry } from '@younionize/api-client'
-import { useAuth } from '@younionize/hooks'
+import { Button, Container, Group, Stack, Text, Title } from '@mantine/core'
+import { Link } from 'react-router-dom'
 
 export function HomePage() {
-  const { user } = useAuth()
-  const [response, setResponse] = useState<string>('')
-  const [loading, setLoading] = useState(false)
-
-  const ping = async () => {
-    setLoading(true)
-    try {
-      const res = await fetchWithRetry('/api/health')
-      const text = await res.text()
-      setResponse(`${res.status} ${res.statusText}\n${text}`)
-    } catch (err) {
-      setResponse(`Error: ${(err as Error).message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <Container size="md" py="xl">
-      <Stack gap="lg">
+      <Stack gap="lg" align="center" ta="center" py="xl">
         <Title order={1} c="navy.6">
-          Hello YoUnion
+          Analyze SEC filings with AI
         </Title>
-        <Text>
-          Web scaffold smoke test. Auth context user:{' '}
-          <Code>{user?.email ?? 'no user'}</Code>
+        <Text size="lg" c="slate.7" maw={560}>
+          YoUnion helps you understand executive compensation, risk factors,
+          and management commentary from SEC filings — and benchmark them
+          against your own pay.
         </Text>
-        <Button onClick={ping} loading={loading} w="fit-content">
-          Ping /api/health
-        </Button>
-        {response && <Code block>{response}</Code>}
+        <Group gap="md" mt="md">
+          <Button size="md" component={Link} to="/sign-up">
+            Get Started
+          </Button>
+          <Button size="md" variant="default" component={Link} to="/sign-in">
+            Sign In
+          </Button>
+        </Group>
       </Stack>
     </Container>
   )
