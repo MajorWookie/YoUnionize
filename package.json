@@ -27,7 +27,7 @@
     "prebuild": "npx expo prebuild",
     "ios": "bunx dotenvx run -f .env.remote -- npx expo run:ios",
     "dev": "bunx dotenvx run -f .env.remote -- npx expo start",
-    "dev:web": "bunx dotenvx run -f .env.remote -- bun --cwd web run dev",
+    "dev:web": "bunx dotenvx run -f .env.remote -- bun run --cwd web dev",
     "build:web": "cd web && bun run build",
     "preview:web": "cd web && bun run preview",
     "dev:functions": "supabase functions serve",
