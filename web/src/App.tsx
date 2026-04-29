@@ -21,6 +21,9 @@ const DiscoverPage = lazy(() =>
 const CompanyPage = lazy(() =>
   import('~/routes/company').then((m) => ({ default: m.CompanyPage })),
 )
+const OnboardingPage = lazy(() =>
+  import('~/routes/onboarding').then((m) => ({ default: m.OnboardingPage })),
+)
 
 configureApiClient({
   getSession: async () => {
@@ -60,6 +63,14 @@ export function App() {
                   element={
                     <AuthGuard>
                       <CompanyPage />
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/onboarding"
+                  element={
+                    <AuthGuard>
+                      <OnboardingPage />
                     </AuthGuard>
                   }
                 />
