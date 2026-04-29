@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { type User, type Session, type AuthError } from '@supabase/supabase-js'
-import { getSupabaseBrowserClient } from '~/features/auth/client/authClient'
+import { useSupabaseClient } from './SupabaseClientContext'
 
-// TODO: Set to false (or remove) to restore real auth before production
-const DEV_SKIP_AUTH = true
+// Defaults to true (auth bypassed) unless EXPO_PUBLIC_DEV_SKIP_AUTH is explicitly
+// set to 'false'. Set the env var to 'false' to wire real auth in development.
+const DEV_SKIP_AUTH =
+  typeof process !== 'undefined' && process.env
+    ? process.env.EXPO_PUBLIC_DEV_SKIP_AUTH !== 'false'
+    : true
 
 const DEV_TEST_USER = {
   id: '00000000-0000-0000-0000-000000000000',
@@ -22,6 +26,7 @@ interface SignUpResult {
 }
 
 export function useAuth() {
+  const supabase = useSupabaseClient()
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(!DEV_SKIP_AUTH)
@@ -29,16 +34,12 @@ export function useAuth() {
   useEffect(() => {
     if (DEV_SKIP_AUTH) return
 
-    const supabase = getSupabaseBrowserClient()
-
-    // Get the initial session
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setUser(data.session?.user ?? null)
       setIsLoading(false)
     })
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       setUser(newSession?.user ?? null)
@@ -48,23 +49,21 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [supabase])
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<SignInResult> => {
-      const supabase = getSupabaseBrowserClient()
       const result = await supabase.auth.signInWithPassword({ email, password })
       return {
         data: result.data,
         error: result.error,
       }
     },
-    [],
+    [supabase],
   )
 
   const signUp = useCallback(
     async (email: string, password: string, name: string): Promise<SignUpResult> => {
-      const supabase = getSupabaseBrowserClient()
       const result = await supabase.auth.signUp({
         email,
         password,
@@ -77,13 +76,12 @@ export function useAuth() {
         error: result.error,
       }
     },
-    [],
+    [supabase],
   )
 
   const signOut = useCallback(async () => {
-    const supabase = getSupabaseBrowserClient()
     await supabase.auth.signOut()
-  }, [])
+  }, [supabase])
 
   return {
     user: DEV_SKIP_AUTH

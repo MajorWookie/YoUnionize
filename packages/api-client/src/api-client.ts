@@ -1,9 +1,13 @@
 /**
  * Client-side fetch utilities with retry logic and standardized error extraction.
+ *
+ * Decoupled from any specific Supabase client implementation: callers register
+ * a session-getter once at app boot via configureApiClient(), and that getter
+ * is invoked to attach the user's JWT to /api/* requests.
  */
 
+import type { Session } from '@supabase/supabase-js'
 import { apiUrl, getDefaultHeaders } from './api-base'
-import { getSupabaseBrowserClient } from '~/features/auth/client/authClient'
 
 interface ApiErrorShape {
   error: {
@@ -11,6 +15,18 @@ interface ApiErrorShape {
     message: string
     details?: unknown
   }
+}
+
+type SessionGetter = () => Promise<Session | null>
+
+let sessionGetter: SessionGetter = async () => null
+
+/**
+ * Register the session-getter used to attach Authorization headers to /api/* calls.
+ * Call once at app boot before any fetch fires. Subsequent calls replace the getter.
+ */
+export function configureApiClient(opts: { getSession: SessionGetter }): void {
+  sessionGetter = opts.getSession
 }
 
 /**
@@ -31,19 +47,14 @@ export function extractErrorMessage(data: unknown): string {
   return 'Something went wrong'
 }
 
-/**
- * Get the current user's access token (JWT) from the Supabase auth session.
- * Returns an Authorization header object if a session exists, empty object otherwise.
- */
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
-    const client = getSupabaseBrowserClient()
-    const { data } = await client.auth.getSession()
-    if (data.session?.access_token) {
-      return { Authorization: `Bearer ${data.session.access_token}` }
+    const session = await sessionGetter()
+    if (session?.access_token) {
+      return { Authorization: `Bearer ${session.access_token}` }
     }
   } catch {
-    // Auth not available (e.g. not yet initialized)
+    // Session not available (e.g. not yet initialized)
   }
   return {}
 }
@@ -64,7 +75,6 @@ export async function fetchWithRetry(
   const isApiRoute = url.startsWith('/api/')
   const resolvedUrl = isApiRoute ? apiUrl(url) : url
 
-  // Merge Supabase gateway headers + user auth for /api/* routes
   let mergedOptions = options
   if (isApiRoute) {
     const authHeaders = await getAuthHeaders()
@@ -84,12 +94,10 @@ export async function fetchWithRetry(
     try {
       const res = await fetch(resolvedUrl, mergedOptions)
 
-      // Don't retry client errors
       if (res.status >= 400 && res.status < 500) {
         return res
       }
 
-      // Retry server errors
       if (res.status >= 500 && attempt < maxRetries) {
         await sleep(500 * (attempt + 1))
         continue

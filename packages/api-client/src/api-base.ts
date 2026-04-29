@@ -1,16 +1,12 @@
 /**
  * API base URL configuration.
  *
- * Maps the old One Framework relative API routes (/api/*) to
- * Supabase Edge Function URLs (/functions/v1/*).
- *
- * During migration, set USE_EDGE_FUNCTIONS=true to switch.
- * After migration is complete, this becomes the only path.
+ * Maps relative API routes (/api/*) to Supabase Edge Function URLs
+ * (/functions/v1/*) and resolves the gateway apikey header from
+ * EXPO_PUBLIC_* (Expo) or VITE_* (Vite) env vars.
  */
 
 function getSupabaseUrl(): string {
-  // Expo convention: EXPO_PUBLIC_ prefix for client-side env vars
-  // Vite convention (legacy): VITE_ prefix
   if (typeof process !== 'undefined' && process.env) {
     return (
       process.env.EXPO_PUBLIC_SUPABASE_URL ??
@@ -53,7 +49,7 @@ export function getDefaultHeaders(): Record<string, string> {
 }
 
 /**
- * Route mapping from old One API paths to Edge Function names.
+ * Route mapping from relative /api/* paths to Edge Function names.
  * The Edge Function URL pattern is: {SUPABASE_URL}/functions/v1/{function-name}
  *
  * Dynamic segments (e.g. [ticker], [jobId]) become query parameters:
@@ -84,7 +80,7 @@ const DYNAMIC_ROUTES: Array<{
 ]
 
 /**
- * Convert an old-style /api/* URL to the Supabase Edge Function URL.
+ * Convert an /api/* URL to the Supabase Edge Function URL.
  *
  * Examples:
  *   apiUrl('/api/user/me') → 'http://127.0.0.1:54321/functions/v1/user-me'
@@ -94,17 +90,14 @@ const DYNAMIC_ROUTES: Array<{
 export function apiUrl(path: string): string {
   const base = getSupabaseUrl()
 
-  // Parse the path and query string
   const [pathname, queryString] = path.split('?')
   const existingParams = queryString ? `?${queryString}` : ''
 
-  // Check static routes first
   const staticFn = ROUTE_MAP[pathname]
   if (staticFn) {
     return `${base}/functions/v1/${staticFn}${existingParams}`
   }
 
-  // Check dynamic routes
   for (const route of DYNAMIC_ROUTES) {
     const match = pathname.match(route.pattern)
     if (match) {
@@ -114,6 +107,5 @@ export function apiUrl(path: string): string {
     }
   }
 
-  // Fallback: pass through unchanged (for any routes not yet migrated)
   return path
 }

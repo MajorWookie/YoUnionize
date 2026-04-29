@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import {
+  configureApiClient,
+  extractErrorMessage,
+  fetchWithRetry,
+} from './api-client'
 
-// Mock the Supabase auth client before importing api-client
-vi.mock('~/features/auth/client/authClient', () => ({
-  getSupabaseBrowserClient: () => ({
-    auth: {
-      getSession: () => Promise.resolve({ data: { session: null } }),
-    },
-  }),
-}))
-
-import { extractErrorMessage, fetchWithRetry } from './api-client'
+beforeEach(() => {
+  configureApiClient({ getSession: async () => null })
+})
 
 describe('api-client', () => {
   describe('extractErrorMessage', () => {
@@ -104,6 +102,21 @@ describe('api-client', () => {
         fetchWithRetry('/api/test', undefined, 2),
       ).rejects.toThrow('network error')
       expect(mockFetch).toHaveBeenCalledTimes(3)
+    })
+
+    it('attaches Authorization header when session getter returns a token', async () => {
+      configureApiClient({
+        getSession: async () =>
+          ({ access_token: 'test-jwt' }) as never,
+      })
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200 })
+
+      await fetchWithRetry('/api/test')
+      const callArgs = mockFetch.mock.calls[0]
+      const headers = (callArgs?.[1] as RequestInit | undefined)?.headers as
+        | Record<string, string>
+        | undefined
+      expect(headers?.Authorization).toBe('Bearer test-jwt')
     })
   })
 })
