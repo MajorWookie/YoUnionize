@@ -300,6 +300,88 @@ describe('SecApiClient', () => {
       expect(url).toContain('type=text')
       expect(result).toBe(sectionText)
     })
+
+    it('polls past sec-api.io\'s "processing" placeholder until real text arrives', async () => {
+      // sec-api.io's section extractor is async — until extraction
+      // completes, it returns the literal string "processing" with HTTP 200.
+      // The 2026-04-29 bug: we treated that as a 10-char "successful"
+      // section. Now we poll past it.
+      const realSetTimeout = globalThis.setTimeout
+      // Stub setTimeout so the polling backoff resolves on the next
+      // microtask instead of waiting wall-clock seconds. Real timers are
+      // restored in afterEach via vi.restoreAllMocks().
+      globalThis.setTimeout = ((cb: () => void) => {
+        Promise.resolve().then(cb)
+        return 0 as unknown as ReturnType<typeof setTimeout>
+      }) as typeof setTimeout
+
+      let callCount = 0
+      globalThis.fetch = vi.fn().mockImplementation(() => {
+        callCount++
+        const body = callCount < 3 ? 'processing' : 'Real risk factors text.'
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve(body),
+        })
+      })
+
+      try {
+        const result = await client.extractSection(
+          'https://www.sec.gov/Archives/edgar/data/320193/filing.htm',
+          '1A',
+        )
+        expect(callCount).toBe(3)
+        expect(result).toBe('Real risk factors text.')
+      } finally {
+        globalThis.setTimeout = realSetTimeout
+      }
+    })
+
+    it('throws SecApiError(503) when "processing" never resolves within polling budget', async () => {
+      const realSetTimeout = globalThis.setTimeout
+      globalThis.setTimeout = ((cb: () => void) => {
+        Promise.resolve().then(cb)
+        return 0 as unknown as ReturnType<typeof setTimeout>
+      }) as typeof setTimeout
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('processing'),
+      })
+
+      try {
+        await expect(
+          client.extractSection(
+            'https://www.sec.gov/Archives/edgar/data/320193/filing.htm',
+            '1A',
+          ),
+        ).rejects.toMatchObject({
+          name: 'SecApiError',
+          statusCode: 503,
+        })
+      } finally {
+        globalThis.setTimeout = realSetTimeout
+      }
+    })
+  })
+
+  describe('SecApiError', () => {
+    it('redacts the token query param from the URL in the error message', () => {
+      // Real bug 2026-04-29: 154 rows of filing_sections.fetch_error
+      // stored the full extractor URL — including ?token=<key> — leaking
+      // the API key to anyone with read access on filing_sections.
+      const leakyUrl =
+        'https://api.sec-api.io/extractor?token=sk_live_abc123secret&item=1A&type=text'
+      const err = new SecApiError(429, 'Rate limited', leakyUrl)
+
+      expect(err.message).not.toContain('sk_live_abc123secret')
+      expect(err.message).toContain('token=[REDACTED]')
+      expect(err.url).toContain('token=[REDACTED]')
+      // Other params are preserved so the error remains diagnosable.
+      expect(err.message).toContain('item=1A')
+    })
   })
 
   // ─── XBRL-to-JSON ────────────────────────────────────────────────

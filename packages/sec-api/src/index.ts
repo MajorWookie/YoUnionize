@@ -17,11 +17,21 @@ export type {
 } from './sec-api.constants'
 export {
   getSectionItemsForFilingType,
+  getActualSectionItems,
   legacyKeyToSectionCode,
   sectionCodeToLegacyKey,
   getSectionFriendlyName,
 } from './sections'
 export type { SectionItemInfo } from './sections'
+export {
+  getSectionDispatch,
+  ROLLUP_KINDS,
+  PROMPT_VERSIONS,
+} from './section-prompts'
+export type {
+  SectionPromptKind,
+  SectionPromptDispatch,
+} from './section-prompts'
 export type {
   SecApiClientConfig,
   Filing,

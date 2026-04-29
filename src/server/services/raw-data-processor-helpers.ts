@@ -25,9 +25,15 @@ export function parseSectionSubKey(
  * Derives the persisted filing_sections.fetch_status from the upstream
  * raw_sec_responses status and the section body. Three distinct states:
  *
- * - 'error':   upstream sec-api call rejected (network / 5xx / etc.)
- * - 'empty':   call succeeded but returned no text (item not in this filing)
- * - 'success': call succeeded with non-empty text
+ * - 'error':   upstream sec-api call rejected (network / 5xx / etc.) OR the
+ *              body is the literal string "processing" (sec-api.io's async-
+ *              extraction placeholder). The `SecApiClient.extractSection`
+ *              polling guard normally swallows this, but we double-check
+ *              here so the placeholder never lands as a "successful 10-char
+ *              section" if a future code path bypasses the client.
+ * - 'empty':   call succeeded but returned no text (item not in this
+ *              filing). Whitespace-only bodies count as empty too.
+ * - 'success': call succeeded with non-empty, non-placeholder text.
  *
  * The previous JSON-blob storage conflated 'error' and 'empty' as "missing
  * key", which is why failed extractions were invisible to operators.
@@ -37,6 +43,9 @@ export function deriveSectionStatus(
   text: string | null,
 ): 'success' | 'empty' | 'error' {
   if (upstreamFetchStatus === 'error') return 'error'
-  if (!text || text.length === 0) return 'empty'
+  if (!text) return 'empty'
+  const trimmed = text.trim()
+  if (trimmed.length === 0) return 'empty'
+  if (trimmed.toLowerCase() === 'processing') return 'error'
   return 'success'
 }

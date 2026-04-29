@@ -6,6 +6,7 @@ import {
   TenQSection,
 } from '../sec-api.constants'
 import {
+  getActualSectionItems,
   getSectionFriendlyName,
   getSectionItemsForFilingType,
   legacyKeyToSectionCode,
@@ -134,5 +135,64 @@ describe('getSectionFriendlyName', () => {
   it('falls back to the raw code when unknown', () => {
     expect(getSectionFriendlyName('made-up', '10-K')).toBe('made-up')
     expect(getSectionFriendlyName('1A', 'S-1')).toBe('1A')
+  })
+})
+
+describe('getActualSectionItems', () => {
+  // Real performance bug 2026-04-29: asking sec-api to extract every
+  // possible 8-K item burned 60s+ per non-existent item. Filtering to the
+  // items actually in the filing eliminates that dead time.
+
+  it('parses real-world 8-K item strings into SEC codes', () => {
+    const items = getActualSectionItems('8-K', [
+      'Item 5.02: Departure of Directors or Certain Officers',
+      'Item 7.01: Regulation FD Disclosure',
+      'Item 9.01: Financial Statements and Exhibits',
+    ])
+    const codes = items.map((i) => i.code).sort()
+    // 5-2, 7-1, 9-1 plus signature (always included for 8-K)
+    expect(codes).toEqual(['5-2', '7-1', '9-1', 'signature'])
+  })
+
+  it('strips leading zeros from minor numbers (5.02 → 5-2, not 5-02)', () => {
+    const items = getActualSectionItems('8-K', ['Item 1.01: Material agreement'])
+    expect(items.map((i) => i.code)).toContain(EightKSection.ENTRY_AGREEMENT)
+  })
+
+  it('always includes signature for 8-K even if not in the items list', () => {
+    const items = getActualSectionItems('8-K', ['Item 5.02: Officer changes'])
+    expect(items.map((i) => i.code)).toContain(EightKSection.SIGNATURE)
+  })
+
+  it('falls through to the full list when items is missing or empty', () => {
+    expect(getActualSectionItems('8-K', undefined)).toHaveLength(
+      Object.keys(EightKSection).length,
+    )
+    expect(getActualSectionItems('8-K', [])).toHaveLength(
+      Object.keys(EightKSection).length,
+    )
+  })
+
+  it('is a no-op for 10-K, 10-Q, DEF 14A — those forms have predictable items', () => {
+    // Even with rawItems supplied, non-8-K filings get the full list (every
+    // 10-K has all 21 item headings as part of the form structure).
+    expect(getActualSectionItems('10-K', ['Item 1A'])).toHaveLength(
+      Object.keys(TenKSection).length,
+    )
+    expect(getActualSectionItems('10-Q', ['Item 2'])).toHaveLength(
+      Object.keys(TenQSection).length,
+    )
+    expect(getActualSectionItems('DEF 14A', ['Item 7'])).toHaveLength(
+      Object.keys(Def14aSection).length,
+    )
+  })
+
+  it('skips malformed item strings without throwing', () => {
+    const items = getActualSectionItems('8-K', [
+      'Item 5.02: Officer changes',
+      'something that is not an item line',
+      '',
+    ])
+    expect(items.map((i) => i.code).sort()).toEqual(['5-2', 'signature'])
   })
 })

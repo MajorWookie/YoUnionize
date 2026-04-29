@@ -64,4 +64,22 @@ describe('deriveSectionStatus', () => {
     expect(deriveSectionStatus('processing', 'text')).toBe('success')
     expect(deriveSectionStatus('processing', '')).toBe('empty')
   })
+
+  it("treats whitespace-only bodies as 'empty'", () => {
+    // sec-api occasionally returns "\n  \n" for items not present in a
+    // filing. Without trimming, those used to land as 10-char "successful"
+    // sections that confused the skip-policy.
+    expect(deriveSectionStatus('complete', '   ')).toBe('empty')
+    expect(deriveSectionStatus('complete', '\n\n  \t')).toBe('empty')
+  })
+
+  it("flips the 'processing' placeholder to 'error' as defence in depth", () => {
+    // Real bug found 2026-04-29: sec-api.io's section extractor returns the
+    // literal string "processing" while still extracting; SecApiClient
+    // polls past it, but if a future code path bypasses the client we still
+    // refuse to land it as a "successful 10-char section".
+    expect(deriveSectionStatus('complete', 'processing')).toBe('error')
+    expect(deriveSectionStatus('complete', 'Processing')).toBe('error')
+    expect(deriveSectionStatus('complete', '  processing\n')).toBe('error')
+  })
 })

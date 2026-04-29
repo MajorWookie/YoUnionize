@@ -82,54 +82,21 @@ export interface CompanyDetailResponse {
   directors: Array<DirectorData>
 }
 
-// Shapes from the AI summary
+// AI summary shapes — re-exported from packages/ai (the source of truth).
+// Keep this file as the single barrel the company UI imports from, but don't
+// duplicate the definitions here.
+export type {
+  FilingSummaryResult,
+  CompanySummaryResult,
+  EmployeeImpactResult,
+} from '@younionize/ai'
 
-/** v1 filing summary — produced by the original single-call prompt */
-export interface FilingSummaryResult {
-  executive_summary: string
-  key_numbers: Array<{ label: string; value: string; context: string }>
-  /** Short-form: 2-3 sentences explaining what happened and why it matters */
-  plain_language_explanation: string
-  red_flags: string[]
-  opportunities: string[]
-  /** Short-form: 2-3 sentences on what this means for employees */
-  employee_relevance: string
-}
-
-/** v2 company summary — produced by the dedicated company-summary prompt */
-export interface CompanySummaryResult {
-  headline: string
-  company_health: string
-  key_numbers: Array<{ label: string; value: string; context: string }>
-  red_flags: string[]
-  opportunities: string[]
-}
-
-/** v2 employee impact analysis — produced by the dedicated employee-impact prompt */
-export interface EmployeeImpactResult {
-  overall_outlook: string
-  job_security: string
-  compensation_signals: string
-  growth_opportunities: string
-  workforce_geography: string
-  h1b_and_visa_dependency: string
-  watch_items: string[]
-}
-
-export interface FinancialLineItem {
-  label: string
-  current: number | null
-  prior: number | null
-  change: number | null
-  changePercent: number | null
-}
-
-export interface FinancialStatement {
-  title: string
-  periodCurrent: string
-  periodPrior: string | null
-  items: Array<FinancialLineItem>
-}
+// Financial statement shapes — re-exported from the XBRL transformer (the
+// only place that produces them).
+export type {
+  FinancialLineItem,
+  FinancialStatement,
+} from '~/server/services/xbrl-transformer'
 
 export interface ExecCompSummary {
   top5: Array<{

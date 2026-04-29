@@ -13,6 +13,7 @@
  *   bun run scripts/seed-companies.ts --tickers=AAPL,MSFT,GOOGL
  *   bun run scripts/seed-companies.ts --tickers=AAPL --years=3
  *   bun run scripts/seed-companies.ts --years=2              # 2 10-Ks, 2 DEF 14As, 24mo 8-Ks
+ *   bun run scripts/seed-companies.ts --tickers=ORCL --retry # replay rows in fetch_status='error'
  *
  * Requires:
  *   - .env with SEC_API_KEY, ANTHROPIC_API_KEY, VOYAGE_API_KEY, DATABASE_URL
@@ -28,9 +29,13 @@ import { ingestCompensation } from '../src/server/services/compensation-ingestio
 import { ingestInsiderTrading } from '../src/server/services/insider-trading-ingestion'
 import { ingestDirectors } from '../src/server/services/directors-ingestion'
 import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
+import {
+  retryFailedFilingSections,
+  retryFailedRawResponses,
+} from '../src/server/services/sec-retry'
 import type { CompanyRecord } from '../src/server/services/company-lookup'
 import type { Filing } from '@younionize/sec-api'
-import { getSectionItemsForFilingType } from '@younionize/sec-api'
+import { getActualSectionItems } from '@younionize/sec-api'
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -58,6 +63,11 @@ const SEED_CONFIG: {
 
 const args = process.argv.slice(2)
 const skipSummarization = args.includes('--skip-summarization')
+// --retry: skip the full ingest path, only re-run sec-retry + processing +
+// summarization for filings already in the DB. Useful after a first-pass
+// run leaves rows in fetch_status='error' (e.g. sec-api's async extractor
+// timed out under load — see PROCESSING_MAX_POLLS in @younionize/sec-api).
+const retryMode = args.includes('--retry')
 const tickersFlag = args.find((a) => a.startsWith('--tickers='))
 const yearsFlag = args.find((a) => a.startsWith('--years='))
 const tickers = tickersFlag
@@ -195,6 +205,13 @@ async function safeXbrl(filing: Filing): Promise<unknown | null> {
   }
 }
 
+// Cap how many sec-api extractor calls run in parallel per filing. The
+// extractor is async on sec-api's side (it returns "processing" until ready)
+// and gets overwhelmed when 17-21 sections fire at once across multiple
+// filings — leading to a flood of timed-out polls. 4 concurrent calls per
+// filing keeps the upstream queue happy without crawling.
+const SECTION_EXTRACT_CONCURRENCY = 4
+
 async function extractSectionsToTable(
   filing: Filing,
   filingType: string,
@@ -205,14 +222,21 @@ async function extractSectionsToTable(
   const url = filing.linkToFilingDetails
   if (!url) return
 
-  const sectionItems = getSectionItemsForFilingType(filingType)
+  // For 8-K, only ask sec-api about items actually in the filing. The
+  // unfiltered list would burn ~60s per non-existent item polling for a
+  // "processing" placeholder that never resolves. See getActualSectionItems
+  // in @younionize/sec-api.
+  const rawItems = (filing as unknown as { items?: ReadonlyArray<string> }).items
+  const sectionItems = getActualSectionItems(filingType, rawItems)
   if (sectionItems.length === 0) return
 
-  const results = await Promise.allSettled(
-    sectionItems.map(async (item) => {
+  const results = await pMapSettled(
+    sectionItems,
+    async (item) => {
       const text = await client.extractSection(url, item.code)
       return { item, text }
-    }),
+    },
+    SECTION_EXTRACT_CONCURRENCY,
   )
 
   for (let i = 0; i < results.length; i++) {
@@ -276,81 +300,159 @@ async function seedCompany(ticker: string, index: number, total: number): Promis
 
   console.info(`[Seed] ─── ${ticker} (${index + 1}/${total}) ─────────────────────────`)
 
+  // Heartbeat every 10s so the script never goes silent during long phases
+  // (section extraction, summarization, retry). `phase` is mutated as the
+  // pipeline progresses; each tick reports where we currently are. The
+  // try/finally guarantees clearInterval on every exit path — success,
+  // error, or early return — so we don't leak timers when companies run in
+  // parallel.
+  let phase = 'startup'
+  const heartbeat = setInterval(() => {
+    const elapsedSec = Math.round((Date.now() - companyStart) / 1000)
+    console.info(`[Seed] [${ticker}] ♥ ${phase} — ${elapsedSec}s elapsed`)
+  }, 10_000)
+
   try {
-    // 1. Look up company (resolve ticker → CIK, upsert DB)
-    const company = await lookupCompany(ticker)
-    console.info(`[Seed] Company: ${company.name} (CIK: ${company.cik})`)
+    try {
+      // 1. Look up company (resolve ticker → CIK, upsert DB)
+      phase = 'company lookup'
+      const company = await lookupCompany(ticker)
+      console.info(`[Seed] Company: ${company.name} (CIK: ${company.cik})`)
 
-    // 2. Run ingestion pipelines in parallel
-    const [filingResult, compResult, tradeResult, dirResult] = await Promise.allSettled([
-      ingestFilingsForSeed(company),
-      ingestCompensation(company),
-      ingestInsiderTrading(company),
-      ingestDirectors(company, { filingCount: SEED_CONFIG.defCount }),
-    ])
+      // ── Retry mode ─────────────────────────────────────────────────────
+      // Skip the cold-start ingest path. Replay raw_sec_responses rows that
+      // ended in fetch_status='error' (sec-api timeouts, 429s, "processing"
+      // placeholders that exceeded the polling budget) by handing off to
+      // retryFailedRawResponses, then re-summarise.
+      if (retryMode) {
+        console.info(`[Seed] [${ticker}] Retry mode — replaying error rows…`)
 
-    const filingsData = filingResult.status === 'fulfilled' ? filingResult.value : null
-    const compData = compResult.status === 'fulfilled' ? compResult.value : null
-    const tradeData = tradeResult.status === 'fulfilled' ? tradeResult.value : null
-    const dirData = dirResult.status === 'fulfilled' ? dirResult.value : null
+        // Two retry paths because the project has two ingest paths:
+        //   • retryFailedRawResponses replays raw_sec_responses errors (the
+        //     production Edge Function ingest path). No-op for seed-only data
+        //     since the seed bypasses raw_sec_responses.
+        //   • retryFailedFilingSections replays filing_sections errors (the
+        //     seed's direct-write path). This is what actually drains the
+        //     830 8-K errors from a seeded DB.
+        phase = 'raw_sec_responses retry'
+        console.info(`[Seed] [${ticker}] Phase 1/3: raw_sec_responses retry…`)
+        const retry = await retryFailedRawResponses(company)
+        if (retry.fetchErrorsBefore > 0 || retry.processFailuresBefore > 0) {
+          console.info(
+            `[Seed] [${ticker}] Raw retry: ${retry.fetchErrorsBefore}→${retry.fetchErrorsAfter} fetch errors, ` +
+              `${retry.processFailuresBefore}→${retry.processFailuresAfter} process failures`,
+          )
+        } else {
+          console.info(`[Seed] [${ticker}] (no raw_sec_responses errors)`)
+        }
 
-    console.info(`[Seed] [${ticker}] Filings:  ${filingsData ? `${filingsData.ingested} ingested, ${filingsData.skipped} skipped` : `FAILED: ${(filingResult as PromiseRejectedResult).reason?.message}`}`)
-    console.info(`[Seed] [${ticker}] Exec comp: ${compData ? `${compData.ingested} ingested, ${compData.skipped} skipped` : `FAILED: ${(compResult as PromiseRejectedResult).reason?.message}`}`)
-    console.info(`[Seed] [${ticker}] Trades:   ${tradeData ? `${tradeData.ingested} ingested, ${tradeData.skipped} skipped` : `FAILED: ${(tradeResult as PromiseRejectedResult).reason?.message}`}`)
-    console.info(`[Seed] [${ticker}] Directors: ${dirData ? `${dirData.ingested} ingested, ${dirData.skipped} skipped` : `FAILED: ${(dirResult as PromiseRejectedResult).reason?.message}`}`)
+        phase = 'filing_sections retry'
+        console.info(`[Seed] [${ticker}] Phase 2/3: filing_sections retry…`)
+        const sectionRetry = await retryFailedFilingSections(company)
+        if (sectionRetry.errorsBefore > 0) {
+          console.info(
+            `[Seed] [${ticker}] Section retry: ${sectionRetry.errorsBefore}→${sectionRetry.errorsAfter} errors ` +
+              `(${sectionRetry.recovered} recovered)`,
+          )
+        } else {
+          console.info(`[Seed] [${ticker}] No section errors to replay`)
+        }
 
-    const allErrors = [
-      ...(filingsData?.errors ?? []),
-      ...(compData?.errors ?? []),
-      ...(tradeData?.errors ?? []),
-      ...(dirData?.errors ?? []),
-    ]
-    if (allErrors.length > 0) {
-      console.info(`[Seed] [${ticker}] Warnings: ${allErrors.length} non-fatal errors`)
-      for (const err of allErrors.slice(0, 5)) {
-        console.info(`[Seed] [${ticker}]   - ${err}`)
+        if (!skipSummarization) {
+          phase = 'summarization (retry)'
+          console.info(`[Seed] [${ticker}] Phase 3/3: summarizing filings (retry pass)…`)
+          const summaryResult = await summarizeCompanyFilings(company.id, company.name)
+          console.info(
+            `[Seed] [${ticker}] Summarized: ${summaryResult.summarized}/${summaryResult.total} ` +
+              `(${summaryResult.tokenUsage.inputTokens} in / ${summaryResult.tokenUsage.outputTokens} out tokens)`,
+          )
+        }
+
+        const duration = Date.now() - companyStart
+        console.info(`[Seed] ✓ ${ticker} retry complete (${formatDuration(duration)})`)
+        return {
+          ticker,
+          success: retry.fetchErrorsAfter === 0 && sectionRetry.errorsAfter === 0,
+          duration,
+          filings: { ingested: 0, skipped: 0 },
+        }
       }
-      if (allErrors.length > 5) {
-        console.info(`[Seed] [${ticker}]   ... and ${allErrors.length - 5} more`)
+
+      // 2. Run ingestion pipelines in parallel
+      phase = 'ingest filings/comp/trades/directors'
+      const [filingResult, compResult, tradeResult, dirResult] = await Promise.allSettled([
+        ingestFilingsForSeed(company),
+        ingestCompensation(company),
+        ingestInsiderTrading(company),
+        ingestDirectors(company, { filingCount: SEED_CONFIG.defCount }),
+      ])
+
+      const filingsData = filingResult.status === 'fulfilled' ? filingResult.value : null
+      const compData = compResult.status === 'fulfilled' ? compResult.value : null
+      const tradeData = tradeResult.status === 'fulfilled' ? tradeResult.value : null
+      const dirData = dirResult.status === 'fulfilled' ? dirResult.value : null
+
+      console.info(`[Seed] [${ticker}] Filings:  ${filingsData ? `${filingsData.ingested} ingested, ${filingsData.skipped} skipped` : `FAILED: ${(filingResult as PromiseRejectedResult).reason?.message}`}`)
+      console.info(`[Seed] [${ticker}] Exec comp: ${compData ? `${compData.ingested} ingested, ${compData.skipped} skipped` : `FAILED: ${(compResult as PromiseRejectedResult).reason?.message}`}`)
+      console.info(`[Seed] [${ticker}] Trades:   ${tradeData ? `${tradeData.ingested} ingested, ${tradeData.skipped} skipped` : `FAILED: ${(tradeResult as PromiseRejectedResult).reason?.message}`}`)
+      console.info(`[Seed] [${ticker}] Directors: ${dirData ? `${dirData.ingested} ingested, ${dirData.skipped} skipped` : `FAILED: ${(dirResult as PromiseRejectedResult).reason?.message}`}`)
+
+      const allErrors = [
+        ...(filingsData?.errors ?? []),
+        ...(compData?.errors ?? []),
+        ...(tradeData?.errors ?? []),
+        ...(dirData?.errors ?? []),
+      ]
+      if (allErrors.length > 0) {
+        console.info(`[Seed] [${ticker}] Warnings: ${allErrors.length} non-fatal errors`)
+        for (const err of allErrors.slice(0, 5)) {
+          console.info(`[Seed] [${ticker}]   - ${err}`)
+        }
+        if (allErrors.length > 5) {
+          console.info(`[Seed] [${ticker}]   ... and ${allErrors.length - 5} more`)
+        }
+      }
+
+      // 3. Run AI summarization + embeddings
+      if (!skipSummarization) {
+        phase = 'summarization'
+        console.info(`[Seed] [${ticker}] Summarizing filings...`)
+        const summaryResult = await summarizeCompanyFilings(company.id, company.name)
+        console.info(
+          `[Seed] [${ticker}] Summarized: ${summaryResult.summarized}/${summaryResult.total} ` +
+          `(${summaryResult.tokenUsage.inputTokens} in / ${summaryResult.tokenUsage.outputTokens} out tokens)`,
+        )
+        if (summaryResult.errors.length > 0) {
+          console.info(`[Seed] [${ticker}] Summary errors: ${summaryResult.errors.length}`)
+        }
+      }
+
+      const duration = Date.now() - companyStart
+      console.info(`[Seed] ✓ ${ticker} complete (${formatDuration(duration)})`)
+
+      return {
+        ticker,
+        success: true,
+        duration,
+        filings: {
+          ingested: filingsData?.ingested ?? 0,
+          skipped: filingsData?.skipped ?? 0,
+        },
+      }
+    } catch (err) {
+      const duration = Date.now() - companyStart
+      const msg = err instanceof Error ? err.message : String(err)
+      console.info(`[Seed] ✗ ${ticker} FAILED in phase '${phase}': ${msg}`)
+      return {
+        ticker,
+        success: false,
+        duration,
+        filings: { ingested: 0, skipped: 0 },
+        error: msg,
       }
     }
-
-    // 3. Run AI summarization + embeddings
-    if (!skipSummarization) {
-      console.info(`[Seed] [${ticker}] Summarizing filings...`)
-      const summaryResult = await summarizeCompanyFilings(company.id, company.name)
-      console.info(
-        `[Seed] [${ticker}] Summarized: ${summaryResult.summarized}/${summaryResult.total} ` +
-        `(${summaryResult.tokenUsage.inputTokens} in / ${summaryResult.tokenUsage.outputTokens} out tokens)`,
-      )
-      if (summaryResult.errors.length > 0) {
-        console.info(`[Seed] [${ticker}] Summary errors: ${summaryResult.errors.length}`)
-      }
-    }
-
-    const duration = Date.now() - companyStart
-    console.info(`[Seed] ✓ ${ticker} complete (${formatDuration(duration)})`)
-
-    return {
-      ticker,
-      success: true,
-      duration,
-      filings: {
-        ingested: filingsData?.ingested ?? 0,
-        skipped: filingsData?.skipped ?? 0,
-      },
-    }
-  } catch (err) {
-    const duration = Date.now() - companyStart
-    const msg = err instanceof Error ? err.message : String(err)
-    console.info(`[Seed] ✗ ${ticker} FAILED: ${msg}`)
-    return {
-      ticker,
-      success: false,
-      duration,
-      filings: { ingested: 0, skipped: 0 },
-      error: msg,
-    }
+  } finally {
+    clearInterval(heartbeat)
   }
 }
 
@@ -367,9 +469,11 @@ async function main() {
   }
 
   console.info(`\n[Seed] ═══════════════════════════════════════════════════`)
-  console.info(`[Seed] Starting preload for ${tickers.length} companies`)
+  console.info(`[Seed] ${retryMode ? 'Retry mode' : 'Starting preload'} for ${tickers.length} companies`)
   console.info(`[Seed] Tickers: ${tickers.join(', ')}`)
-  console.info(`[Seed] Config: ${SEED_CONFIG.tenKCount} 10-Ks, ${SEED_CONFIG.defCount} DEF 14As, ${SEED_CONFIG.eightKMonths}mo 8-Ks`)
+  if (!retryMode) {
+    console.info(`[Seed] Config: ${SEED_CONFIG.tenKCount} 10-Ks, ${SEED_CONFIG.defCount} DEF 14As, ${SEED_CONFIG.eightKMonths}mo 8-Ks`)
+  }
   console.info(`[Seed] Concurrency: ${SEED_CONFIG.companyConcurrency} companies in parallel`)
   const embeddingModel = process.env.VOYAGE_EMBEDDING_MODEL ?? 'voyage-4-lite'
   console.info(`[Seed] Summarization: ${skipSummarization ? 'SKIPPED' : `enabled (Claude + Voyage AI ${embeddingModel})`}`)

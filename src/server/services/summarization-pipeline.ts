@@ -1,5 +1,30 @@
+/**
+ * Summarisation pipeline — per-section grain.
+ *
+ * As of migration 20260429000000_per_section_summaries.sql, AI summaries
+ * for individual SEC items live on `filing_sections` rows, while filing-
+ * level rollups (executive_summary, employee_impact, structured XBRL) stay
+ * on `filing_summaries.ai_summary`.
+ *
+ * Flow per filing:
+ *   1. Load every filing_sections row for the filing.
+ *   2. For each row, look up `getSectionDispatch(filingType, sectionCode)`.
+ *   3. Apply the skip policy (fetch_status / text length / pass_through).
+ *   4. Fan out Claude calls with bounded concurrency.
+ *   5. Write each section's `ai_summary`, `summary_version`, `prompt_id`,
+ *      `summarization_status`. Status is always `ai_generated` for fresh
+ *      AI output; humans flip it later via the review CLI/UI.
+ *   6. Compute filing-level rollups (executive_summary, employee_impact,
+ *      XBRL statements) from the filing's raw_data + section text.
+ *   7. Generate embeddings for both per-section summaries and rollup keys.
+ *
+ * Resumability: `summary_version IN (0, -1)` is the "needs work" sentinel
+ * (0 = unprocessed, -1 = last attempt failed). Re-runs read directly from
+ * the partial index `filing_sections_pending_summarize_idx`.
+ */
+
 import { createHash } from 'node:crypto'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull, or } from 'drizzle-orm'
 import {
   getDb,
   companies,
@@ -11,25 +36,52 @@ import {
 import { CURRENT_SUMMARY_VERSION } from '@younionize/ai'
 import type { ClaudeClient } from '@younionize/ai'
 import { pMapSettled } from '@younionize/helpers'
-import { getSectionFriendlyName } from '@younionize/sec-api'
+import {
+  getSectionDispatch,
+  getSectionFriendlyName,
+  PROMPT_VERSIONS,
+  type SectionPromptKind,
+} from '@younionize/sec-api'
 import { getAiClient } from '../ai-client'
 import { transformXbrlToStatements } from './xbrl-transformer'
 import type { FinancialStatement } from './xbrl-transformer'
-import {
-  getPipelineSectionText,
-  type SectionMap,
-} from './summarization-section-lookup'
 
 // ─── Concurrency limits ──────────────────────────────────────────────────────
+// Tuned for Claude (50 RPM Tier-1) + Voyage (300 RPM). Per-filing serial
+// keeps a single filing's logs coherent; section concurrency saturates the
+// rate limit; embedding concurrency runs higher because Voyage is cheaper
+// to parallelise.
 
-/** Max filings summarized in parallel per company */
 const FILING_CONCURRENCY = 1
-/** Max Claude section calls in parallel per filing */
-const SECTION_CONCURRENCY = 3
-/** Max embedding API calls in parallel per filing */
-const EMBEDDING_CONCURRENCY = 6
+const SECTION_CONCURRENCY = 6
+const EMBEDDING_CONCURRENCY = 10
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Skip-policy result ─────────────────────────────────────────────────────
+
+type SectionFetchStatus = 'success' | 'empty' | 'error'
+
+interface SectionRow {
+  id: string
+  filingId: string
+  sectionCode: string
+  text: string | null
+  fetchStatus: SectionFetchStatus
+  summaryVersion: number
+}
+
+interface SectionWriteResult {
+  rowId: string
+  sectionCode: string
+  status: 'ai_generated' | 'skipped'
+  promptKind: SectionPromptKind
+  promptId: string
+  aiSummary: unknown
+  summaryText: string | null // text used for embedding (null if skipped)
+  inputTokens: number
+  outputTokens: number
+}
+
+// ─── Public types ────────────────────────────────────────────────────────────
 
 interface SummarizationResult {
   total: number
@@ -44,74 +96,26 @@ interface FilingRow {
   filingType: string
   accessionNumber: string
   rawData: Record<string, unknown>
-  aiSummary: unknown
-  summaryVersion: number | null
+  summaryVersion: number
 }
 
-// ─── Sections per filing type ───────────────────────────────────────────────
-
-const FILING_SECTIONS: Record<string, Array<string>> = {
-  '10-K': [
-    'executive_summary',
-    'employee_impact',
-    'income_statement',
-    'balance_sheet',
-    'cash_flow',
-    'shareholders_equity',
-    'mda',
-    'risk_factors',
-    'business_overview',
-    'legal_proceedings',
-    'footnotes',
-  ],
-  '10-Q': [
-    'executive_summary',
-    'employee_impact',
-    'income_statement',
-    'balance_sheet',
-    'cash_flow',
-    'mda',
-  ],
-  '8-K': ['event_summary'],
-  'DEF 14A': [
-    'executive_compensation',
-    'board_composition',
-    'shareholder_proposals',
-  ],
-}
-
-const STRUCTURED_SECTIONS = new Set([
+// Filing-level rollups that don't correspond to any single SEC item. Stored
+// on filing_summaries.ai_summary, not on any filing_sections row.
+const ROLLUP_KEYS = [
+  'executive_summary',
+  'employee_impact',
   'income_statement',
   'balance_sheet',
   'cash_flow',
   'shareholders_equity',
-])
-
-async function loadFilingSections(filingId: string): Promise<SectionMap> {
-  const db = getDb()
-  const rows = await db
-    .select({
-      sectionCode: filingSections.sectionCode,
-      text: filingSections.text,
-      fetchStatus: filingSections.fetchStatus,
-    })
-    .from(filingSections)
-    .where(eq(filingSections.filingId, filingId))
-
-  const map: SectionMap = new Map()
-  for (const row of rows) {
-    if (row.fetchStatus === 'success' && row.text) {
-      map.set(row.sectionCode, row.text)
-    }
-  }
-  return map
-}
+] as const
+type RollupKey = (typeof ROLLUP_KEYS)[number]
 
 // ─── Main pipeline ─────────────────────────────────────────────────────────
 
 /**
- * Summarize all unsummarized filings for a company.
- * Processes sequentially to respect Claude API rate limits.
+ * Summarise all filings for a company that have outstanding work — either
+ * unprocessed sections or an unprocessed filing-level rollup.
  */
 export async function summarizeCompanyFilings(
   companyId: string,
@@ -128,28 +132,32 @@ export async function summarizeCompanyFilings(
     tokenUsage: { inputTokens: 0, outputTokens: 0 },
   }
 
-  // Query unsummarized filings
+  // A filing needs work if its filing_summaries row is at summary_version 0/-1
+  // OR any of its section rows is. We pick that up in one query by scanning
+  // filings whose own version is unfinished.
   const filings = await db
     .select({
       id: filingSummaries.id,
       filingType: filingSummaries.filingType,
       accessionNumber: filingSummaries.accessionNumber,
       rawData: filingSummaries.rawData,
-      aiSummary: filingSummaries.aiSummary,
       summaryVersion: filingSummaries.summaryVersion,
     })
     .from(filingSummaries)
     .where(
       and(
         eq(filingSummaries.companyId, companyId),
-        isNull(filingSummaries.aiSummary),
+        or(
+          eq(filingSummaries.summaryVersion, 0),
+          isNull(filingSummaries.aiSummary),
+        ),
       ),
     )
 
   result.total = filings.length
 
   if (filings.length === 0) {
-    console.info(`[Summarize] No unsummarized filings for ${companyName}`)
+    console.info(`[Summarize] No filings need work for ${companyName}`)
     return result
   }
 
@@ -157,7 +165,6 @@ export async function summarizeCompanyFilings(
     `[Summarize] Processing ${filings.length} filings for ${companyName}`,
   )
 
-  // Process filings with bounded concurrency
   const settled = await pMapSettled(
     filings as Array<FilingRow>,
     async (filing) => {
@@ -196,72 +203,77 @@ async function summarizeSingleFiling(
   ai: ClaudeClient,
 ): Promise<{ inputTokens: number; outputTokens: number }> {
   const db = getDb()
-  const rawData = filing.rawData as Record<string, unknown>
-  const sections = FILING_SECTIONS[filing.filingType] ?? ['executive_summary']
-  const aiSummary: Record<string, unknown> = {}
   let inputTokens = 0
   let outputTokens = 0
 
+  const sectionRows = await loadPendingSections(filing.id)
+
   console.info(
-    `[Summarize] ${filing.filingType} ${filing.accessionNumber} — ${sections.length} sections`,
+    `[Summarize] ${filing.filingType} ${filing.accessionNumber} — ` +
+      `${sectionRows.length} sections pending`,
   )
 
-  // Pre-fetch all section text for this filing once, so the section
-  // dispatcher and its delegates can read from an in-memory map instead
-  // of issuing N parallel DB queries.
-  const sectionMap = await loadFilingSections(filing.id)
-
-  // Separate sync (XBRL) sections from async (AI) sections
-  const aiSections: Array<string> = []
-  for (const section of sections) {
-    if (STRUCTURED_SECTIONS.has(section)) {
-      const xbrlData = rawData.xbrlData as Record<string, unknown> | undefined
-      if (xbrlData) {
-        const statements = transformXbrlToStatements(xbrlData)
-        if (statements[section]) {
-          aiSummary[section] = statements[section]
-        }
-      }
-    } else {
-      aiSections.push(section)
-    }
-  }
-
-  // Process AI sections with bounded concurrency
+  // ── Per-section fan-out ─────────────────────────────────────────────────
   const sectionResults = await pMapSettled(
-    aiSections,
-    async (section) =>
-      summarizeSectionDispatch(section, companyId, companyName, rawData, sectionMap, filing.filingType, ai),
+    sectionRows,
+    (row) => processSection(row, filing, companyName, ai),
     SECTION_CONCURRENCY,
   )
 
-  for (let i = 0; i < aiSections.length; i++) {
-    const section = aiSections[i]
+  const sectionMapByCode = new Map<string, string>(
+    sectionRows
+      .filter((r): r is SectionRow & { text: string } => r.text != null && r.fetchStatus === 'success')
+      .map((r) => [r.sectionCode, r.text]),
+  )
+
+  // ── Persist per-section results ─────────────────────────────────────────
+  const successfulWrites: Array<SectionWriteResult> = []
+  for (let i = 0; i < sectionRows.length; i++) {
+    const row = sectionRows[i]
     const entry = sectionResults[i]
-    if (entry.status === 'fulfilled' && entry.value) {
-      aiSummary[section] = entry.value.data
-      inputTokens += entry.value.usage.inputTokens
-      outputTokens += entry.value.usage.outputTokens
-    } else if (entry.status === 'rejected') {
-      const msg = `Section "${section}": ${entry.reason instanceof Error ? entry.reason.message : String(entry.reason)}`
-      console.info(`[Summarize] Skipping — ${msg}`)
-      aiSummary[section] = { error: msg }
+
+    if (entry.status === 'fulfilled') {
+      const write = entry.value
+      await persistSectionResult(write)
+      successfulWrites.push(write)
+      inputTokens += write.inputTokens
+      outputTokens += write.outputTokens
+    } else {
+      const errMsg = entry.reason instanceof Error ? entry.reason.message : String(entry.reason)
+      console.info(
+        `[Summarize] Section ${row.sectionCode} failed — ${errMsg}`,
+      )
+      await markSectionFailed(row.id)
     }
   }
 
-  // Update the filing record
+  // ── Filing-level rollups ────────────────────────────────────────────────
+  const rollupSummary: Record<string, unknown> = {}
+  const rollupUsage = await buildRollups(
+    filing,
+    companyId,
+    companyName,
+    sectionMapByCode,
+    successfulWrites,
+    rollupSummary,
+    ai,
+  )
+  inputTokens += rollupUsage.inputTokens
+  outputTokens += rollupUsage.outputTokens
+
+  // ── Persist filing-level state ─────────────────────────────────────────
   await db
     .update(filingSummaries)
     .set({
-      aiSummary,
+      aiSummary: rollupSummary,
       summaryVersion: CURRENT_SUMMARY_VERSION,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(filingSummaries.id, filing.id))
 
-  // Generate embeddings concurrently (awaited, not fire-and-forget)
+  // ── Embeddings (per-section + rollup) ──────────────────────────────────
   const embeddingCtx = await getEmbeddingContext(companyId, filing)
-  await generateSectionEmbeddings(filing.id, aiSummary, ai, embeddingCtx).catch((err) => {
+  await generateAllEmbeddings(filing.id, successfulWrites, rollupSummary, ai, embeddingCtx).catch((err) => {
     console.info(
       `[Summarize] Embedding generation failed for ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`,
     )
@@ -270,105 +282,312 @@ async function summarizeSingleFiling(
   return { inputTokens, outputTokens }
 }
 
-// ─── Section dispatch (routes to the right summarizer) ────────────────────
+// ─── Section loading ────────────────────────────────────────────────────────
 
-interface SectionResult {
+async function loadPendingSections(filingId: string): Promise<Array<SectionRow>> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      id: filingSections.id,
+      filingId: filingSections.filingId,
+      sectionCode: filingSections.sectionCode,
+      text: filingSections.text,
+      fetchStatus: filingSections.fetchStatus,
+      summaryVersion: filingSections.summaryVersion,
+    })
+    .from(filingSections)
+    .where(
+      and(
+        eq(filingSections.filingId, filingId),
+        inArray(filingSections.summaryVersion, [0, -1]),
+      ),
+    )
+
+  return rows.map((r) => ({
+    id: r.id,
+    filingId: r.filingId,
+    sectionCode: r.sectionCode,
+    text: r.text,
+    fetchStatus: r.fetchStatus as SectionFetchStatus,
+    summaryVersion: r.summaryVersion,
+  }))
+}
+
+// ─── Section processing (dispatch + skip policy) ────────────────────────────
+
+async function processSection(
+  row: SectionRow,
+  filing: FilingRow,
+  companyName: string,
+  ai: ClaudeClient,
+): Promise<SectionWriteResult> {
+  const dispatch = getSectionDispatch(filing.filingType, row.sectionCode)
+
+  // Skip policy — applied uniformly before any Claude call.
+  const text = row.text ?? ''
+  const skip =
+    dispatch.promptKind === 'pass_through' ||
+    (dispatch.skipIfEmpty && row.fetchStatus !== 'success') ||
+    text.length < dispatch.minLength
+
+  if (skip) {
+    return {
+      rowId: row.id,
+      sectionCode: row.sectionCode,
+      status: 'skipped',
+      promptKind: dispatch.promptKind,
+      promptId: PROMPT_VERSIONS[dispatch.promptKind],
+      aiSummary: null,
+      summaryText: null,
+      inputTokens: 0,
+      outputTokens: 0,
+    }
+  }
+
+  // Dispatch by prompt kind.
+  const dispatchResult = await callPromptForSection({
+    promptKind: dispatch.promptKind,
+    sectionCode: row.sectionCode,
+    sectionText: text,
+    filingType: filing.filingType,
+    companyName,
+    ai,
+  })
+
+  return {
+    rowId: row.id,
+    sectionCode: row.sectionCode,
+    status: 'ai_generated',
+    promptKind: dispatch.promptKind,
+    promptId: PROMPT_VERSIONS[dispatch.promptKind],
+    aiSummary: dispatchResult.data,
+    summaryText: dispatchResult.summaryText,
+    inputTokens: dispatchResult.usage.inputTokens,
+    outputTokens: dispatchResult.usage.outputTokens,
+  }
+}
+
+interface DispatchCallResult {
   data: unknown
+  summaryText: string | null
   usage: { inputTokens: number; outputTokens: number }
 }
 
-async function summarizeSectionDispatch(
-  section: string,
-  companyId: string,
-  companyName: string,
-  rawData: Record<string, unknown>,
-  sectionMap: SectionMap,
-  filingType: string,
-  ai: ClaudeClient,
-): Promise<SectionResult | null> {
-  if (section === 'executive_compensation') {
-    const data = await summarizeExecutiveCompensation(companyId, companyName, sectionMap, filingType, ai)
-    return { data: data.result, usage: data.usage }
-  }
+async function callPromptForSection(args: {
+  promptKind: SectionPromptKind
+  sectionCode: string
+  sectionText: string
+  filingType: string
+  companyName: string
+  ai: ClaudeClient
+}): Promise<DispatchCallResult> {
+  const { promptKind, sectionCode, sectionText, filingType, companyName, ai } = args
 
-  if (section === 'executive_summary') {
-    const response = await ai.generateCompanySummary({ rawData, filingType, companyName })
-    return { data: response.data, usage: response.usage }
+  switch (promptKind) {
+    case 'mda': {
+      const r = await ai.summarizeMda({ mdaText: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'risk_factors':
+    case 'business_overview':
+    case 'legal_proceedings':
+    case 'executive_compensation':
+    case 'financial_footnotes':
+    case 'cybersecurity':
+    case 'controls_and_procedures':
+    case 'related_transactions':
+    case 'proxy':
+    case 'narrative': {
+      const r = await ai.summarizeSection({
+        section: sectionText,
+        sectionType: PROMPT_KIND_TO_PROMPT_LABEL[promptKind],
+        companyName,
+        filingType,
+      })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'event_8k': {
+      const r = await ai.summarizeSection({
+        section: `${getSectionFriendlyName(sectionCode, filingType)}:\n${sectionText}`,
+        sectionType: 'event_summary',
+        companyName,
+        filingType,
+      })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    // Rollup / XBRL / pass_through don't appear here — they're handled
+    // outside processSection. Falling into this branch is a programmer bug.
+    default:
+      throw new Error(`Unsupported prompt kind in section dispatch: ${promptKind}`)
   }
-
-  if (section === 'employee_impact') {
-    const response = await ai.generateEmployeeImpact({
-      rawData,
-      filingType,
-      companyName,
-      riskFactors: getPipelineSectionText(sectionMap, 'risk_factors', filingType) ?? undefined,
-      mdaText: getPipelineSectionText(sectionMap, 'mda', filingType) ?? undefined,
-    })
-    return { data: response.data, usage: response.usage }
-  }
-
-  if (section === 'mda') {
-    const mdaText = getPipelineSectionText(sectionMap, 'mda', filingType)
-    if (!mdaText || mdaText.trim().length === 0) return null
-    const response = await ai.summarizeMda({ mdaText, companyName, filingType })
-    return { data: response.data, usage: response.usage }
-  }
-
-  if (section === 'event_summary') {
-    const sectionText = buildEightKContext(rawData, sectionMap)
-    if (!sectionText) return null
-    const response = await ai.summarizeSection({
-      section: sectionText,
-      sectionType: 'event_summary',
-      companyName,
-      filingType: '8-K',
-    })
-    return { data: response.data, usage: response.usage }
-  }
-
-  // Unstructured sections (risk_factors, business_overview, legal_proceedings, footnotes, etc.)
-  return summarizeUnstructuredSection(section, sectionMap, companyName, filingType, ai)
 }
 
-// ─── Unstructured section summarization ─────────────────────────────────────
-
-// Maps pipeline section names to the sectionType label expected by ClaudeClient.
-// These labels are part of the Claude prompt template contract — they are
-// camelCase by historical convention and must not change without coordinating
-// with prompts in @union/ai.
-const PIPELINE_TO_PROMPT_LABEL: Record<string, string> = {
+/**
+ * The Claude prompts in `packages/ai/src/prompts/section-summary.ts` key
+ * their guidance off camelCase labels. This map is the single bridge
+ * between the new dispatch kinds and that prompt-template contract.
+ *
+ * When a specialised prompt template lands (e.g. cybersecurity@v1 with its
+ * own system prompt), its label here can change to match the new prompt
+ * file without touching the pipeline.
+ */
+const PROMPT_KIND_TO_PROMPT_LABEL: Record<SectionPromptKind, string> = {
+  rollup_executive_summary: 'rollup_executive_summary',
+  rollup_employee_impact: 'rollup_employee_impact',
+  xbrl_income_statement: 'xbrl_income_statement',
+  xbrl_balance_sheet: 'xbrl_balance_sheet',
+  xbrl_cash_flow: 'xbrl_cash_flow',
+  xbrl_shareholders_equity: 'xbrl_shareholders_equity',
   mda: 'mdAndA',
   risk_factors: 'riskFactors',
   business_overview: 'businessOverview',
   legal_proceedings: 'legalProceedings',
-  footnotes: 'financialStatements',
-  board_composition: 'businessOverview',
-  shareholder_proposals: 'legalProceedings',
+  executive_compensation: 'executiveCompensation',
+  financial_footnotes: 'financialStatements',
+  // Until specialised prompts ship in a follow-up branch, these route
+  // through the generic narrative path. See packages/sec-api/src/section-prompts.ts.
+  cybersecurity: 'cybersecurity',
+  controls_and_procedures: 'controlsAndProcedures',
+  related_transactions: 'relatedTransactions',
+  proxy: 'proxy',
+  event_8k: 'event_summary',
+  narrative: 'narrative',
+  pass_through: 'pass_through',
 }
 
-async function summarizeUnstructuredSection(
-  section: string,
-  sectionMap: SectionMap,
+// ─── Section persistence ────────────────────────────────────────────────────
+
+async function persistSectionResult(write: SectionWriteResult): Promise<void> {
+  const db = getDb()
+  await db
+    .update(filingSections)
+    .set({
+      aiSummary: write.aiSummary as Record<string, unknown> | null,
+      summarizationStatus: write.status,
+      summaryVersion: CURRENT_SUMMARY_VERSION,
+      promptId: write.promptId,
+      summarizationUpdatedAt: new Date().toISOString(),
+    })
+    .where(eq(filingSections.id, write.rowId))
+}
+
+async function markSectionFailed(rowId: string): Promise<void> {
+  const db = getDb()
+  await db
+    .update(filingSections)
+    .set({
+      summaryVersion: -1,
+      summarizationUpdatedAt: new Date().toISOString(),
+    })
+    .where(eq(filingSections.id, rowId))
+}
+
+// ─── Filing-level rollups ───────────────────────────────────────────────────
+
+async function buildRollups(
+  filing: FilingRow,
+  companyId: string,
   companyName: string,
-  filingType: string,
+  sectionMapByCode: Map<string, string>,
+  sectionWrites: ReadonlyArray<SectionWriteResult>,
+  rollupOut: Record<string, unknown>,
   ai: ClaudeClient,
-): Promise<SectionResult | null> {
-  const sectionText = getPipelineSectionText(sectionMap, section, filingType)
-  if (!sectionText || sectionText.trim().length === 0) {
-    return null
+): Promise<{ inputTokens: number; outputTokens: number }> {
+  let inputTokens = 0
+  let outputTokens = 0
+
+  // Structured XBRL — no Claude call; pure transformation.
+  const xbrlData = filing.rawData.xbrlData as Record<string, unknown> | undefined
+  if (xbrlData) {
+    const statements = transformXbrlToStatements(xbrlData)
+    for (const key of ['income_statement', 'balance_sheet', 'cash_flow', 'shareholders_equity'] as const) {
+      if (statements[key]) {
+        rollupOut[key] = statements[key]
+      }
+    }
   }
 
-  const response = await ai.summarizeSection({
-    section: sectionText,
-    sectionType: PIPELINE_TO_PROMPT_LABEL[section] ?? section,
-    companyName,
-    filingType,
-  })
+  // Executive summary (10-K, 10-Q only — 8-K and DEF 14A don't carry the
+  // breadth of context this prompt expects).
+  if (filing.filingType === '10-K' || filing.filingType === '10-Q') {
+    try {
+      const summary = await ai.generateCompanySummary({
+        rawData: filing.rawData,
+        filingType: filing.filingType,
+        companyName,
+      })
+      rollupOut.executive_summary = summary.data
+      inputTokens += summary.usage.inputTokens
+      outputTokens += summary.usage.outputTokens
+    } catch (err) {
+      console.info(
+        `[Summarize] executive_summary rollup failed for ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
 
-  return { data: response.data, usage: response.usage }
+    // Employee impact — also 10-K/10-Q. Pulls in risk_factors + mda text.
+    try {
+      const riskCode = filing.filingType === '10-K' ? '1A' : 'part2item1a'
+      const mdaCode = filing.filingType === '10-K' ? '7' : 'part1item2'
+      const impact = await ai.generateEmployeeImpact({
+        rawData: filing.rawData,
+        filingType: filing.filingType,
+        companyName,
+        riskFactors: sectionMapByCode.get(riskCode),
+        mdaText: sectionMapByCode.get(mdaCode),
+      })
+      rollupOut.employee_impact = impact.data
+      inputTokens += impact.usage.inputTokens
+      outputTokens += impact.usage.outputTokens
+    } catch (err) {
+      console.info(
+        `[Summarize] employee_impact rollup failed for ${filing.accessionNumber}: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  // Executive compensation rollup — top-5 + analysis. Lives on the DEF 14A
+  // summary only; 10-K Item 11 is incorporated-by-reference boilerplate and
+  // produces no usable analysis. The frontend reads this from proxySummary.
+  if (filing.filingType === 'DEF 14A') {
+    const execComp = await buildExecCompRollup(companyId, companyName, sectionMapByCode, ai)
+    rollupOut.executive_compensation = execComp.result
+    inputTokens += execComp.usage.inputTokens
+    outputTokens += execComp.usage.outputTokens
+  }
+
+  // 8-K rollup — combine the per-section event_8k summaries into a single
+  // markdown narrative on rollupOut.event_summary. The dashboard's Recent
+  // Events card reads this exact key from filing_summaries.ai_summary; without
+  // it, the row appears summarized (ai_summary != null) but renders blank.
+  if (filing.filingType === '8-K') {
+    const aggregated = aggregate8KEvents(sectionWrites, filing.filingType)
+    if (aggregated) rollupOut.event_summary = aggregated
+  }
+
+  return { inputTokens, outputTokens }
 }
 
-// ─── Executive compensation analysis ────────────────────────────────────────
+/**
+ * Combine all per-section event_8k summaries for one 8-K filing into a single
+ * markdown string. Each item gets its friendly heading (e.g. "Item 5.02
+ * Departure of Directors") followed by the AI summary. Returns null when no
+ * event_8k sections were produced (e.g. all items skipped or pass_through).
+ */
+function aggregate8KEvents(
+  sectionWrites: ReadonlyArray<SectionWriteResult>,
+  filingType: string,
+): string | null {
+  const events = sectionWrites.filter(
+    (w): w is SectionWriteResult & { summaryText: string } =>
+      w.promptKind === 'event_8k' && typeof w.summaryText === 'string' && w.summaryText.trim().length > 0,
+  )
+  if (events.length === 0) return null
+
+  return events
+    .map((w) => `### ${getSectionFriendlyName(w.sectionCode, filingType)}\n\n${w.summaryText.trim()}`)
+    .join('\n\n---\n\n')
+}
 
 interface ExecCompSummary {
   top5: Array<{
@@ -383,17 +602,15 @@ interface ExecCompSummary {
   analysis: string | null
 }
 
-async function summarizeExecutiveCompensation(
+async function buildExecCompRollup(
   companyId: string,
   companyName: string,
-  sectionMap: SectionMap,
-  filingType: string,
+  sectionMapByCode: Map<string, string>,
   ai: ClaudeClient,
 ): Promise<{ result: ExecCompSummary; usage: { inputTokens: number; outputTokens: number } }> {
   const db = getDb()
   const usage = { inputTokens: 0, outputTokens: 0 }
 
-  // Get structured comp data from the database
   const compData = await db
     .select()
     .from(executiveCompensation)
@@ -401,7 +618,6 @@ async function summarizeExecutiveCompensation(
     .orderBy(executiveCompensation.totalCompensation)
     .limit(20)
 
-  // Sort descending by total comp and take top 5
   const sorted = [...compData].sort(
     (a, b) => b.totalCompensation - a.totalCompensation,
   )
@@ -413,24 +629,19 @@ async function summarizeExecutiveCompensation(
     stockAwards: e.stockAwards,
   }))
 
-  // Find CEO pay ratio
   const ceoPayRatio =
     compData.find((e) => e.ceoPayRatio != null)?.ceoPayRatio ?? null
 
-  // Risk-factor regex check — only meaningful for filings that carry a
-  // Risk Factors item. DEF 14A doesn't, so this returns false there.
-  const riskFactorsText = getPipelineSectionText(sectionMap, 'risk_factors', filingType) ?? ''
-  const employeeCompAsRiskFactor =
-    /employee.{0,30}compensation|talent.{0,20}retention|labor.{0,20}cost|wage.{0,20}pressure/i.test(
-      riskFactorsText,
-    )
+  // DEF 14A doesn't carry risk-factors itself. The 10-K's risk-factors
+  // signal isn't in scope here — leave the field present (UI consumers
+  // tolerate false) and let a future cross-filing rollup own that flag.
+  const employeeCompAsRiskFactor = false
 
-  // Prefer the proxy statement's full executive-compensation section, then
-  // fall back to its proxy item, then to a 10-K's executive_compensation
-  // item. Each is read directly by SEC code from the in-memory map.
+  // DEF 14A's detailed exec-comp item lives at part1item7 (CD&A) or
+  // part1item1 (proxy intro), depending on how the filer structured it.
   const proxyText =
-    getPipelineSectionText(sectionMap, 'executive_compensation', filingType) ??
-    getPipelineSectionText(sectionMap, 'proxy', filingType) ??
+    sectionMapByCode.get('part1item7') ??
+    sectionMapByCode.get('part1item1') ??
     null
 
   let analysis: string | null = null
@@ -456,58 +667,14 @@ async function summarizeExecutiveCompensation(
   return { result: { top5, ceoPayRatio, employeeCompAsRiskFactor, analysis }, usage }
 }
 
-// ─── 8-K context builder ───────────────────────────────────────────────────
+// ─── Embedding generation ───────────────────────────────────────────────────
 
-function buildEightKContext(
-  rawData: Record<string, unknown>,
-  sectionMap: SectionMap,
-): string | null {
-  const parts: Array<string> = []
-
-  if (rawData.description) {
-    parts.push(`Event description: ${rawData.description}`)
-  }
-
-  if (rawData.formType) {
-    parts.push(`Form type: ${rawData.formType}`)
-  }
-
-  // Include extracted section text from filing_sections, labelled with the
-  // friendly enum name (e.g. 'DIRECTOR_OFFICER_CHANGES') so Claude has
-  // human-readable context instead of opaque codes like '5-2'.
-  for (const [code, text] of sectionMap) {
-    if (text && text.trim().length > 0) {
-      const label = getSectionFriendlyName(code, '8-K')
-      parts.push(`${label}:\n${text}`)
-    }
-  }
-
-  // Include raw filing details for context
-  const fieldsToInclude = [
-    'companyName',
-    'ticker',
-    'filedAt',
-    'periodOfReport',
-  ] as const
-  for (const field of fieldsToInclude) {
-    if (rawData[field]) {
-      parts.push(`${field}: ${rawData[field]}`)
-    }
-  }
-
-  if (parts.length === 0) {
-    // Fall back to a truncated version of the raw data
-    const raw = JSON.stringify(rawData, null, 2)
-    if (raw.length > 100) {
-      return raw.slice(0, 5000)
-    }
-    return null
-  }
-
-  return parts.join('\n\n')
+interface EmbeddingContext {
+  companyId: string
+  companyTicker: string
+  filingType: string
+  periodEnd: string | null
 }
-
-// ─── Embedding context helper ───────────────────────────────────────────────
 
 async function getEmbeddingContext(
   companyId: string,
@@ -529,17 +696,215 @@ async function getEmbeddingContext(
   }
 }
 
+const SECTION_LABELS: Record<string, string> = {
+  executive_summary: 'Company overview and key takeaways',
+  employee_impact: 'Impact on employees',
+  income_statement: 'Income statement financial data',
+  balance_sheet: 'Balance sheet financial data',
+  cash_flow: 'Cash flow statement',
+  shareholders_equity: 'Shareholders equity statement',
+  executive_compensation: 'Executive compensation analysis',
+}
+
+function buildSectionEmbeddingLabel(
+  sectionCode: string,
+  filingType: string,
+  promptKind: SectionPromptKind,
+): string {
+  const friendly = getSectionFriendlyName(sectionCode, filingType)
+  return `${promptKind} (${friendly})`
+}
+
+function buildEmbeddingText(
+  chunk: string,
+  label: string,
+  ctx: EmbeddingContext | undefined,
+): string {
+  const prefix = ctx
+    ? `[${ctx.companyTicker} ${ctx.filingType} | ${label}${ctx.periodEnd ? ` | Period: ${ctx.periodEnd}` : ''}]`
+    : `[${label}]`
+  return `${prefix}\n${chunk}`
+}
+
+interface ChunkJob {
+  filingId: string
+  sectionCode: string | null // null for filing-level rollups
+  promptKind: SectionPromptKind | RollupKey
+  chunk: string
+  contentHash: string
+  chunkIndex: number
+  totalChunks: number
+  label: string
+}
+
+async function generateAllEmbeddings(
+  filingId: string,
+  sectionWrites: Array<SectionWriteResult>,
+  rollupSummary: Record<string, unknown>,
+  ai: ClaudeClient,
+  ctx: EmbeddingContext,
+): Promise<void> {
+  const db = getDb()
+  const jobs: Array<ChunkJob> = []
+
+  // Per-section jobs: only summaries with extractable text.
+  for (const write of sectionWrites) {
+    if (write.status === 'skipped' || !write.summaryText) continue
+    if (write.summaryText.trim().length < 50) continue
+
+    const label = buildSectionEmbeddingLabel(write.sectionCode, ctx.filingType, write.promptKind)
+    const chunks = chunkText(write.summaryText)
+    for (let i = 0; i < chunks.length; i++) {
+      jobs.push({
+        filingId,
+        sectionCode: write.sectionCode,
+        promptKind: write.promptKind,
+        chunk: chunks[i],
+        contentHash: createHash('sha256').update(chunks[i]).digest('hex'),
+        chunkIndex: i,
+        totalChunks: chunks.length,
+        label,
+      })
+    }
+  }
+
+  // Rollup jobs (filing_summaries.ai_summary keys).
+  for (const key of ROLLUP_KEYS) {
+    const text = extractRollupText(key, rollupSummary[key])
+    if (!text || text.trim().length < 50) continue
+
+    const label = SECTION_LABELS[key] ?? key
+    const chunks = chunkText(text)
+    for (let i = 0; i < chunks.length; i++) {
+      jobs.push({
+        filingId,
+        sectionCode: null,
+        promptKind: key,
+        chunk: chunks[i],
+        contentHash: createHash('sha256').update(chunks[i]).digest('hex'),
+        chunkIndex: i,
+        totalChunks: chunks.length,
+        label,
+      })
+    }
+  }
+
+  // Executive-compensation rollup (special case — its `analysis` field
+  // carries the narrative; top5/ratio are structured numbers we don't embed).
+  const execComp = rollupSummary.executive_compensation as ExecCompSummary | undefined
+  if (execComp?.analysis && execComp.analysis.trim().length >= 50) {
+    const chunks = chunkText(execComp.analysis)
+    for (let i = 0; i < chunks.length; i++) {
+      jobs.push({
+        filingId,
+        sectionCode: null,
+        promptKind: 'executive_compensation',
+        chunk: chunks[i],
+        contentHash: createHash('sha256').update(chunks[i]).digest('hex'),
+        chunkIndex: i,
+        totalChunks: chunks.length,
+        label: SECTION_LABELS.executive_compensation,
+      })
+    }
+  }
+
+  if (jobs.length === 0) return
+
+  await pMapSettled(
+    jobs,
+    async (job) => {
+      const existing = await db
+        .select({ id: embeddings.id })
+        .from(embeddings)
+        .where(
+          and(
+            eq(embeddings.sourceId, filingId),
+            eq(embeddings.contentHash, job.contentHash),
+          ),
+        )
+        .limit(1)
+
+      if (existing.length > 0) return
+
+      const embeddingText = buildEmbeddingText(job.chunk, job.label, ctx)
+      const vector = await ai.generateEmbedding({ text: embeddingText })
+
+      await db.insert(embeddings).values({
+        sourceType: 'filing_summary',
+        sourceId: filingId,
+        contentHash: job.contentHash,
+        embedding: vector,
+        metadata: {
+          section: job.promptKind,
+          sectionCode: job.sectionCode,
+          filingId,
+          chunkIndex: job.chunkIndex,
+          totalChunks: job.totalChunks,
+          companyId: ctx.companyId,
+          companyTicker: ctx.companyTicker,
+          filingType: ctx.filingType,
+          periodEnd: ctx.periodEnd,
+        },
+      })
+    },
+    EMBEDDING_CONCURRENCY,
+  )
+}
+
+function extractRollupText(key: RollupKey, value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value === 'string') return value
+
+  // CompanySummaryResult (executive_summary)
+  if (key === 'executive_summary' && typeof value === 'object' && 'headline' in (value as Record<string, unknown>)) {
+    const v = value as Record<string, unknown>
+    return [v.headline, v.company_health].filter(Boolean).join('\n\n')
+  }
+  // EmployeeImpactResult
+  if (key === 'employee_impact' && typeof value === 'object' && 'overall_outlook' in (value as Record<string, unknown>)) {
+    const v = value as Record<string, unknown>
+    return [
+      v.overall_outlook,
+      v.job_security,
+      v.compensation_signals,
+      v.growth_opportunities,
+      v.workforce_geography,
+      v.h1b_and_visa_dependency,
+    ].filter(Boolean).join('\n\n')
+  }
+  // FinancialStatement (XBRL)
+  if (typeof value === 'object' && 'items' in (value as Record<string, unknown>)) {
+    const stmt = value as FinancialStatement
+    if (!stmt.items) return null
+    return `${stmt.title}: ` +
+      stmt.items
+        .filter((item) => item.current != null)
+        .map(
+          (item) =>
+            `${item.label}: ${formatNumber(item.current)}` +
+            (item.changePercent != null
+              ? ` (${item.changePercent > 0 ? '+' : ''}${item.changePercent}%)`
+              : ''),
+        )
+        .join(', ')
+  }
+  return null
+}
+
+function formatNumber(value: number | null): string {
+  if (value == null) return 'N/A'
+  if (Math.abs(value) >= 1e9) return `$${(value / 1e9).toFixed(1)}B`
+  if (Math.abs(value) >= 1e6) return `$${(value / 1e6).toFixed(1)}M`
+  if (Math.abs(value) >= 1e3) return `$${(value / 1e3).toFixed(1)}K`
+  return `$${value.toFixed(2)}`
+}
+
 // ─── Text chunking ──────────────────────────────────────────────────────────
 
 const TARGET_CHUNK_TOKENS = 400
 const MAX_CHUNK_TOKENS = 600
 const CHARS_PER_TOKEN = 4
 
-/**
- * Split text into chunks that respect paragraph boundaries.
- * Prefers complete paragraphs; only splits within a paragraph
- * when a single paragraph exceeds MAX_CHUNK_TOKENS.
- */
 export function chunkText(text: string): Array<string> {
   const maxChars = MAX_CHUNK_TOKENS * CHARS_PER_TOKEN
   const targetChars = TARGET_CHUNK_TOKENS * CHARS_PER_TOKEN
@@ -554,7 +919,6 @@ export function chunkText(text: string): Array<string> {
   for (const para of paragraphs) {
     const paraLen = para.length
 
-    // If a single paragraph exceeds max, split it by sentences
     if (paraLen > maxChars) {
       if (currentParts.length > 0) {
         chunks.push(currentParts.join('\n\n').trim())
@@ -565,7 +929,6 @@ export function chunkText(text: string): Array<string> {
       continue
     }
 
-    // Would adding this paragraph exceed the target?
     if (currentLen + paraLen > targetChars && currentParts.length > 0) {
       chunks.push(currentParts.join('\n\n').trim())
       currentParts = []
@@ -607,205 +970,6 @@ function splitBySentences(
   return chunks
 }
 
-// ─── Embedding context prefix ───────────────────────────────────────────────
-
-const SECTION_LABELS: Record<string, string> = {
-  executive_summary: 'Company overview and key takeaways',
-  employee_impact: 'Impact on employees',
-  mda: 'Management Discussion and Analysis',
-  risk_factors: 'Risk factors and potential threats',
-  business_overview: 'Business description and operations',
-  legal_proceedings: 'Legal proceedings and regulatory matters',
-  footnotes: 'Financial statement footnotes',
-  event_summary: '8-K material event',
-  executive_compensation: 'Executive compensation analysis',
-  income_statement: 'Income statement financial data',
-  balance_sheet: 'Balance sheet financial data',
-  cash_flow: 'Cash flow statement',
-  shareholders_equity: 'Shareholders equity statement',
-  board_composition: 'Board of directors composition',
-  shareholder_proposals: 'Shareholder proposals',
-}
-
-function buildEmbeddingText(
-  chunk: string,
-  section: string,
-  ctx: EmbeddingContext | undefined,
-): string {
-  const sectionLabel = SECTION_LABELS[section] ?? section
-  const prefix = ctx
-    ? `[${ctx.companyTicker} ${ctx.filingType} | ${sectionLabel}${ctx.periodEnd ? ` | Period: ${ctx.periodEnd}` : ''}]`
-    : `[${sectionLabel}]`
-  return `${prefix}\n${chunk}`
-}
-
-// ─── Embedding generation ───────────────────────────────────────────────────
-
-interface EmbeddingContext {
-  companyId: string
-  companyTicker: string
-  filingType: string
-  periodEnd: string | null
-}
-
-async function generateSectionEmbeddings(
-  filingId: string,
-  aiSummary: Record<string, unknown>,
-  ai: ClaudeClient,
-  ctx?: EmbeddingContext,
-): Promise<void> {
-  const db = getDb()
-
-  // Collect all chunks to embed across all sections
-  interface ChunkJob {
-    section: string
-    chunk: string
-    contentHash: string
-    chunkIndex: number
-    totalChunks: number
-  }
-
-  const jobs: Array<ChunkJob> = []
-
-  for (const [section, content] of Object.entries(aiSummary)) {
-    if (content == null) continue
-    if (typeof content === 'object' && 'error' in (content as Record<string, unknown>)) continue
-
-    let text: string
-    if (typeof content === 'string') {
-      text = content
-    } else if (
-      typeof content === 'object' &&
-      content !== null &&
-      'headline' in (content as Record<string, unknown>)
-    ) {
-      // CompanySummaryResult (v2)
-      const summary = content as Record<string, unknown>
-      text = [
-        summary.headline,
-        summary.company_health,
-      ]
-        .filter(Boolean)
-        .join('\n\n')
-    } else if (
-      typeof content === 'object' &&
-      content !== null &&
-      'executive_summary' in (content as Record<string, unknown>)
-    ) {
-      // FilingSummaryResult (v1 backward compat)
-      const summary = content as Record<string, unknown>
-      text = [
-        summary.executive_summary,
-        summary.plain_language_explanation,
-        summary.employee_relevance,
-      ]
-        .filter(Boolean)
-        .join('\n\n')
-    } else if (
-      typeof content === 'object' &&
-      content !== null &&
-      'overall_outlook' in (content as Record<string, unknown>)
-    ) {
-      // EmployeeImpactResult
-      const impact = content as Record<string, unknown>
-      text = [
-        impact.overall_outlook,
-        impact.job_security,
-        impact.compensation_signals,
-        impact.growth_opportunities,
-        impact.workforce_geography,
-        impact.h1b_and_visa_dependency,
-      ]
-        .filter(Boolean)
-        .join('\n\n')
-    } else if (
-      typeof content === 'object' &&
-      content !== null &&
-      'analysis' in (content as Record<string, unknown>)
-    ) {
-      text = (content as Record<string, unknown>).analysis as string
-      if (!text) continue
-    } else if (STRUCTURED_SECTIONS.has(section)) {
-      const statement = content as FinancialStatement
-      if (!statement.items) continue
-      text = `${statement.title}: ` +
-        statement.items
-          .filter((item) => item.current != null)
-          .map(
-            (item) =>
-              `${item.label}: ${formatNumber(item.current)}` +
-              (item.changePercent != null ? ` (${item.changePercent > 0 ? '+' : ''}${item.changePercent}%)` : ''),
-          )
-          .join(', ')
-    } else {
-      continue
-    }
-
-    if (!text || text.trim().length < 50) continue
-
-    const chunks = chunkText(text)
-    for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
-      const contentHash = createHash('sha256').update(chunks[chunkIdx]).digest('hex')
-      jobs.push({ section, chunk: chunks[chunkIdx], contentHash, chunkIndex: chunkIdx, totalChunks: chunks.length })
-    }
-  }
-
-  if (jobs.length === 0) return
-
-  // Process all embedding jobs with bounded concurrency
-  await pMapSettled(
-    jobs,
-    async (job) => {
-      // Check if embedding already exists
-      const existing = await db
-        .select({ id: embeddings.id })
-        .from(embeddings)
-        .where(
-          and(
-            eq(embeddings.sourceId, filingId),
-            eq(embeddings.contentHash, job.contentHash),
-          ),
-        )
-        .limit(1)
-
-      if (existing.length > 0) return
-
-      const embeddingText = buildEmbeddingText(job.chunk, job.section, ctx)
-      const vector = await ai.generateEmbedding({ text: embeddingText })
-
-      await db.insert(embeddings).values({
-        sourceType: 'filing_summary',
-        sourceId: filingId,
-        contentHash: job.contentHash,
-        embedding: vector,
-        metadata: {
-          section: job.section,
-          filingId,
-          chunkIndex: job.chunkIndex,
-          totalChunks: job.totalChunks,
-          ...(ctx
-            ? {
-                companyId: ctx.companyId,
-                companyTicker: ctx.companyTicker,
-                filingType: ctx.filingType,
-                periodEnd: ctx.periodEnd,
-              }
-            : {}),
-        },
-      })
-    },
-    EMBEDDING_CONCURRENCY,
-  )
-}
-
-function formatNumber(value: number | null): string {
-  if (value == null) return 'N/A'
-  if (Math.abs(value) >= 1e9) return `$${(value / 1e9).toFixed(1)}B`
-  if (Math.abs(value) >= 1e6) return `$${(value / 1e6).toFixed(1)}M`
-  if (Math.abs(value) >= 1e3) return `$${(value / 1e3).toFixed(1)}K`
-  return `$${value.toFixed(2)}`
-}
-
 // ─── Status check ───────────────────────────────────────────────────────────
 
 export interface SummaryStatus {
@@ -835,7 +999,7 @@ export async function getSummaryStatus(companyId: string): Promise<SummaryStatus
     .from(filingSummaries)
     .where(eq(filingSummaries.companyId, companyId))
 
-  const summarized = filings.filter((f) => f.aiSummary != null).length
+  const summarized = filings.filter((f) => f.aiSummary != null && f.summaryVersion === CURRENT_SUMMARY_VERSION).length
 
   return {
     total: filings.length,

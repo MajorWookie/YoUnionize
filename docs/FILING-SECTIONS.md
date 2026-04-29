@@ -9,9 +9,20 @@ The codes are the source of truth in
 Helpers that resolve a code to a friendly name (and the inverse) live in
 [`packages/sec-api/src/sections.ts`](../packages/sec-api/src/sections.ts).
 
-A ✅ in the **Summarized** column means the section is wired into the
-AI summarization pipeline today (see `LEGACY_KEY_TO_CODE` in `sections.ts`).
-Other sections are fetched and stored verbatim but do not yet feed a prompt.
+As of 2026-04-29 the pipeline summarises every item that has substantive
+text. The **Prompt** column lists which prompt kind handles each item — see
+[`section-prompts.ts`](../packages/sec-api/src/section-prompts.ts) for the
+dispatch table. Items marked **pass-through** are stored verbatim but
+deliberately not summarised (typically empty or boilerplate, e.g. the
+exhibits index, the signature block, mine safety on non-mining issuers).
+Items below their `minLength` threshold are recorded with status
+`'skipped'` and can be upgraded later by a human reviewer.
+
+Per-item AI output, human edits, and review state live on
+`filing_sections.{ai_summary, human_summary, summarization_status,
+summary_version, prompt_id, ...}`. Filing-level rollups
+(`executive_summary`, `employee_impact`, structured XBRL statements) live on
+`filing_summaries.ai_summary`.
 
 ---
 
@@ -21,29 +32,29 @@ The comprehensive annual disclosure. Item codes follow the SEC's plain-number
 scheme (`1`, `1A`, `7`, …). Codes with a letter suffix are sub-items added in
 later SEC rule revisions.
 
-| Code | Name | Description | Summarized |
+| Code | Name | Description | Prompt |
 |------|------|-------------|:---:|
-| `1`   | Business Overview            | Description of the company's operations, products, segments, and competitive landscape. | ✅ |
-| `1A`  | Risk Factors                 | Material risks that could affect the business, financial condition, or stock price. | ✅ |
-| `1B`  | Unresolved Staff Comments    | Outstanding comments from the SEC staff on prior filings (often empty). | |
-| `1C`  | Cybersecurity                | Cybersecurity risk-management processes, governance, and material incidents. | |
-| `2`   | Properties                   | Physical facilities owned or leased (HQ, plants, retail, data centers). | |
-| `3`   | Legal Proceedings            | Material pending litigation, regulatory actions, and government investigations. | ✅ |
-| `4`   | Mine Safety Disclosures      | Mining-operation safety violations (only relevant to mining issuers). | |
-| `5`   | Market Information           | Stock listing info, holders of record, dividends, and share-repurchase activity. | |
-| `6`   | Selected Financial Data      | Five-year selected financial highlights (deprecated by the SEC in 2021; often blank). | |
-| `7`   | MD&A                         | Management's Discussion & Analysis — narrative of results, liquidity, and outlook. | ✅ |
-| `7A`  | Quantitative Disclosures     | Market-risk exposures (interest rate, FX, commodity) and hedging. | |
-| `8`   | Financial Statements         | Audited financial statements and notes. | ✅ |
-| `9`   | Disagreements with Accountants | Changes in or disagreements with the company's auditors (rarely populated). | |
-| `9A`  | Controls and Procedures      | Effectiveness of disclosure controls and internal control over financial reporting (SOX 404). | |
-| `9B`  | Other Information            | Catch-all for items required to be reported on Form 8-K but disclosed here. | |
-| `10`  | Directors and Governance     | Board, executive officers, and corporate-governance practices (often incorporated by reference from the proxy). | |
-| `11`  | Executive Compensation       | Named-executive-officer pay tables (often incorporated by reference from DEF 14A). | ✅ |
-| `12`  | Security Ownership           | Beneficial ownership of >5% holders, directors, and officers. | |
-| `13`  | Related Transactions         | Related-party transactions and director independence. | |
-| `14`  | Accountant Fees              | Audit and non-audit fees paid to the principal auditor. | |
-| `15`  | Exhibits                     | Index of exhibits and financial-statement schedules filed with the report. | |
+| `1`   | Business Overview            | Description of the company's operations, products, segments, and competitive landscape. | `business_overview` |
+| `1A`  | Risk Factors                 | Material risks that could affect the business, financial condition, or stock price. | `risk_factors` |
+| `1B`  | Unresolved Staff Comments    | Outstanding comments from the SEC staff on prior filings (often empty). | pass-through |
+| `1C`  | Cybersecurity                | Cybersecurity risk-management processes, governance, and material incidents. | `cybersecurity` |
+| `2`   | Properties                   | Physical facilities owned or leased (HQ, plants, retail, data centers). | `narrative` |
+| `3`   | Legal Proceedings            | Material pending litigation, regulatory actions, and government investigations. | `legal_proceedings` |
+| `4`   | Mine Safety Disclosures      | Mining-operation safety violations (only relevant to mining issuers). | pass-through |
+| `5`   | Market Information           | Stock listing info, holders of record, dividends, and share-repurchase activity. | `narrative` |
+| `6`   | Selected Financial Data      | Five-year selected financial highlights (deprecated by the SEC in 2021; often blank). | pass-through |
+| `7`   | MD&A                         | Management's Discussion & Analysis — narrative of results, liquidity, and outlook. | `mda` |
+| `7A`  | Quantitative Disclosures     | Market-risk exposures (interest rate, FX, commodity) and hedging. | `narrative` |
+| `8`   | Financial Statements         | Audited financial statements and notes. | `financial_footnotes` |
+| `9`   | Disagreements with Accountants | Changes in or disagreements with the company's auditors (rarely populated). | pass-through |
+| `9A`  | Controls and Procedures      | Effectiveness of disclosure controls and internal control over financial reporting (SOX 404). | `controls_and_procedures` |
+| `9B`  | Other Information            | Catch-all for items required to be reported on Form 8-K but disclosed here. | `narrative` |
+| `10`  | Directors and Governance     | Board, executive officers, and corporate-governance practices (often incorporated by reference from the proxy). | `narrative` |
+| `11`  | Executive Compensation       | Named-executive-officer pay tables (often incorporated by reference from DEF 14A). | `executive_compensation` |
+| `12`  | Security Ownership           | Beneficial ownership of >5% holders, directors, and officers. | `narrative` |
+| `13`  | Related Transactions         | Related-party transactions and director independence. | `related_transactions` |
+| `14`  | Accountant Fees              | Audit and non-audit fees paid to the principal auditor. | `narrative` |
+| `15`  | Exhibits                     | Index of exhibits and financial-statement schedules filed with the report. | pass-through |
 
 ---
 
@@ -53,19 +64,19 @@ Quarterly update covering interim periods. The form is split into two parts —
 Part I (Financial Information) and Part II (Other Information). Codes therefore
 read `part1itemN` / `part2itemN`.
 
-| Code | Name | Description | Summarized |
+| Code | Name | Description | Prompt |
 |------|------|-------------|:---:|
-| `part1item1`  | Financial Statements      | Unaudited interim balance sheet, income statement, cash flows, and notes. | ✅ |
-| `part1item2`  | MD&A                      | Quarterly management discussion of results and liquidity. | ✅ |
-| `part1item3`  | Quantitative Disclosures  | Material changes in market-risk exposures since the last 10-K. | |
-| `part1item4`  | Controls and Procedures   | Quarterly evaluation of disclosure controls and any material changes. | |
-| `part2item1`  | Legal Proceedings         | New or materially changed litigation since the last filing. | ✅ |
-| `part2item1a` | Risk Factors              | Material changes to the risk factors disclosed in the last 10-K. | ✅ |
-| `part2item2`  | Unregistered Sales        | Unregistered equity sales and share-repurchase activity. | |
-| `part2item3`  | Defaults                  | Defaults on senior securities. | |
-| `part2item4`  | Mine Safety Disclosures   | Mining-operation safety reporting (rare). | |
-| `part2item5`  | Other Information         | Items required to be reported on Form 8-K but disclosed here. | |
-| `part2item6`  | Exhibits                  | Exhibits filed with the quarterly report. | |
+| `part1item1`  | Financial Statements      | Unaudited interim balance sheet, income statement, cash flows, and notes. | `financial_footnotes` |
+| `part1item2`  | MD&A                      | Quarterly management discussion of results and liquidity. | `mda` |
+| `part1item3`  | Quantitative Disclosures  | Material changes in market-risk exposures since the last 10-K. | `narrative` |
+| `part1item4`  | Controls and Procedures   | Quarterly evaluation of disclosure controls and any material changes. | `controls_and_procedures` |
+| `part2item1`  | Legal Proceedings         | New or materially changed litigation since the last filing. | `legal_proceedings` |
+| `part2item1a` | Risk Factors              | Material changes to the risk factors disclosed in the last 10-K. | `risk_factors` |
+| `part2item2`  | Unregistered Sales        | Unregistered equity sales and share-repurchase activity. | `narrative` |
+| `part2item3`  | Defaults                  | Defaults on senior securities. | `narrative` |
+| `part2item4`  | Mine Safety Disclosures   | Mining-operation safety reporting (rare). | pass-through |
+| `part2item5`  | Other Information         | Items required to be reported on Form 8-K but disclosed here. | `narrative` |
+| `part2item6`  | Exhibits                  | Exhibits filed with the quarterly report. | pass-through |
 
 ---
 
@@ -143,11 +154,27 @@ this app. Their substantive content is consumed via XBRL or dedicated tables
 ## Where this matters in the codebase
 
 - **Parsing & storage**: `raw_sec_responses` keeps the verbatim sec-api.io
-  payload; `filing_summaries.raw_data.extractedSections` and the
-  `filing_sections` table key sections by these codes.
+  payload; the `filing_sections` table is the single source of truth for
+  per-item raw text, AI summary, human edit, and review state.
+- **Prompt dispatch**: `getSectionDispatch(filingType, sectionCode)` in
+  `packages/sec-api/src/section-prompts.ts` returns
+  `{ promptKind, minLength, skipIfEmpty }` for each item. New SEC sub-items
+  fall through to the generic `narrative` kind without a code change.
 - **Friendly names in UI**: call `getSectionFriendlyName(code, filingType)` —
   it returns the enum name (e.g. `'7' → 'MD_AND_A'`) with a fallback to the
   raw code.
+- **Querying summaries**: per-item summaries are queryable by
+  `(company_id, filing_type, section_code, period_end)`. Example for
+  Item 1 of the 10-K covering fiscal 2026:
+  ```sql
+  SELECT fs.ai_summary, fs.summarization_status
+  FROM filing_sections fs
+  JOIN filing_summaries f ON fs.filing_id = f.id
+  WHERE f.company_id = $1
+    AND f.filing_type = '10-K'
+    AND fs.section_code = '1'
+    AND f.period_end >= '2026-01-01' AND f.period_end < '2027-01-01';
+  ```
 - **Legacy compatibility**: older summary records used camelCase keys
   (`mdAndA`, `riskFactors`, …). `legacyKeyToSectionCode` and
   `sectionCodeToLegacyKey` translate between the two so historical data still

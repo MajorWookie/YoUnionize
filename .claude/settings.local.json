@@ -42,7 +42,8 @@
       "Bash(git commit --amend -m ' *)",
       "Bash(git push *)",
       "Bash(gh pr create --title 'Normalize SEC filing sections into filing_sections table' --body ' *)",
-      "Bash(supabase projects *)"
+      "Bash(supabase projects *)",
+      "mcp__supabase__execute_sql"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -542,6 +542,17 @@ async function processSections(
   const sectionStatus = deriveSectionStatus(fetchStatus, text)
   const persistedText = sectionStatus === 'success' ? text : null
 
+  // If we flipped success → error because the body was "processing"
+  // (defensive — SecApiClient.extractSection should have polled past this),
+  // surface a synthetic error message so operators don't see error rows
+  // with null fetch_error.
+  const persistedFetchError =
+    sectionStatus === 'error' &&
+    !fetchError &&
+    text?.trim().toLowerCase() === 'processing'
+      ? 'sec-api returned "processing" placeholder; section extraction was still in progress'
+      : fetchError
+
   await db
     .insert(filingSections)
     .values({
@@ -549,14 +560,14 @@ async function processSections(
       sectionCode,
       text: persistedText,
       fetchStatus: sectionStatus,
-      fetchError,
+      fetchError: persistedFetchError,
     })
     .onConflictDoUpdate({
       target: [filingSections.filingId, filingSections.sectionCode],
       set: {
         text: persistedText,
         fetchStatus: sectionStatus,
-        fetchError,
+        fetchError: persistedFetchError,
         extractedAt: new Date().toISOString(),
       },
     })

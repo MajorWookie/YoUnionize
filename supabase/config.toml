@@ -58,8 +58,6 @@ verify_jwt = false
 verify_jwt = false
 [functions.company-fetch]
 verify_jwt = false
-[functions.company-ingest]
-verify_jwt = false
 [functions.company-process]
 verify_jwt = false
 [functions.company-summarize]
