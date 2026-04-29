@@ -550,7 +550,14 @@ async function buildRollups(
   // summary only; 10-K Item 11 is incorporated-by-reference boilerplate and
   // produces no usable analysis. The frontend reads this from proxySummary.
   if (filing.filingType === 'DEF 14A') {
-    const execComp = await buildExecCompRollup(companyId, companyName, sectionMapByCode, ai)
+    const execComp = await buildExecCompRollup({
+      filingId: filing.id,
+      companyId,
+      companyName,
+      sectionMapByCode,
+      sectionWrites,
+      ai,
+    })
     rollupOut.executive_compensation = execComp.result
     inputTokens += execComp.usage.inputTokens
     outputTokens += execComp.usage.outputTokens
@@ -602,12 +609,15 @@ interface ExecCompSummary {
   analysis: string | null
 }
 
-async function buildExecCompRollup(
-  companyId: string,
-  companyName: string,
-  sectionMapByCode: Map<string, string>,
-  ai: ClaudeClient,
-): Promise<{ result: ExecCompSummary; usage: { inputTokens: number; outputTokens: number } }> {
+async function buildExecCompRollup(args: {
+  filingId: string
+  companyId: string
+  companyName: string
+  sectionMapByCode: Map<string, string>
+  sectionWrites: ReadonlyArray<SectionWriteResult>
+  ai: ClaudeClient
+}): Promise<{ result: ExecCompSummary; usage: { inputTokens: number; outputTokens: number } }> {
+  const { filingId, companyId, companyName, sectionMapByCode, sectionWrites, ai } = args
   const db = getDb()
   const usage = { inputTokens: 0, outputTokens: 0 }
 
@@ -637,34 +647,85 @@ async function buildExecCompRollup(
   // tolerate false) and let a future cross-filing rollup own that flag.
   const employeeCompAsRiskFactor = false
 
-  // DEF 14A's detailed exec-comp item lives at part1item7 (CD&A) or
-  // part1item1 (proxy intro), depending on how the filer structured it.
-  const proxyText =
-    sectionMapByCode.get('part1item7') ??
-    sectionMapByCode.get('part1item1') ??
-    null
+  // Lift the per-section executive_compensation summary if available — the
+  // section dispatch already ran the same exec-comp prompt on part1item7
+  // (CD&A), so re-prompting here would duplicate that Claude call. Check
+  // this run first, then the DB for resumed runs. Fall back to a fresh
+  // Claude call only when no cached summary exists; this preserves the
+  // behaviour for filers who put exec-comp into part1item1 (proxy intro),
+  // since that section was summarised with the more general 'proxy' prompt
+  // and needs the exec-comp lens applied.
+  let analysis: string | null = await loadCachedExecCompAnalysis(filingId, sectionWrites)
 
-  let analysis: string | null = null
-  if (proxyText || compData.length > 0) {
-    try {
-      const contextText = proxyText ?? JSON.stringify(top5, null, 2)
-      const response = await ai.summarizeSection({
-        section: contextText,
-        sectionType: 'executiveCompensation',
-        companyName,
-        filingType: 'DEF 14A',
-      })
-      analysis = response.data
-      usage.inputTokens += response.usage.inputTokens
-      usage.outputTokens += response.usage.outputTokens
-    } catch (err) {
-      console.info(
-        `[Summarize] Exec comp AI analysis failed: ${err instanceof Error ? err.message : String(err)}`,
-      )
+  if (!analysis) {
+    const proxyText =
+      sectionMapByCode.get('part1item7') ??
+      sectionMapByCode.get('part1item1') ??
+      null
+
+    if (proxyText || compData.length > 0) {
+      try {
+        const contextText = proxyText ?? JSON.stringify(top5, null, 2)
+        const response = await ai.summarizeSection({
+          section: contextText,
+          sectionType: 'executiveCompensation',
+          companyName,
+          filingType: 'DEF 14A',
+        })
+        analysis = response.data
+        usage.inputTokens += response.usage.inputTokens
+        usage.outputTokens += response.usage.outputTokens
+      } catch (err) {
+        console.info(
+          `[Summarize] Exec comp AI analysis failed: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
     }
   }
 
   return { result: { top5, ceoPayRatio, employeeCompAsRiskFactor, analysis }, usage }
+}
+
+/**
+ * Look up an already-produced executive_compensation section summary for a
+ * DEF 14A filing. Checks the in-memory writes from this run first (covers
+ * fresh summarisations), then falls back to the DB (covers resumed runs
+ * where the section was summarised in a prior invocation). Returns null
+ * when no suitable cached summary exists.
+ */
+async function loadCachedExecCompAnalysis(
+  filingId: string,
+  sectionWrites: ReadonlyArray<SectionWriteResult>,
+): Promise<string | null> {
+  const fromThisRun = sectionWrites.find(
+    (w) =>
+      w.sectionCode === 'part1item7' &&
+      w.promptKind === 'executive_compensation' &&
+      w.status === 'ai_generated' &&
+      typeof w.summaryText === 'string' &&
+      w.summaryText.trim().length > 0,
+  )
+  if (fromThisRun?.summaryText) return fromThisRun.summaryText
+
+  const db = getDb()
+  const [row] = await db
+    .select({ aiSummary: filingSections.aiSummary })
+    .from(filingSections)
+    .where(
+      and(
+        eq(filingSections.filingId, filingId),
+        eq(filingSections.sectionCode, 'part1item7'),
+      ),
+    )
+    .limit(1)
+
+  const stored = row?.aiSummary
+  if (stored == null) return null
+
+  // section ai_summary is jsonb; summarizeSection produces a string but it
+  // round-trips through JSON.stringify/parse. Coerce defensively.
+  const text = typeof stored === 'string' ? stored : JSON.stringify(stored)
+  return text.trim().length > 0 ? text : null
 }
 
 // ─── Embedding generation ───────────────────────────────────────────────────
