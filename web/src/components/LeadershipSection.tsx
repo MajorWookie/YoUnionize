@@ -3,37 +3,32 @@ import {
   Badge,
   Card,
   Group,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from '@mantine/core'
+import { Link } from 'react-router-dom'
+import type { Director, Executive } from '~/lib/exec-types'
 import { formatDollarsCompact, getInitials } from '~/lib/format'
 
-export interface ExecutiveRow {
-  id: string
-  name: string
-  title: string
-  fiscalYear: number
-  totalCompensation: number
-}
-
-export interface DirectorRow {
-  id: string
-  name: string
-  title: string
-  isIndependent: boolean | null
-  committees: unknown
-  tenureStart: string | null
-}
+// Re-export the shared types so existing importers (CompanyPage)
+// don't break — DirectorRow was the local name we used previously.
+export type { Director as DirectorRow, Executive as ExecutiveRow }
 
 interface Props {
-  executives: Array<ExecutiveRow>
-  directors: Array<DirectorRow>
+  executives: Array<Executive>
+  directors: Array<Director>
+  ticker: string
+  availableFiscalYears?: Array<number>
+  selectedFiscalYear?: number | null
+  onFiscalYearChange?: (year: number) => void
 }
 
 function parseCommittees(raw: unknown): Array<string> {
-  if (Array.isArray(raw)) return raw.filter((c): c is string => typeof c === 'string')
+  if (Array.isArray(raw))
+    return raw.filter((c): c is string => typeof c === 'string')
   if (typeof raw === 'string') {
     try {
       const parsed = JSON.parse(raw)
@@ -53,12 +48,18 @@ function tenureYear(start: string | null): number | null {
   return Number.isNaN(y) ? null : y
 }
 
-export function LeadershipSection({ executives, directors }: Props) {
+export function LeadershipSection({
+  executives,
+  directors,
+  ticker,
+  availableFiscalYears,
+  selectedFiscalYear,
+  onFiscalYearChange,
+}: Props) {
   if (executives.length === 0 && directors.length === 0) return null
 
-  // Dedupe execs by lowercased name (keep highest-comp record per person).
   const dedupedExecs = (() => {
-    const seen = new Map<string, ExecutiveRow>()
+    const seen = new Map<string, Executive>()
     for (const exec of executives) {
       const key = exec.name.toLowerCase()
       const existing = seen.get(key)
@@ -71,9 +72,27 @@ export function LeadershipSection({ executives, directors }: Props) {
     )
   })()
 
+  const yearOptions =
+    availableFiscalYears && availableFiscalYears.length > 1
+      ? availableFiscalYears
+          .slice()
+          .sort((a, b) => b - a)
+          .map((y) => ({ label: String(y), value: String(y) }))
+      : null
+
   return (
     <Stack gap="md">
-      <Title order={3}>Leadership</Title>
+      <Group justify="space-between" wrap="wrap" gap="xs">
+        <Title order={3}>Leadership</Title>
+        {yearOptions && selectedFiscalYear != null && onFiscalYearChange && (
+          <SegmentedControl
+            size="xs"
+            value={String(selectedFiscalYear)}
+            onChange={(v) => onFiscalYearChange(Number(v))}
+            data={yearOptions}
+          />
+        )}
+      </Group>
 
       {dedupedExecs.length > 0 && (
         <Stack gap="xs">
@@ -82,7 +101,15 @@ export function LeadershipSection({ executives, directors }: Props) {
           </Text>
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
             {dedupedExecs.map((exec) => (
-              <Card key={exec.id} withBorder padding="md" radius="md">
+              <Card
+                key={exec.id}
+                withBorder
+                padding="md"
+                radius="md"
+                component={Link}
+                to={`/companies/${ticker}/executive/${exec.id}`}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
                 <Group gap="sm" wrap="nowrap">
                   <Avatar color="navy" radius="xl">
                     {getInitials(exec.name)}
@@ -116,7 +143,15 @@ export function LeadershipSection({ executives, directors }: Props) {
               const committees = parseCommittees(dir.committees)
               const since = tenureYear(dir.tenureStart)
               return (
-                <Card key={dir.id} withBorder padding="md" radius="md">
+                <Card
+                  key={dir.id}
+                  withBorder
+                  padding="md"
+                  radius="md"
+                  component={Link}
+                  to={`/companies/${ticker}/executive/${dir.id}`}
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
                   <Stack gap="xs">
                     <Group gap="sm" wrap="nowrap" align="flex-start">
                       <Avatar color="slate" radius="xl">

@@ -19,10 +19,9 @@ import { BarChart, DonutChart } from '@mantine/charts'
 import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
 import { MarkdownContent } from '~/components/MarkdownContent'
 import { TextSummaryCard } from '~/components/TextSummaryCard'
-import {
-  LeadershipSection,
-  type DirectorRow,
-} from '~/components/LeadershipSection'
+import { LeadershipSection } from '~/components/LeadershipSection'
+import { CeoSpotlightCard } from '~/components/CeoSpotlightCard'
+import type { Director, Executive } from '~/lib/exec-types'
 import {
   InsiderTradingTable,
   type InsiderTrade,
@@ -59,27 +58,15 @@ interface FilingSummary {
   summary: Record<string, unknown>
 }
 
-interface Executive {
-  id: string
-  name: string
-  title: string
-  fiscalYear: number
-  totalCompensation: number
-  salary: number | null
-  bonus: number | null
-  stockAwards: number | null
-  optionAwards: number | null
-  nonEquityIncentive: number | null
-  otherCompensation: number | null
-}
-
 interface CompanyDetailResponse {
   company: CompanyInfo
   latestAnnual: FilingSummary | null
   executives: Array<Executive>
-  directors: Array<DirectorRow>
+  directors: Array<Director>
   insiderTrades: Array<InsiderTrade>
   recentEvents: Array<RecentEvent>
+  availableFiscalYears?: Array<number>
+  selectedFiscalYear?: number | null
 }
 
 const fmtCompact = new Intl.NumberFormat('en-US', {
@@ -139,6 +126,10 @@ export function CompanyPage() {
   const [data, setData] = useState<CompanyDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // null = let the API pick the latest fiscal year. Once the API responds we
+  // sync this from `selectedFiscalYear`; subsequent year switches refetch
+  // with the explicit fiscal_year query param.
+  const [fiscalYear, setFiscalYear] = useState<number | null>(null)
 
   useEffect(() => {
     if (!ticker) return
@@ -147,7 +138,8 @@ export function CompanyPage() {
     setLoading(true)
     setError(null)
 
-    fetchWithRetry(`/api/companies/${ticker}/detail`)
+    const yearParam = fiscalYear != null ? `?fiscal_year=${fiscalYear}` : ''
+    fetchWithRetry(`/api/companies/${ticker}/detail${yearParam}`)
       .then(async (res) => {
         if (cancelled) return
         if (!res.ok) {
@@ -157,6 +149,14 @@ export function CompanyPage() {
         }
         const detail = (await res.json()) as CompanyDetailResponse
         setData(detail)
+        // Sync local fiscal year state with what the API selected so the
+        // SegmentedControl shows the right pill on first load.
+        if (
+          detail.selectedFiscalYear != null &&
+          detail.selectedFiscalYear !== fiscalYear
+        ) {
+          setFiscalYear(detail.selectedFiscalYear)
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -169,7 +169,7 @@ export function CompanyPage() {
     return () => {
       cancelled = true
     }
-  }, [ticker])
+  }, [ticker, fiscalYear])
 
   if (loading) {
     return (
@@ -260,6 +260,8 @@ export function CompanyPage() {
             </Stack>
           </Group>
         </Stack>
+
+        <CeoSpotlightCard executives={executives} ticker={company.ticker} />
 
         {summaryText ? (
           <Card withBorder padding="lg" radius="md">
@@ -372,7 +374,14 @@ export function CompanyPage() {
           maxHeight={200}
         />
 
-        <LeadershipSection executives={executives} directors={directors} />
+        <LeadershipSection
+          executives={executives}
+          directors={directors}
+          ticker={company.ticker}
+          availableFiscalYears={data.availableFiscalYears}
+          selectedFiscalYear={data.selectedFiscalYear}
+          onFiscalYearChange={setFiscalYear}
+        />
 
         <IncomeStatementSunburst
           summary={summary}
