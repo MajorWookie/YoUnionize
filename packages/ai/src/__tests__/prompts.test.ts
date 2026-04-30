@@ -20,6 +20,10 @@ import {
   workforceSignalsSystemPrompt,
   workforceSignalsUserPrompt,
 } from '../prompts/workforce-signals'
+import {
+  businessOverviewSummarySystemPrompt,
+  businessOverviewSummaryUserPrompt,
+} from '../prompts/business-overview'
 
 describe('section-summary prompts', () => {
   it('uses section-specific guidance for riskFactors', () => {
@@ -57,6 +61,37 @@ describe('section-summary prompts', () => {
     expect(prompt).toContain('10-K')
     expect(prompt).toContain('riskFactors')
     expect(prompt).toContain('company faces risks')
+  })
+})
+
+describe('business-overview dedicated prompt (Phase 0 of section-prompts refactor)', () => {
+  it('system prompt contains the businessOverview-specific guidance', () => {
+    const prompt = businessOverviewSummarySystemPrompt()
+    expect(prompt).toContain('products/services')
+    expect(prompt).toContain('competitors')
+    expect(prompt).toContain('Section type: businessOverview')
+  })
+
+  it('system prompt is byte-identical to the generic-path output for businessOverview', () => {
+    // Behavior-preservation gate: the dedicated module must reproduce the
+    // exact prompt the bundled `summarizeSection` path would have produced.
+    // If this snapshot ever drifts, summaries will silently change quality
+    // without a version bump. Delete this assertion only when intentionally
+    // diverging the prompt content (Phase 3 — Council prompt swap).
+    expect(businessOverviewSummarySystemPrompt()).toBe(
+      sectionSummarySystemPrompt('businessOverview'),
+    )
+  })
+
+  it('user prompt is byte-identical to the generic-path output for businessOverview', () => {
+    const params = {
+      section: 'Acme Corp designs and sells widgets to consumers worldwide.',
+      companyName: 'Acme Corp',
+      filingType: '10-K',
+    }
+    expect(businessOverviewSummaryUserPrompt(params)).toBe(
+      sectionSummaryUserPrompt({ ...params, sectionType: 'businessOverview' }),
+    )
   })
 })
 
