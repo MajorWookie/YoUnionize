@@ -13,11 +13,6 @@ export type {
 } from './types'
 export { CURRENT_SUMMARY_VERSION } from './types'
 export {
-  sectionSummarySystemPrompt,
-  sectionSummaryUserPrompt,
-} from './prompts/section-summary'
-export type { SectionSummaryParams } from './prompts/section-summary'
-export {
   compensationAnalysisSystemPrompt,
   compensationAnalysisUserPrompt,
 } from './prompts/compensation-analysis'
@@ -101,6 +96,11 @@ export {
   event8kSummaryUserPrompt,
 } from './prompts/event-8k'
 export type { Event8kSummaryParams } from './prompts/event-8k'
+export {
+  narrativeSummarySystemPrompt,
+  narrativeSummaryUserPrompt,
+} from './prompts/narrative'
+export type { NarrativeSummaryParams } from './prompts/narrative'
 export {
   whatThisMeansSystemPrompt,
   whatThisMeansUserPrompt,

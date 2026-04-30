@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  sectionSummarySystemPrompt,
-  sectionSummaryUserPrompt,
-} from '../prompts/section-summary'
-import {
   compensationAnalysisSystemPrompt,
   compensationAnalysisUserPrompt,
 } from '../prompts/compensation-analysis'
@@ -60,74 +56,62 @@ import {
   event8kSummarySystemPrompt,
   event8kSummaryUserPrompt,
 } from '../prompts/event-8k'
+import {
+  narrativeSummarySystemPrompt,
+  narrativeSummaryUserPrompt,
+} from '../prompts/narrative'
 
-describe('section-summary prompts', () => {
-  it('uses section-specific guidance for riskFactors', () => {
-    const prompt = sectionSummarySystemPrompt('riskFactors')
-    expect(prompt).toContain('Job security')
-    expect(prompt).toContain('riskFactors')
-  })
+// ─── Per-section dedicated prompt content checks ─────────────────────────
+//
+// The byte-identical snapshot assertions used during Phase 0 / Phase 1 of
+// the section-prompts refactor have been removed: they compared each
+// dedicated module against the now-deleted generic `sectionSummary*`
+// functions, and once that reference is gone the comparison can't run.
+//
+// What remains is content-based regression coverage: each dedicated
+// prompt is asserted to contain its expected `Section type: …` label and
+// a section-specific guidance keyword. Any deliberate Phase 3 prompt
+// content swap will replace this content with section-specific assertions
+// for the new prompt's structure.
 
-  it('uses section-specific guidance for businessOverview', () => {
-    const prompt = sectionSummarySystemPrompt('businessOverview')
-    expect(prompt).toContain('products/services')
-    expect(prompt).toContain('competitors')
-  })
-
-  it('uses section-specific guidance for executiveCompensation', () => {
-    const prompt = sectionSummarySystemPrompt('executiveCompensation')
-    expect(prompt).toContain('CEO pay')
-    expect(prompt).toContain('median worker pay')
-  })
-
-  it('falls back to generic guidance for unknown sections', () => {
-    const prompt = sectionSummarySystemPrompt('unknownSection')
-    expect(prompt).toContain('plain language')
-    expect(prompt).toContain('unknownSection')
-  })
-
-  it('user prompt includes all parameters', () => {
-    const prompt = sectionSummaryUserPrompt({
-      section: 'The company faces risks from...',
-      sectionType: 'riskFactors',
-      companyName: 'Apple Inc.',
-      filingType: '10-K',
-    })
-    expect(prompt).toContain('Apple Inc.')
-    expect(prompt).toContain('10-K')
-    expect(prompt).toContain('riskFactors')
-    expect(prompt).toContain('company faces risks')
-  })
-})
-
-describe('business-overview dedicated prompt (Phase 0 of section-prompts refactor)', () => {
+describe('business-overview dedicated prompt', () => {
   it('system prompt contains the businessOverview-specific guidance', () => {
     const prompt = businessOverviewSummarySystemPrompt()
+    expect(prompt).toContain('Section type: businessOverview')
     expect(prompt).toContain('products/services')
     expect(prompt).toContain('competitors')
-    expect(prompt).toContain('Section type: businessOverview')
   })
 
-  it('system prompt is byte-identical to the generic-path output for businessOverview', () => {
-    // Behavior-preservation gate: the dedicated module must reproduce the
-    // exact prompt the bundled `summarizeSection` path would have produced.
-    // If this snapshot ever drifts, summaries will silently change quality
-    // without a version bump. Delete this assertion only when intentionally
-    // diverging the prompt content (Phase 3 — Council prompt swap).
-    expect(businessOverviewSummarySystemPrompt()).toBe(
-      sectionSummarySystemPrompt('businessOverview'),
-    )
-  })
-
-  it('user prompt is byte-identical to the generic-path output for businessOverview', () => {
-    const params = {
+  it('user prompt embeds company, filing type, and section content', () => {
+    const prompt = businessOverviewSummaryUserPrompt({
       section: 'Acme Corp designs and sells widgets to consumers worldwide.',
       companyName: 'Acme Corp',
       filingType: '10-K',
-    }
-    expect(businessOverviewSummaryUserPrompt(params)).toBe(
-      sectionSummaryUserPrompt({ ...params, sectionType: 'businessOverview' }),
-    )
+    })
+    expect(prompt).toContain('Acme Corp')
+    expect(prompt).toContain('10-K')
+    expect(prompt).toContain('businessOverview')
+    expect(prompt).toContain('designs and sells widgets')
+  })
+})
+
+describe('narrative dedicated prompt (catch-all for unmapped section codes)', () => {
+  it('system prompt uses the generic guidance and "narrative" label', () => {
+    const prompt = narrativeSummarySystemPrompt()
+    expect(prompt).toContain('Section type: narrative')
+    expect(prompt).toContain('Summarize this section in plain language')
+  })
+
+  it('user prompt embeds company, filing type, and section content', () => {
+    const prompt = narrativeSummaryUserPrompt({
+      section: 'Some long-tail SEC item content.',
+      companyName: 'Acme Corp',
+      filingType: '10-K',
+    })
+    expect(prompt).toContain('Acme Corp')
+    expect(prompt).toContain('10-K')
+    expect(prompt).toContain('"narrative"')
+    expect(prompt).toContain('Some long-tail SEC item content.')
   })
 })
 
@@ -196,31 +180,24 @@ describe.each([
     contentCheck: 'Summarize this section in plain language',
   },
 ])(
-  'Phase 1 dedicated prompt for $kind is byte-identical to generic path',
+  'dedicated $kind prompt module',
   ({ label, system, user, contentCheck }) => {
-    it('system prompt contains the section-specific guidance', () => {
+    it('system prompt declares the expected section label and guidance', () => {
       const prompt = system()
       expect(prompt).toContain(`Section type: ${label}`)
       expect(prompt).toContain(contentCheck)
     })
 
-    it('system prompt matches sectionSummarySystemPrompt(label)', () => {
-      // Behavior-preservation gate. If this snapshot ever drifts, summaries
-      // will silently change quality without a PROMPT_VERSIONS bump. Delete
-      // these assertions only when intentionally diverging the prompt
-      // (Phase 3 — Council prompt swap).
-      expect(system()).toBe(sectionSummarySystemPrompt(label))
-    })
-
-    it('user prompt matches sectionSummaryUserPrompt with sectionType=label', () => {
-      const params = {
-        section: 'Lorem ipsum sample section content for snapshot comparison.',
+    it('user prompt embeds company, filing type, and section content', () => {
+      const prompt = user({
+        section: 'Lorem ipsum sample section content for assertion.',
         companyName: 'Acme Corp',
         filingType: '10-K',
-      }
-      expect(user(params)).toBe(
-        sectionSummaryUserPrompt({ ...params, sectionType: label }),
-      )
+      })
+      expect(prompt).toContain('Acme Corp')
+      expect(prompt).toContain('10-K')
+      expect(prompt).toContain(`"${label}"`)
+      expect(prompt).toContain('Lorem ipsum sample section content')
     })
   },
 )
