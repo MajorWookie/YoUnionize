@@ -28,7 +28,7 @@ function formatOption(c: CompanyResult): string {
 }
 
 function extractTicker(formatted: string): string | null {
-  const match = formatted.match(/^([A-Z][A-Z0-9.\-]*)\s—/)
+  const match = formatted.match(/^([A-Z][A-Z0-9.-]*)\s—/)
   return match ? match[1] : null
 }
 

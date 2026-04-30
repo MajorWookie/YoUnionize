@@ -117,8 +117,6 @@ export function classifyError(err: unknown): Response {
 
 // ── Request logging wrapper ─────────────────────────────────────────────
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-
 interface HandlerMap {
   GET?: (request: Request) => Promise<Response> | Response
   POST?: (request: Request) => Promise<Response> | Response

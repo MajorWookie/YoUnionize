@@ -14,10 +14,7 @@ import {
   formatPercent,
 } from '~/lib/format'
 
-import type {
-  FinancialLineItem,
-  FinancialStatement,
-} from '~/lib/financial-types'
+import type { FinancialStatement } from '~/lib/financial-types'
 
 type StatementKey =
   | 'income_statement'

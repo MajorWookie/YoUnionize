@@ -7,7 +7,6 @@ import {
   Progress,
   Stack,
   Text,
-  Title,
 } from '@mantine/core'
 import { Link } from 'react-router-dom'
 import type { Executive } from '~/lib/exec-types'

@@ -9,7 +9,7 @@ export async function pMap<T, R>(
   mapper: (item: T, index: number) => Promise<R>,
   concurrency: number,
 ): Promise<Array<R>> {
-  const results: Array<R> = new Array(items.length)
+  const results = Array.from({ length: items.length }) as Array<R>
   let nextIndex = 0
 
   async function worker(): Promise<void> {
@@ -36,7 +36,9 @@ export async function pMapSettled<T, R>(
   mapper: (item: T, index: number) => Promise<R>,
   concurrency: number,
 ): Promise<Array<PromiseSettledResult<R>>> {
-  const results: Array<PromiseSettledResult<R>> = new Array(items.length)
+  const results = Array.from({ length: items.length }) as Array<
+    PromiseSettledResult<R>
+  >
   let nextIndex = 0
 
   async function worker(): Promise<void> {

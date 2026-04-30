@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { getDb, directors } from '@younionize/postgres'
 import { normalizeName } from '@younionize/helpers'
 import { getSecApiClient } from '../sec-api-client'
