@@ -1,6 +1,6 @@
 # YoUnionize
 
-Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI-powered summarization and compensation fairness insights. YoUnionize ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
+Web application for analyzing SEC filings with AI-powered summarization and compensation fairness insights. YoUnionize ingests SEC EDGAR data, generates AI summaries via Claude, and provides RAG-based Q&A — helping users understand executive compensation relative to their own.
 
 ## Features
 
@@ -16,29 +16,28 @@ Cross-platform application (iOS, Android, Web) for analyzing SEC filings with AI
 | Layer | Technology |
 |-------|-----------|
 | Runtime / Package Manager | Bun 1.2 |
-| Framework | Expo Router 6.x (file-based routing, React Native + Web) |
-| UI | Tamagui 2.0 (cross-platform design system) |
+| Build Tool | Vite 7 |
+| Framework | React 19 + React Router 7 |
+| UI | Mantine 7 (`@mantine/core`, `@mantine/charts`, `@mantine/notifications`, `@mantine/form`, `@mantine/hooks`) |
 | Database | PostgreSQL via Supabase + pgvector (1024-dim embeddings) |
 | ORM | Drizzle ORM 0.40 |
 | Auth | Supabase Auth (email/password) |
 | AI | Anthropic Claude (`@anthropic-ai/sdk`) |
 | Embeddings | Voyage AI (voyage-4-lite dev / voyage-finance-2 prod) |
 | SEC Data | sec-api.io |
-| API Layer | Supabase Edge Functions (Deno, 18 endpoints) |
+| API Layer | Supabase Edge Functions (Deno, ~22 endpoints) |
 | Background Jobs | PostgreSQL job queue |
 | Validation | Valibot 1.0 |
 | Linting | oxlint + oxfmt |
 | Testing | Vitest (unit), Playwright (E2E scaffold) |
-| Deployment | Supabase Edge Functions |
-| Charts | react-native-svg (custom PieChart, SunburstChart) |
+| Hosting | Netlify (static SPA) + Supabase (Edge Functions, DB, Auth) |
+| Charts | Mantine charts + custom SVG (SunburstChart) for advanced layouts |
 
 ## Prerequisites
 
 - **[Bun](https://bun.sh) 1.2+** — runtime and package manager
 - **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** — required for local Supabase
 - **[Supabase CLI](https://supabase.com/docs/guides/cli/getting-started)** — `brew install supabase/tap/supabase`
-- **Xcode** — iOS development only (macOS)
-- **Android Studio** — Android development only
 
 ### API Keys Required
 
@@ -63,7 +62,7 @@ bun install
 cp .env.example .env
 ```
 
-Edit `.env` with your API keys. See [Environment Variables Reference](#environment-variables-reference) for all options. The `.env.example` file has comments explaining each variable.
+Edit `.env` with your API keys. See [Environment Variables Reference](#environment-variables-reference) for all options.
 
 ### 3. Start local Supabase
 
@@ -79,8 +78,6 @@ This starts PostgreSQL, Auth, Studio, and the API gateway in Docker containers. 
 bun run supabase:migrate   # runs: supabase db reset
 ```
 
-This resets the local database and replays all migrations from `supabase/migrations/`.
-
 ### 5. Seed data (optional)
 
 > **Cost Warning:** Seeding uses paid APIs that will incur charges. Review the estimates below before running.
@@ -92,11 +89,7 @@ This resets the local database and replays all migrations from `supabase/migrati
 | 1 company, 5 years, with AI | ~50 calls | ~$1–2 | < $0.05 | ~$1–2 |
 | 30 companies, 5 years, with AI | ~1,500 calls | ~$15–30 | ~$0.50 | ~$15–30 |
 
-- **sec-api.io** — Free tier allows 100 API calls. Full 30-company seed requires a paid plan (~$49/month). A single company with `--years=1` may fit within the free tier.
-- **Anthropic Claude** — Summarization uses Claude Haiku 4.5 ($0.80/M input tokens, $4/M output tokens). Cost scales with filing count and section length.
-- **Voyage AI** — Embeddings are very inexpensive (~$0.02/M tokens). Optional — falls back to local Ollama if `VOYAGE_API_KEY` is unset.
-
-**Recommendation:** Start with a single company and limited history to verify your setup before committing to a larger seed:
+Start small to verify your setup:
 
 ```bash
 # Cheapest: single company, 1 year, data only (no AI costs)
@@ -105,11 +98,8 @@ bun run seed -- --tickers=AAPL --years=1 --skip-summarization
 # Single company with AI summarization (~$0.50)
 bun run seed -- --tickers=AAPL --years=1
 
-# Full pipeline — SEC data + AI summaries (see cost table above)
+# Full pipeline — SEC data + AI summaries
 bun run seed
-
-# Data only, no AI summarization (faster, needs SEC_API_KEY only)
-bun run seed:no-ai
 ```
 
 See [SEED.md](SEED.md) for all options, default tickers, and troubleshooting.
@@ -117,22 +107,14 @@ See [SEED.md](SEED.md) for all options, default tickers, and troubleshooting.
 ### 6. Run the app
 
 ```bash
-# Start Supabase + Expo dev server (mobile + web)
+# Vite dev server (loads .env.remote via dotenvx)
 bun dev
-
-# Web only
-bun dev:web
 
 # Edge Functions local dev (separate terminal)
 bun run dev:functions
-
-# iOS (requires Xcode)
-bun run prebuild   # generates native projects (first time only)
-bun run ios
-
-# Android
-bun run android
 ```
+
+The web app is served at `http://localhost:5173`.
 
 ## Available Scripts
 
@@ -140,12 +122,10 @@ bun run android
 
 | Command | Description |
 |---------|-------------|
-| `bun dev` | Start Supabase + Expo dev server |
-| `bun dev:web` | Start Supabase + Expo web server only |
+| `bun dev` | Start the Vite dev server with `.env.remote` loaded via dotenvx |
+| `bun run build` | TypeScript check + Vite production build into `dist/` |
+| `bun run preview` | Serve the production build locally |
 | `bun run dev:functions` | Run Edge Functions locally |
-| `bun run ios` | Start iOS dev build |
-| `bun run android` | Start Android dev build |
-| `bun run prebuild` | Generate native projects (iOS/Android) |
 
 ### Database
 
@@ -171,7 +151,7 @@ bun run android
 
 | Command | Description |
 |---------|-------------|
-| `bun run lint` | Run oxlint |
+| `bun run lint` | Run oxlint across `src/`, `server/`, `packages/`, `scripts/` |
 | `bun run lint:fix` | Fix lint issues + format with oxfmt |
 | `bun run format` | Format code with oxfmt |
 | `bun run typecheck` | TypeScript type checking |
@@ -185,55 +165,62 @@ bun run android
 
 | Command | Description |
 |---------|-------------|
-| `bun run build:web` | Build web app (Expo export) |
+| `bun run build` | Build the web app for production |
 | `bun run deploy:functions` | Deploy Edge Functions to Supabase |
 
 ## Project Structure
 
 ```
 YoUnionize/
-├── app/                    # Expo Router file-based routes
-│   ├── _layout.tsx         #   Root layout
-│   ├── index.tsx           #   Home / Discover screen
-│   ├── sign-in.tsx         #   Auth screens
-│   ├── sign-up.tsx
-│   └── (app)/              #   Authenticated route group
-│       ├── company/[ticker]/  # Company detail dashboard
-│       └── ask/               # RAG Q&A interface
-├── src/
-│   ├── database/           # Drizzle schema + Valibot validators
-│   ├── features/           # Feature modules (auth, company, onboarding, ask)
-│   ├── interface/          # Shared UI (charts, forms, layout, display)
-│   ├── lib/                # Client-side utilities (API client)
-│   ├── server/             # Server utilities + services
-│   │   └── services/       #   Ingestion, summarization, enrichment
-│   ├── tamagui/            # Theme config + tokens
-│   └── test/               # Vitest setup + factories
-├── packages/               # Workspace packages
-│   ├── ai/                 #   @union/ai — Claude + Voyage + prompts
-│   ├── helpers/            #   @union/helpers — ensureEnv, normalizeName
-│   ├── hooks/              #   @union/hooks — useAuth, useDebounce
-│   ├── postgres/           #   @union/postgres — Drizzle DB client
-│   └── sec-api/            #   @union/sec-api — SEC API client
+├── src/                      # Web app (React + Vite + Mantine)
+│   ├── App.tsx               #   Root router
+│   ├── main.tsx              #   Entry point
+│   ├── theme.ts              #   Mantine theme + token palette
+│   ├── components/           #   UI components (Layout, charts, sections)
+│   ├── routes/               #   Page-level routes
+│   │   ├── home.tsx
+│   │   ├── sign-in.tsx / sign-up.tsx
+│   │   ├── discover.tsx
+│   │   ├── company.tsx
+│   │   ├── executive.tsx
+│   │   ├── onboarding.tsx
+│   │   ├── profile.tsx
+│   │   ├── my-pay.tsx
+│   │   └── my-company.tsx
+│   └── lib/                  #   Client utilities (format, env-shim, types)
+├── server/                   # Server-side ingestion + summarization (Bun)
+│   ├── api-utils.ts          #   Request/response helpers
+│   ├── ai-client.ts          #   Anthropic + embedding clients
+│   ├── sec-api-client.ts     #   sec-api.io wrapper
+│   ├── job-queue-db.ts       #   PostgreSQL-backed job queue
+│   ├── lambda/ingestion.ts   #   Lambda entry for background ingestion
+│   └── services/             #   Per-domain ingestion + summarization
+├── packages/                 # Workspace packages
+│   ├── ai/                   #   @younionize/ai — Claude + Voyage + prompts
+│   ├── api-client/           #   @younionize/api-client — fetchWithRetry
+│   ├── helpers/              #   @younionize/helpers — utilities
+│   ├── hooks/                #   @younionize/hooks — useAuth, useDebounce
+│   ├── postgres/             #   @younionize/postgres — Drizzle DB + schema + validators
+│   └── sec-api/              #   @younionize/sec-api — SEC API client
 ├── supabase/
-│   ├── functions/          # 18 Edge Functions (Deno runtime)
-│   │   ├── _shared/        #   Shared: db, auth, cors, schema
-│   │   ├── ask/            #   RAG Q&A endpoint
-│   │   ├── company-*/      #   Company data endpoints
-│   │   ├── companies-*/    #   Search endpoints
-│   │   └── user-*/         #   User profile endpoints
-│   └── migrations/         # SQL migrations (timestamp-prefixed)
-├── scripts/                # Utility scripts (seed-companies.ts)
-├── docs/                   # Documentation + ADRs
-├── e2e/                    # Playwright E2E test scaffold
-├── ios/                    # iOS native project (Expo prebuild)
-├── android/                # Android native project (Expo prebuild)
-└── .github/workflows/      # CI + deployment workflows
+│   ├── functions/            # Edge Functions (Deno runtime)
+│   │   └── _shared/          #   Shared: db, auth, cors, schema
+│   └── migrations/           # SQL migrations (timestamp-prefixed)
+├── scripts/                  # Utility scripts (seed-companies.ts)
+├── tests/                    # Test factories shared across server/ tests
+├── docs/                     # Documentation + ADRs
+├── e2e/                      # Playwright E2E test scaffold
+├── public/                   # Static assets served by Vite
+├── index.html                # Vite entry HTML
+├── vite.config.ts            # Vite config (envPrefix, alias `~/*` → ./src/*)
+├── vitest.config.ts          # Vitest config (excludes web build, .claude/)
+├── vitest.setup.ts           # Vitest setup (env defaults)
+└── .github/workflows/        # CI + deployment workflows
 ```
 
 ## Edge Functions
 
-YoUnionize's API layer runs on [Supabase Edge Functions](https://supabase.com/docs/guides/functions) (Deno runtime). There are 18 endpoints covering health checks, user management, company data, SEC ingestion, AI summarization, RAG Q&A, and compensation analysis.
+YoUnionize's API layer runs on [Supabase Edge Functions](https://supabase.com/docs/guides/functions) (Deno runtime). The endpoints cover health checks, user management, company data, SEC ingestion, AI summarization, RAG Q&A, and compensation analysis.
 
 ```bash
 # Run locally (requires local Supabase running)
@@ -245,9 +232,13 @@ bun run deploy:functions
 
 Local Edge Functions are available at `http://127.0.0.1:54321/functions/v1/{function-name}`.
 
-**Note:** Edge Functions use Deno, not Bun. Environment variables use `Deno.env.get()`. Shared schemas in `supabase/functions/_shared/schema.ts` must stay in sync with `src/database/schema/`.
+**Note:** Edge Functions use Deno, not Bun. Environment variables use `Deno.env.get()`. Shared schemas in `supabase/functions/_shared/schema.ts` must stay in sync with `packages/postgres/src/schema/`.
 
 ## Deployment
+
+### Web app
+
+The web app is a static Vite SPA. `netlify.toml` configures Netlify to run `bun install && bun run build` and publish the `dist/` directory. The `[[redirects]]` rule rewrites unknown paths to `/index.html` so React Router handles client-side routes.
 
 ### Supabase Edge Functions
 
@@ -256,15 +247,6 @@ bun run deploy:functions
 ```
 
 Deploys all functions in `supabase/functions/` to your linked Supabase project.
-
-### EAS (Mobile Builds)
-
-```bash
-npx eas build              # Build iOS/Android binaries
-npx eas submit             # Submit to App Store / Play Store
-```
-
-Build profiles (development, preview, production) are configured in `eas.json`.
 
 ### CI/CD
 
@@ -281,12 +263,13 @@ bun run test:e2e     # Playwright E2E (scaffolded, not active)
 bun run check:all    # Lint + typecheck + unit tests
 ```
 
-Test coverage includes: API utilities, XBRL parsing, compensation math, API client, auth, AI prompts, SEC API schemas, helpers, enrichment, and company formatting (~13 test suites).
+Test coverage focuses on the server pipeline (XBRL transformation, compensation math, raw-data processor helpers, enrichment) and the workspace packages (api-client, sec-api, ai, helpers).
 
 ## Local Ports Reference
 
 | Service | URL |
 |---------|-----|
+| Vite Dev Server | `http://localhost:5173` |
 | Supabase API | `http://127.0.0.1:54321` |
 | PostgreSQL | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
 | Supabase Studio | `http://127.0.0.1:54323` |
@@ -304,11 +287,13 @@ Copy `.env.example` to `.env` and fill in your values. For remote/production, cr
 | `SUPABASE_URL` | Supabase API endpoint (`http://127.0.0.1:54321` for local) |
 | `SUPABASE_KEY` | Supabase publishable key |
 | `SUPABASE_SECRET_KEY` | Supabase service role secret key |
-| `EXPO_PUBLIC_SUPABASE_URL` | Supabase URL exposed to Expo client |
-| `EXPO_PUBLIC_SUPABASE_KEY` | Supabase publishable key exposed to Expo client |
+| `EXPO_PUBLIC_SUPABASE_URL` | Supabase URL exposed to the web client (`VITE_SUPABASE_URL` also works) |
+| `EXPO_PUBLIC_SUPABASE_KEY` | Publishable key exposed to the web client (`VITE_SUPABASE_KEY` also works) |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `SEC_API_KEY` | sec-api.io API key |
 | `ANTHROPIC_API_KEY` | Anthropic Claude API key |
+
+> **Why both `EXPO_PUBLIC_*` and `VITE_*`?** The repo accepts either prefix — `vite.config.ts` declares both as build-time exposed prefixes. The `EXPO_PUBLIC_*` names are kept for backwards compatibility with existing `.env` files; new variables can use `VITE_*`.
 
 ### Optional
 
@@ -328,8 +313,6 @@ These are retained for backwards compatibility but not required for new setups:
 | `SUPABASE_ANON_KEY` | `SUPABASE_KEY` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `SUPABASE_SECRET_KEY` |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | `EXPO_PUBLIC_SUPABASE_KEY` |
-| `VITE_SUPABASE_URL` | `EXPO_PUBLIC_SUPABASE_URL` |
-| `VITE_SUPABASE_KEY` | `EXPO_PUBLIC_SUPABASE_KEY` |
 
 ## Design
 
@@ -343,8 +326,7 @@ These are retained for backwards compatibility but not required for new setups:
 | [SEED.md](SEED.md) | Seed script usage, options, and troubleshooting |
 | [docs/MODULE-MAP.md](docs/MODULE-MAP.md) | Detailed module and directory descriptions |
 | [docs/TECH-DEBT.md](docs/TECH-DEBT.md) | Known tech debt tracker |
-| [docs/adrs/](docs/adrs/) | Architecture Decision Records (Tamagui, Valibot, Supabase Auth, etc.) |
-| [PLAN-REMOTE-IOS-TESTING.md](PLAN-REMOTE-IOS-TESTING.md) | Remote iOS testing setup plan |
+| [docs/adrs/](docs/adrs/) | Architecture Decision Records |
 
 ## License
 

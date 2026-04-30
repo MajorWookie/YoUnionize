@@ -1,8 +1,8 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
-import * as schema from '../../../src/database/schema'
-import * as relations from '../../../src/database/relations'
+import * as schema from './schema'
+import * as relations from './relations'
 
 const combinedSchema = { ...schema, ...relations }
 
