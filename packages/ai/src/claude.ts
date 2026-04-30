@@ -31,6 +31,42 @@ import {
   businessOverviewSummaryUserPrompt,
 } from './prompts/business-overview'
 import {
+  riskFactorsSummarySystemPrompt,
+  riskFactorsSummaryUserPrompt,
+} from './prompts/risk-factors'
+import {
+  legalProceedingsSummarySystemPrompt,
+  legalProceedingsSummaryUserPrompt,
+} from './prompts/legal-proceedings'
+import {
+  financialFootnotesSummarySystemPrompt,
+  financialFootnotesSummaryUserPrompt,
+} from './prompts/financial-footnotes'
+import {
+  executiveCompensationSummarySystemPrompt,
+  executiveCompensationSummaryUserPrompt,
+} from './prompts/executive-compensation'
+import {
+  cybersecuritySummarySystemPrompt,
+  cybersecuritySummaryUserPrompt,
+} from './prompts/cybersecurity'
+import {
+  controlsAndProceduresSummarySystemPrompt,
+  controlsAndProceduresSummaryUserPrompt,
+} from './prompts/controls-and-procedures'
+import {
+  relatedTransactionsSummarySystemPrompt,
+  relatedTransactionsSummaryUserPrompt,
+} from './prompts/related-transactions'
+import {
+  proxySummarySystemPrompt,
+  proxySummaryUserPrompt,
+} from './prompts/proxy'
+import {
+  event8kSummarySystemPrompt,
+  event8kSummaryUserPrompt,
+} from './prompts/event-8k'
+import {
   whatThisMeansSystemPrompt,
   whatThisMeansUserPrompt,
 } from './prompts/what-this-means'
@@ -302,6 +338,127 @@ export class ClaudeClient {
 
     const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
 
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Risk Factors summary ──────────────────────────────────────────
+
+  async summarizeRiskFactors(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = riskFactorsSummarySystemPrompt()
+    const userPrompt = riskFactorsSummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Legal Proceedings summary ─────────────────────────────────────
+
+  async summarizeLegalProceedings(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = legalProceedingsSummarySystemPrompt()
+    const userPrompt = legalProceedingsSummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Financial Footnotes summary ───────────────────────────────────
+
+  async summarizeFinancialFootnotes(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = financialFootnotesSummarySystemPrompt()
+    const userPrompt = financialFootnotesSummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Executive Compensation summary ────────────────────────────────
+
+  async summarizeExecutiveCompensation(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = executiveCompensationSummarySystemPrompt()
+    const userPrompt = executiveCompensationSummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Cybersecurity summary ─────────────────────────────────────────
+
+  async summarizeCybersecurity(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = cybersecuritySummarySystemPrompt()
+    const userPrompt = cybersecuritySummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Controls and Procedures summary ───────────────────────────────
+
+  async summarizeControlsAndProcedures(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = controlsAndProceduresSummarySystemPrompt()
+    const userPrompt = controlsAndProceduresSummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Related Transactions summary ──────────────────────────────────
+
+  async summarizeRelatedTransactions(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = relatedTransactionsSummarySystemPrompt()
+    const userPrompt = relatedTransactionsSummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Proxy summary ─────────────────────────────────────────────────
+
+  async summarizeProxy(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = proxySummarySystemPrompt()
+    const userPrompt = proxySummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── 8-K Event summary ─────────────────────────────────────────────
+  // The caller is expected to prefix `params.section` with the section's
+  // friendly name (e.g. "Item 5.02 — Departure of Directors:\n…"). The
+  // friendly-name lookup lives in `@younionize/sec-api`; the pipeline
+  // computes the prefix to avoid a cross-package import.
+
+  async summarize8kEvent(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = event8kSummarySystemPrompt()
+    const userPrompt = event8kSummaryUserPrompt(params)
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
     return { data: text, usage, cached: false }
   }
 

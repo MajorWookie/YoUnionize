@@ -24,6 +24,42 @@ import {
   businessOverviewSummarySystemPrompt,
   businessOverviewSummaryUserPrompt,
 } from '../prompts/business-overview'
+import {
+  riskFactorsSummarySystemPrompt,
+  riskFactorsSummaryUserPrompt,
+} from '../prompts/risk-factors'
+import {
+  legalProceedingsSummarySystemPrompt,
+  legalProceedingsSummaryUserPrompt,
+} from '../prompts/legal-proceedings'
+import {
+  financialFootnotesSummarySystemPrompt,
+  financialFootnotesSummaryUserPrompt,
+} from '../prompts/financial-footnotes'
+import {
+  executiveCompensationSummarySystemPrompt,
+  executiveCompensationSummaryUserPrompt,
+} from '../prompts/executive-compensation'
+import {
+  cybersecuritySummarySystemPrompt,
+  cybersecuritySummaryUserPrompt,
+} from '../prompts/cybersecurity'
+import {
+  controlsAndProceduresSummarySystemPrompt,
+  controlsAndProceduresSummaryUserPrompt,
+} from '../prompts/controls-and-procedures'
+import {
+  relatedTransactionsSummarySystemPrompt,
+  relatedTransactionsSummaryUserPrompt,
+} from '../prompts/related-transactions'
+import {
+  proxySummarySystemPrompt,
+  proxySummaryUserPrompt,
+} from '../prompts/proxy'
+import {
+  event8kSummarySystemPrompt,
+  event8kSummaryUserPrompt,
+} from '../prompts/event-8k'
 
 describe('section-summary prompts', () => {
   it('uses section-specific guidance for riskFactors', () => {
@@ -94,6 +130,100 @@ describe('business-overview dedicated prompt (Phase 0 of section-prompts refacto
     )
   })
 })
+
+describe.each([
+  {
+    kind: 'risk_factors',
+    label: 'riskFactors',
+    system: riskFactorsSummarySystemPrompt,
+    user: riskFactorsSummaryUserPrompt,
+    contentCheck: 'Job security risks',
+  },
+  {
+    kind: 'legal_proceedings',
+    label: 'legalProceedings',
+    system: legalProceedingsSummarySystemPrompt,
+    user: legalProceedingsSummaryUserPrompt,
+    contentCheck: 'lawsuits and legal issues',
+  },
+  {
+    kind: 'financial_footnotes',
+    label: 'financialStatements',
+    system: financialFootnotesSummarySystemPrompt,
+    user: financialFootnotesSummaryUserPrompt,
+    contentCheck: 'Break down the financial statements',
+  },
+  {
+    kind: 'executive_compensation',
+    label: 'executiveCompensation',
+    system: executiveCompensationSummarySystemPrompt,
+    user: executiveCompensationSummaryUserPrompt,
+    contentCheck: 'CEO pay vs. median worker pay',
+  },
+  {
+    kind: 'cybersecurity',
+    label: 'cybersecurity',
+    system: cybersecuritySummarySystemPrompt,
+    user: cybersecuritySummaryUserPrompt,
+    contentCheck: 'Summarize this section in plain language',
+  },
+  {
+    kind: 'controls_and_procedures',
+    label: 'controlsAndProcedures',
+    system: controlsAndProceduresSummarySystemPrompt,
+    user: controlsAndProceduresSummaryUserPrompt,
+    contentCheck: 'Summarize this section in plain language',
+  },
+  {
+    kind: 'related_transactions',
+    label: 'relatedTransactions',
+    system: relatedTransactionsSummarySystemPrompt,
+    user: relatedTransactionsSummaryUserPrompt,
+    contentCheck: 'Summarize this section in plain language',
+  },
+  {
+    kind: 'proxy',
+    label: 'proxy',
+    system: proxySummarySystemPrompt,
+    user: proxySummaryUserPrompt,
+    contentCheck: 'Summarize this section in plain language',
+  },
+  {
+    kind: 'event_8k',
+    label: 'event_summary',
+    system: event8kSummarySystemPrompt,
+    user: event8kSummaryUserPrompt,
+    contentCheck: 'Summarize this section in plain language',
+  },
+])(
+  'Phase 1 dedicated prompt for $kind is byte-identical to generic path',
+  ({ label, system, user, contentCheck }) => {
+    it('system prompt contains the section-specific guidance', () => {
+      const prompt = system()
+      expect(prompt).toContain(`Section type: ${label}`)
+      expect(prompt).toContain(contentCheck)
+    })
+
+    it('system prompt matches sectionSummarySystemPrompt(label)', () => {
+      // Behavior-preservation gate. If this snapshot ever drifts, summaries
+      // will silently change quality without a PROMPT_VERSIONS bump. Delete
+      // these assertions only when intentionally diverging the prompt
+      // (Phase 3 — Council prompt swap).
+      expect(system()).toBe(sectionSummarySystemPrompt(label))
+    })
+
+    it('user prompt matches sectionSummaryUserPrompt with sectionType=label', () => {
+      const params = {
+        section: 'Lorem ipsum sample section content for snapshot comparison.',
+        companyName: 'Acme Corp',
+        filingType: '10-K',
+      }
+      expect(user(params)).toBe(
+        sectionSummaryUserPrompt({ ...params, sectionType: label }),
+      )
+    })
+  },
+)
 
 describe('compensation-analysis prompts (1-100 banded contract)', () => {
   it('system prompt declares the JSON output structure', () => {
