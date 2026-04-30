@@ -26,7 +26,21 @@ describe('api-client', () => {
     it('returns fallback for unrecognized format', () => {
       expect(extractErrorMessage({})).toBe('Something went wrong')
       expect(extractErrorMessage(null)).toBe('Something went wrong')
-      expect(extractErrorMessage('string')).toBe('Something went wrong')
+      expect(extractErrorMessage(undefined)).toBe('Something went wrong')
+      expect(extractErrorMessage(42)).toBe('Something went wrong')
+    })
+
+    it('passes string input through (HTML error page fallback)', () => {
+      // apiFetch falls back to res.text() when the body isn't JSON; that
+      // string is then passed to extractErrorMessage. Should return the
+      // string verbatim (truncated at 200 chars) rather than 'Something went wrong'.
+      expect(extractErrorMessage('Bad Gateway')).toBe('Bad Gateway')
+      expect(extractErrorMessage('   trimmed   ')).toBe('trimmed')
+      expect(extractErrorMessage('')).toBe('Something went wrong')
+      const long = 'x'.repeat(300)
+      const result = extractErrorMessage(long)
+      expect(result.length).toBeLessThanOrEqual(201) // 200 + ellipsis
+      expect(result.endsWith('…')).toBe(true)
     })
 
     it('handles error object with details', () => {

@@ -31,10 +31,18 @@ export function configureApiClient(opts: { getSession: SessionGetter }): void {
 
 /**
  * Extract user-facing message from API error responses.
- * Handles both the new `{ error: { code, message } }` format and
- * the legacy `{ error: string }` format.
+ * Handles the new `{ error: { code, message } }` format, the legacy
+ * `{ error: string }` format, and a raw string fallback (used when an
+ * upstream like a CDN returns an HTML error page that apiFetch couldn't
+ * parse as JSON).
  */
 export function extractErrorMessage(data: unknown): string {
+  if (typeof data === 'string') {
+    const trimmed = data.trim()
+    if (trimmed.length === 0) return 'Something went wrong'
+    // Truncate so a multi-KB HTML body doesn't end up in a toast.
+    return trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed
+  }
   if (data && typeof data === 'object') {
     const obj = data as Record<string, unknown>
     if (obj.error && typeof obj.error === 'object') {
@@ -132,6 +140,15 @@ export async function apiFetch<T = unknown>(
   options?: RequestInit,
 ): Promise<{ ok: boolean; data: T; status: number }> {
   const res = await fetchWithRetry(url, options)
-  const data = await res.json() as T
+  // Read the body once as text so a non-JSON response (e.g. HTML 502 from
+  // a CDN) doesn't blow up the JSON.parse and leave the body unreadable.
+  // Caller can pass the resulting string into extractErrorMessage().
+  const text = await res.text()
+  let data: T
+  try {
+    data = JSON.parse(text) as T
+  } catch {
+    data = text as unknown as T
+  }
   return { ok: res.ok, data, status: res.status }
 }
