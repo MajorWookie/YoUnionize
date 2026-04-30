@@ -28,6 +28,11 @@ export {
   ROLLUP_KINDS,
   PROMPT_VERSIONS,
 } from './section-prompts'
+export {
+  scrapeDef14aSection,
+  htmlToText,
+  findSection,
+} from './scrape-fallback'
 export type {
   SectionPromptKind,
   SectionPromptDispatch,
