@@ -1,5 +1,5 @@
 [build]
-  command = "bun install && bun run build:web"
+  command = "bun install && bun run build"
   publish = "dist"
 
 [build.environment]
