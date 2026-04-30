@@ -24,6 +24,9 @@ const CompanyPage = lazy(() =>
 const OnboardingPage = lazy(() =>
   import('~/routes/onboarding').then((m) => ({ default: m.OnboardingPage })),
 )
+const ExecutivePage = lazy(() =>
+  import('~/routes/executive').then((m) => ({ default: m.ExecutivePage })),
+)
 
 configureApiClient({
   getSession: async () => {
@@ -63,6 +66,14 @@ export function App() {
                   element={
                     <AuthGuard>
                       <CompanyPage />
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/companies/:ticker/executive/:id"
+                  element={
+                    <AuthGuard>
+                      <ExecutivePage />
                     </AuthGuard>
                   }
                 />
