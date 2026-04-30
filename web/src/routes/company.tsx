@@ -272,14 +272,14 @@ export function CompanyPage() {
           color="navy.4"
           styles={{ label: { color: 'var(--mantine-color-navy-7)', fontWeight: 600 } }}
         />
+        <IncomeStatementSunburst
+          summary={summary}
+          periodEnd={latestAnnual?.periodEnd}
+        />
         <TextSummaryCard
           title="What does this mean for employees?"
           content={employeeImpactText}
           maxHeight={360}
-        />
-        <IncomeStatementSunburst
-          summary={summary}
-          periodEnd={latestAnnual?.periodEnd}
         />
         <CeoSpotlightCard executives={executives} ticker={company.ticker} />
 
