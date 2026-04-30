@@ -277,6 +277,10 @@ export function CompanyPage() {
           content={employeeImpactText}
           maxHeight={360}
         />
+        <IncomeStatementSunburst
+          summary={summary}
+          periodEnd={latestAnnual?.periodEnd}
+        />
         <CeoSpotlightCard executives={executives} ticker={company.ticker} />
 
         {/* ── Company snapshot ────────────────────────────────────
@@ -342,14 +346,12 @@ export function CompanyPage() {
         />
 
         {/* ── Financial health ────────────────────────────────────
-            Where the money comes from and where it goes. Sunburst is
-            the at-a-glance view; the tabs below drill into income,
-            balance sheet, cash flow, and equity. */}
+            Detailed XBRL statements. The at-a-glance Income Breakdown
+            sunburst lives up in the "What this means for you" group
+            since revenue disposition is core context for employees;
+            the tabs here drill into income, balance sheet, cash flow,
+            and equity. */}
         <Divider label="Financial health" labelPosition="left" />
-        <IncomeStatementSunburst
-          summary={summary}
-          periodEnd={latestAnnual?.periodEnd}
-        />
         <FinancialsSection summary={summary} />
 
         {/* ── Compensation deep-dive ──────────────────────────────
