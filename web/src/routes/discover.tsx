@@ -14,6 +14,7 @@ import {
 } from '@mantine/core'
 import { useDebounce } from '@younionize/hooks'
 import { fetchWithRetry } from '@younionize/api-client'
+import { AskBar } from '~/components/AskBar'
 
 interface SearchResult {
   name: string
@@ -147,6 +148,8 @@ export function DiscoverPage() {
             Search public companies and explore their SEC filings.
           </Text>
         </Stack>
+
+        <AskBar placeholder="Ask about any public company…" />
 
         <TextInput
           placeholder="Search by company name or ticker..."

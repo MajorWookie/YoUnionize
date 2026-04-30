@@ -27,6 +27,15 @@ const OnboardingPage = lazy(() =>
 const ExecutivePage = lazy(() =>
   import('~/routes/executive').then((m) => ({ default: m.ExecutivePage })),
 )
+const ProfilePage = lazy(() =>
+  import('~/routes/profile').then((m) => ({ default: m.ProfilePage })),
+)
+const MyPayPage = lazy(() =>
+  import('~/routes/my-pay').then((m) => ({ default: m.MyPayPage })),
+)
+const MyCompanyPage = lazy(() =>
+  import('~/routes/my-company').then((m) => ({ default: m.MyCompanyPage })),
+)
 
 configureApiClient({
   getSession: async () => {
@@ -82,6 +91,30 @@ export function App() {
                   element={
                     <AuthGuard>
                       <OnboardingPage />
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <AuthGuard>
+                      <ProfilePage />
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/my-pay"
+                  element={
+                    <AuthGuard>
+                      <MyPayPage />
+                    </AuthGuard>
+                  }
+                />
+                <Route
+                  path="/my-company"
+                  element={
+                    <AuthGuard>
+                      <MyCompanyPage />
                     </AuthGuard>
                   }
                 />

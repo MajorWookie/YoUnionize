@@ -18,6 +18,7 @@ import {
 } from '@mantine/core'
 import { BarChart, DonutChart } from '@mantine/charts'
 import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
+import { AskBar } from '~/components/AskBar'
 import { MarkdownContent } from '~/components/MarkdownContent'
 import { TextSummaryCard } from '~/components/TextSummaryCard'
 import { LeadershipSection } from '~/components/LeadershipSection'
@@ -261,6 +262,11 @@ export function CompanyPage() {
             </Stack>
           </Group>
         </Stack>
+
+        <AskBar
+          companyTicker={company.ticker}
+          placeholder={`Ask about ${company.name}…`}
+        />
 
         {/* ── For You ─────────────────────────────────────────────
             Employee-relevant content lives here at the top. Even if you
