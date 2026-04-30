@@ -428,27 +428,54 @@ async function callPromptForSection(args: {
       const r = await ai.summarizeBusinessOverview({ section: sectionText, companyName, filingType })
       return { data: r.data, summaryText: r.data, usage: r.usage }
     }
-    case 'risk_factors':
-    case 'legal_proceedings':
-    case 'executive_compensation':
-    case 'financial_footnotes':
-    case 'cybersecurity':
-    case 'controls_and_procedures':
-    case 'related_transactions':
-    case 'proxy':
-    case 'narrative': {
-      const r = await ai.summarizeSection({
-        section: sectionText,
-        sectionType: PROMPT_KIND_TO_PROMPT_LABEL[promptKind] ?? promptKind,
+    case 'risk_factors': {
+      const r = await ai.summarizeRiskFactors({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'legal_proceedings': {
+      const r = await ai.summarizeLegalProceedings({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'executive_compensation': {
+      const r = await ai.summarizeExecutiveCompensation({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'financial_footnotes': {
+      const r = await ai.summarizeFinancialFootnotes({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'cybersecurity': {
+      const r = await ai.summarizeCybersecurity({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'controls_and_procedures': {
+      const r = await ai.summarizeControlsAndProcedures({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'related_transactions': {
+      const r = await ai.summarizeRelatedTransactions({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'proxy': {
+      const r = await ai.summarizeProxy({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
+    case 'event_8k': {
+      // The friendly-name prefix is computed here (rather than inside the
+      // prompt module) to avoid a cross-package import from @younionize/ai
+      // into @younionize/sec-api. Byte-identical to the previous generic
+      // path: same prefix shape, same camelCase-equivalent label.
+      const r = await ai.summarize8kEvent({
+        section: `${getSectionFriendlyName(sectionCode, filingType)}:\n${sectionText}`,
         companyName,
         filingType,
       })
       return { data: r.data, summaryText: r.data, usage: r.usage }
     }
-    case 'event_8k': {
+    case 'narrative': {
       const r = await ai.summarizeSection({
-        section: `${getSectionFriendlyName(sectionCode, filingType)}:\n${sectionText}`,
-        sectionType: 'event_summary',
+        section: sectionText,
+        sectionType: PROMPT_KIND_TO_PROMPT_LABEL[promptKind] ?? promptKind,
         companyName,
         filingType,
       })
@@ -465,30 +492,17 @@ async function callPromptForSection(args: {
  * Bridge between dispatch kinds and the camelCase labels expected by the
  * generic `sectionSummarySystemPrompt` (packages/ai/src/prompts/section-summary.ts).
  *
- * Entries are removed as sections migrate to dedicated prompt modules
- * (mda, business_overview migrated; the rest still route through the
- * generic path until Phase 1 of refactor/break-out-section-prompts lands).
- * Once every kind has its own module, this map can be deleted.
+ * After Phase 1 of refactor/break-out-section-prompts, only `narrative`
+ * still routes through the generic path. Every other narrative kind has
+ * its own dedicated prompt module and corresponding ClaudeClient method.
+ * Once `narrative` is also migrated (or proven unused), this map can be
+ * deleted along with section-summary.ts itself.
+ *
+ * Rollup / XBRL / pass_through kinds are handled outside processSection
+ * and never reach the lookup, so they remain absent from this map.
  */
 const PROMPT_KIND_TO_PROMPT_LABEL: Partial<Record<SectionPromptKind, string>> = {
-  rollup_executive_summary: 'rollup_executive_summary',
-  rollup_employee_impact: 'rollup_employee_impact',
-  rollup_workforce_signals: 'rollup_workforce_signals',
-  xbrl_income_statement: 'xbrl_income_statement',
-  xbrl_balance_sheet: 'xbrl_balance_sheet',
-  xbrl_cash_flow: 'xbrl_cash_flow',
-  xbrl_shareholders_equity: 'xbrl_shareholders_equity',
-  risk_factors: 'riskFactors',
-  legal_proceedings: 'legalProceedings',
-  executive_compensation: 'executiveCompensation',
-  financial_footnotes: 'financialStatements',
-  cybersecurity: 'cybersecurity',
-  controls_and_procedures: 'controlsAndProcedures',
-  related_transactions: 'relatedTransactions',
-  proxy: 'proxy',
-  event_8k: 'event_summary',
   narrative: 'narrative',
-  pass_through: 'pass_through',
 }
 
 // ─── Section persistence ────────────────────────────────────────────────────

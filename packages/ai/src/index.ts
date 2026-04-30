@@ -57,6 +57,51 @@ export {
 } from './prompts/business-overview'
 export type { BusinessOverviewSummaryParams } from './prompts/business-overview'
 export {
+  riskFactorsSummarySystemPrompt,
+  riskFactorsSummaryUserPrompt,
+} from './prompts/risk-factors'
+export type { RiskFactorsSummaryParams } from './prompts/risk-factors'
+export {
+  legalProceedingsSummarySystemPrompt,
+  legalProceedingsSummaryUserPrompt,
+} from './prompts/legal-proceedings'
+export type { LegalProceedingsSummaryParams } from './prompts/legal-proceedings'
+export {
+  financialFootnotesSummarySystemPrompt,
+  financialFootnotesSummaryUserPrompt,
+} from './prompts/financial-footnotes'
+export type { FinancialFootnotesSummaryParams } from './prompts/financial-footnotes'
+export {
+  executiveCompensationSummarySystemPrompt,
+  executiveCompensationSummaryUserPrompt,
+} from './prompts/executive-compensation'
+export type { ExecutiveCompensationSummaryParams } from './prompts/executive-compensation'
+export {
+  cybersecuritySummarySystemPrompt,
+  cybersecuritySummaryUserPrompt,
+} from './prompts/cybersecurity'
+export type { CybersecuritySummaryParams } from './prompts/cybersecurity'
+export {
+  controlsAndProceduresSummarySystemPrompt,
+  controlsAndProceduresSummaryUserPrompt,
+} from './prompts/controls-and-procedures'
+export type { ControlsAndProceduresSummaryParams } from './prompts/controls-and-procedures'
+export {
+  relatedTransactionsSummarySystemPrompt,
+  relatedTransactionsSummaryUserPrompt,
+} from './prompts/related-transactions'
+export type { RelatedTransactionsSummaryParams } from './prompts/related-transactions'
+export {
+  proxySummarySystemPrompt,
+  proxySummaryUserPrompt,
+} from './prompts/proxy'
+export type { ProxySummaryParams } from './prompts/proxy'
+export {
+  event8kSummarySystemPrompt,
+  event8kSummaryUserPrompt,
+} from './prompts/event-8k'
+export type { Event8kSummaryParams } from './prompts/event-8k'
+export {
   whatThisMeansSystemPrompt,
   whatThisMeansUserPrompt,
 } from './prompts/what-this-means'
