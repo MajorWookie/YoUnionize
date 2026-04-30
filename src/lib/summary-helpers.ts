@@ -1,9 +1,21 @@
 /**
  * Type-narrowing helpers for extracting AI summary fields out of the
- * loosely-typed `filing_summaries.ai_summary` record. Each section's value
- * is either undefined, a string (most prompts), or a structured object
- * (employee_impact, executive_summary). These helpers keep the type
- * narrowing at the data boundary so the UI can stay declarative.
+ * loosely-typed `summary` blob returned on each headline filing. Each
+ * key's value is either undefined, a string (most prompts), or a
+ * structured object (employee_impact, executive_summary). These
+ * helpers keep the type narrowing at the data boundary so the UI can
+ * stay declarative.
+ *
+ * Source-of-truth note (post-2026-04-29 per-section rewrite):
+ *   - Filing-level rollups (executive_summary, employee_impact, the
+ *     four XBRL statements) live on `filing_summaries.ai_summary`.
+ *   - Per-item summaries (mda, risk_factors, business_overview,
+ *     legal_proceedings, footnotes, cybersecurity, etc.) live on
+ *     `filing_sections.ai_summary`.
+ *   - The `company-detail` Edge Function merges both into the single
+ *     `summary` field so this layer stays unchanged. The
+ *     `financial_footnotes` prompt kind is mapped to `footnotes` for
+ *     backward compat with the legacy rollup-blob key.
  */
 
 export interface EmployeeImpactResult {
