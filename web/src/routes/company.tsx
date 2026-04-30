@@ -8,6 +8,7 @@ import {
   Card,
   Center,
   Container,
+  Divider,
   Group,
   Loader,
   SimpleGrid,
@@ -261,8 +262,27 @@ export function CompanyPage() {
           </Group>
         </Stack>
 
+        {/* ── For You ─────────────────────────────────────────────
+            Employee-relevant content lives here at the top. Even if you
+            scroll no further, you should leave with a read on whether
+            this company is a place worth working at. */}
+        <Divider
+          label="What this means for you"
+          labelPosition="left"
+          color="navy.4"
+          styles={{ label: { color: 'var(--mantine-color-navy-7)', fontWeight: 600 } }}
+        />
+        <TextSummaryCard
+          title="What does this mean for employees?"
+          content={employeeImpactText}
+          maxHeight={360}
+        />
         <CeoSpotlightCard executives={executives} ticker={company.ticker} />
 
+        {/* ── Company snapshot ────────────────────────────────────
+            High-level narrative: where the company stands, why it
+            matters, and what could go wrong. */}
+        <Divider label="Company snapshot" labelPosition="left" />
         {summaryText ? (
           <Card withBorder padding="lg" radius="md">
             <Title order={3} mb={headline ? 'xs' : 'sm'}>
@@ -281,7 +301,62 @@ export function CompanyPage() {
             annual filing yet.
           </Alert>
         )}
+        <TextSummaryCard
+          title="Risk Factors"
+          content={riskFactorsText}
+          maxHeight={280}
+        />
+        <TextSummaryCard
+          title="Business Overview"
+          content={businessOverviewText}
+          maxHeight={240}
+        />
+        <TextSummaryCard
+          title="Management Discussion & Analysis"
+          content={mdaText}
+          maxHeight={280}
+        />
 
+        {/* ── Recent news ─────────────────────────────────────────
+            8-K events filed since the latest annual — material
+            developments your prospective employer would expect you
+            to know about. */}
+        {recentEvents.length > 0 && (
+          <>
+            <Divider label="Recent news" labelPosition="left" />
+            <RecentEventsList events={recentEvents} />
+          </>
+        )}
+
+        {/* ── People ──────────────────────────────────────────────
+            Who actually runs the place. Year selector lets you see
+            comp for prior fiscal years too. */}
+        <Divider label="People" labelPosition="left" />
+        <LeadershipSection
+          executives={executives}
+          directors={directors}
+          ticker={company.ticker}
+          availableFiscalYears={data.availableFiscalYears}
+          selectedFiscalYear={data.selectedFiscalYear}
+          onFiscalYearChange={setFiscalYear}
+        />
+
+        {/* ── Financial health ────────────────────────────────────
+            Where the money comes from and where it goes. Sunburst is
+            the at-a-glance view; the tabs below drill into income,
+            balance sheet, cash flow, and equity. */}
+        <Divider label="Financial health" labelPosition="left" />
+        <IncomeStatementSunburst
+          summary={summary}
+          periodEnd={latestAnnual?.periodEnd}
+        />
+        <FinancialsSection summary={summary} />
+
+        {/* ── Compensation deep-dive ──────────────────────────────
+            Beyond the CEO spotlight: how do the top 5 named execs
+            compare on total pay and pay mix? Mostly investor-relevant
+            but useful color for the curious employee. */}
+        <Divider label="Compensation deep-dive" labelPosition="left" />
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
           <Card withBorder padding="lg" radius="md">
             <Stack gap="sm">
@@ -343,26 +418,16 @@ export function CompanyPage() {
           </Card>
         </SimpleGrid>
 
-        <TextSummaryCard
-          title="Management Discussion & Analysis"
-          content={mdaText}
-          maxHeight={280}
-        />
-        <TextSummaryCard
-          title="Risk Factors"
-          content={riskFactorsText}
-          maxHeight={280}
-        />
-        <TextSummaryCard
-          title="Business Overview"
-          content={businessOverviewText}
-          maxHeight={240}
-        />
-        <TextSummaryCard
-          title="What does this mean for employees?"
-          content={employeeImpactText}
-          maxHeight={320}
-        />
+        {/* ── Other disclosures ───────────────────────────────────
+            Lower-priority for employees: insider trading, lawsuits,
+            footnotes. Still here for completeness, just not above
+            the fold. */}
+        {(insiderTrades.length > 0 ||
+          legalProceedingsText ||
+          footnotesText) && (
+          <Divider label="Other disclosures" labelPosition="left" />
+        )}
+        <InsiderTradingTable trades={insiderTrades} />
         <TextSummaryCard
           title="Legal Proceedings"
           content={legalProceedingsText}
@@ -373,26 +438,6 @@ export function CompanyPage() {
           content={footnotesText}
           maxHeight={200}
         />
-
-        <LeadershipSection
-          executives={executives}
-          directors={directors}
-          ticker={company.ticker}
-          availableFiscalYears={data.availableFiscalYears}
-          selectedFiscalYear={data.selectedFiscalYear}
-          onFiscalYearChange={setFiscalYear}
-        />
-
-        <IncomeStatementSunburst
-          summary={summary}
-          periodEnd={latestAnnual?.periodEnd}
-        />
-
-        <FinancialsSection summary={summary} />
-
-        <InsiderTradingTable trades={insiderTrades} />
-
-        <RecentEventsList events={recentEvents} />
       </Stack>
     </Container>
   )
