@@ -74,7 +74,7 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
 ### Data Flow
 
 1. **User searches** → Discover fires TWO parallel calls: `GET /api/companies/search` (local DB) and, if local results < 3, `GET /api/companies/search-sec` (SEC API + upsert). Local results display immediately; SEC results appended async.
-2. **Company detail** → `GET /api/companies/{ticker}/detail` → auto-fetches directors/execs from SEC if missing. Dashboard: income sunburst, CEO spotlight, leadership, financials, MD&A, risk factors, 8-K events, insider trades.
+2. **Company detail** → `GET /api/companies/{ticker}/detail` → auto-fetches directors/execs from SEC if missing. Joins per-section AI summaries (`filing_sections.ai_summary` keyed by parsed `prompt_kind`) onto the rollup blob server-side, so the web contract `summary.<key>` continues to work after the per-section pipeline rewrite. Dashboard: income sunburst, CEO spotlight, leadership, financials, MD&A, risk factors, 8-K events, insider trades.
 3. **Phase 1 — SEC fetch** → `POST /api/companies/[ticker]/fetch` → stores verbatim JSON in `raw_sec_responses`
 4. **Phase 2 — Processing** → `POST /api/companies/[ticker]/process` → transforms raw data into domain tables with enrichment
 5. **Summarization** → `POST /api/companies/[ticker]/summarize` → routes sections to specialized prompts → stores summaries + 1024-dim Voyage AI embeddings
@@ -115,7 +115,9 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
   - `FairnessGauge` — Mantine `RingProgress` wrapper for 0–100 scores with score-band coloring.
   - `WaterfallChart` — horizontal-bar list for income → taxes → expenses → savings → net flow.
   - `ComparisonBar` — two-segment split bar (e.g. buys vs. sells).
-  - `SunburstChart` — custom SVG (radial treemap, used by the income-statement sunburst).
+- **Sunburst** lives at the top of `src/components/` rather than in `charts/`:
+  - `SunburstChart` — generic radial-treemap SVG primitive.
+  - `IncomeStatementSunburst` — domain-specific wrapper that feeds the company dashboard.
 - **Markdown**: `MarkdownContent` wraps `react-markdown` with `remark-gfm` and Mantine theme tokens. Use the `markdown` prop on `TextSummaryCard` to render rich content.
 - **Currency convention**: All monetary values flowing through the web app are **raw dollars** (not cents). The API returns dollars; the UI displays dollars; profile/pay edits write dollars. (See `docs/TECH-DEBT.md` for the historical cents-vs-dollars drift inherited from the Expo era.)
 
@@ -163,7 +165,8 @@ The pre-migration ADRs around Tamagui and Expo Router are preserved for historic
 
 ## Gotchas
 
-- **`authClient.ts` silently falls back to localhost** if `EXPO_PUBLIC_SUPABASE_URL` (or `VITE_SUPABASE_URL`) is missing. Fine for dev, dangerous in prod.
+- **Supabase env is required, not defaulted**: `src/lib/supabase.ts` and `src/lib/api-base.ts` throw if `VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` (or the `EXPO_PUBLIC_*` aliases) are missing — the old localhost fallback was removed in commit a09686a after Vite's bundler statically replaced `process.env` with `{}` and silently routed every browser API call to local Supabase.
+- **`src/lib/env-shim.ts` polyfills `process.env`** for shared packages (`@younionize/api-client`, `@younionize/hooks`) that read env via `process.env.*`. It mirrors `import.meta.env` keys onto `globalThis.process.env` and **must be imported first in `main.tsx`** before any module that touches env vars. Add new env-var names to its `KEYS` list when introducing them.
 - **Edge Functions use Deno, not Bun**: Use `Deno.env.get()`. Schema duplicated in `supabase/functions/_shared/schema.ts` — keep in sync with `packages/postgres/src/schema/`.
 - **API URL routing**: Frontend `/api/*` paths mapped to Edge Function URLs by `src/lib/api-base.ts`. Dynamic segments become query params.
 - **Supabase API key naming**: Uses `SUPABASE_KEY` / `SUPABASE_SECRET_KEY` (new format). Legacy fallbacks (`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) retained for Edge Functions runtime.
