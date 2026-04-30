@@ -28,6 +28,8 @@
     "deploy:functions": "supabase functions deploy",
     "lint": "oxlint src server packages scripts",
     "lint:fix": "oxfmt src server packages scripts && oxlint --fix --fix-suggestions src server packages scripts",
+    "prompts:generate": "bun run scripts/generate-shared-prompts.ts",
+    "prompts:check": "bun run scripts/generate-shared-prompts.ts --check",
     "format": "oxfmt src server packages scripts",
     "typecheck": "tsc --noEmit",
     "test": "vitest",

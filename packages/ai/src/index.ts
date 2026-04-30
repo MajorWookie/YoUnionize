@@ -8,8 +8,6 @@ export type {
   EmployeeOutlookResult,
   WorkforceSignalsResult,
   KeyNumber,
-  CompensationAnalysisResult,
-  CompensationComparison,
   AiResponse,
   TokenUsage,
 } from './types'
@@ -23,7 +21,11 @@ export {
   compensationAnalysisSystemPrompt,
   compensationAnalysisUserPrompt,
 } from './prompts/compensation-analysis'
-export type { CompensationAnalysisParams } from './prompts/compensation-analysis'
+export type {
+  CompensationAnalysisParams,
+  CompensationComparison,
+  CompensationFairnessResult,
+} from './prompts/compensation-analysis'
 export {
   ragAnswerSystemPrompt,
   ragAnswerUserPrompt,

@@ -11,6 +11,10 @@ import {
   userProfiles,
 } from '../_shared/schema.ts'
 import { badRequest, classifyError } from '../_shared/api-utils.ts'
+import {
+  ragAnswerSystemPrompt,
+  ragAnswerUserPrompt,
+} from '../_shared/prompts/rag-answer.ts'
 
 interface SourceCitation {
   filingId: string
@@ -29,25 +33,6 @@ const VECTOR_CANDIDATE_LIMIT = 20
 const RERANK_TOP_K = 5
 /** Minimum reranker relevance score to keep a result */
 const RERANK_RELEVANCE_THRESHOLD = 0.1
-
-const RAG_SYSTEM_PROMPT = `You are a helpful financial information assistant for YoUnionize, a platform that helps employees understand their company's SEC filings and compensation data.
-
-You answer questions using ONLY the provided context from SEC filings and company data. If the context doesn't contain enough information to answer the question, say so honestly — never make up financial data.
-
-Each source is labeled with the company ticker, filing type, section name, and period. Use these labels to cite your sources precisely.
-
-Rules:
-- Write at an 6th-grade reading level
-- Define any financial terms in parentheses when first used
-- Use specific numbers from the context when available
-- Synthesize information across multiple sources to give a complete answer — don't just quote one source at a time
-- If the question is about pay fairness, be balanced but honest
-- Keep answers concise — 2-4 paragraphs max
-- If multiple context sources conflict, note the discrepancy and prefer the most recent filing
-- Always cite which filing or data source your answer comes from when possible
-- If context from different time periods is available, note trends over time
-
-Never give investment advice. You explain filings — you don't recommend buying or selling stock.`
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -324,10 +309,10 @@ Deno.serve(async (req) => {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 4096,
-      system: RAG_SYSTEM_PROMPT,
+      system: ragAnswerSystemPrompt(),
       messages: [{
         role: 'user',
-        content: `Context from SEC filings:\n\n${contextWithUser.join('\n\n---\n\n')}\n\nQuestion: ${question}`,
+        content: ragAnswerUserPrompt({ query: question, context: contextWithUser }),
       }],
     })
 

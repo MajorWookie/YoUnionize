@@ -1,4 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
+// AUTO-GENERATED — DO NOT EDIT
+//
+// Mirror of packages/ai/src/prompts/<name>.ts produced by
+// scripts/generate-shared-prompts.ts. Edit the source file, then run:
+//
+//   bun run prompts:generate
+//
+// CI fails if this file drifts from the source.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
 // "What this means for you" personalized filing summary. Source-of-truth lives
 // here; a verbatim copy is generated into
 // supabase/functions/_shared/prompts/what-this-means.ts by

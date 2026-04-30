@@ -17,6 +17,10 @@ import {
   externalServiceError,
   classifyError,
 } from '../_shared/api-utils.ts'
+import {
+  compensationAnalysisSystemPrompt,
+  compensationAnalysisUserPrompt,
+} from '../_shared/prompts/compensation-analysis.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -122,10 +126,19 @@ Deno.serve(async (req) => {
       const message = await client.messages.create({
         model: 'claude-haiku-4-5',
         max_tokens: 4096,
-        system: `You are a compensation fairness analyst. Analyze the employee's pay relative to executive compensation at their company. Provide a JSON response with: fairness_score (1-10), summary, detailed_analysis, recommendations, and key_findings.`,
+        system: compensationAnalysisSystemPrompt(),
         messages: [{
           role: 'user',
-          content: `Analyze compensation fairness:\n\nEmployee Pay: $${(profile.grossAnnualPay / 100).toLocaleString()}/year\nJob Title: ${profile.jobTitle ?? 'Not specified'}\n\nCompany: ${company.name} (${company.ticker})\nSector: ${company.sector ?? 'Unknown'}\n\nExecutive Compensation:\n${JSON.stringify(execCompForAi, null, 2)}\n\nCompany Financials:\n${JSON.stringify(companyFinancials, null, 2)}\n\nCost of Living:\n${JSON.stringify(costOfLivingData, null, 2)}`,
+          content: compensationAnalysisUserPrompt({
+            userPayCents: profile.grossAnnualPay,
+            userJobTitle: profile.jobTitle,
+            companyName: company.name,
+            companyTicker: company.ticker,
+            companySector: company.sector,
+            execComp: execCompForAi,
+            companyFinancials,
+            costOfLiving: costOfLivingData,
+          }),
         }],
       })
 

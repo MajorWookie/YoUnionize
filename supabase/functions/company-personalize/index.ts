@@ -10,6 +10,10 @@ import {
   personalizedSummaries,
 } from '../_shared/schema.ts'
 import { badRequest, notFound, classifyError } from '../_shared/api-utils.ts'
+import {
+  whatThisMeansSystemPrompt,
+  whatThisMeansUserPrompt,
+} from '../_shared/prompts/what-this-means.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -103,49 +107,20 @@ Deno.serve(async (req) => {
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY is not set')
 
-    const systemPrompt = `You are explaining a company's SEC filing to a friend over coffee. They are smart but know nothing about finance. They asked: "So what's actually going on with this company?"
-
-Your job is to take the key findings from the filing and translate them into a conversational, relatable explanation.
-
-The user's profile information is provided — weave it into your explanation to make it personal:
-- Compare company spending or revenue to their salary scale
-- Relate industry trends to their specific role
-- Connect company decisions to how it might affect someone in their position
-
-Rules:
-- Write 3-5 paragraphs, each 2-3 sentences
-- Start with the single most important thing: is the company doing better or worse than before?
-- Use analogies to everyday life
-- Connect abstract numbers to real things relative to the user's pay
-- End with a one-sentence "bottom line"
-- No bullet points. No headers. Just clear, flowing prose.
-- No financial jargon without an immediate plain-language definition
-- Never give investment advice
-
-Respond with plain text only. No JSON, no markdown formatting.`
-
-    const profileParts: Array<string> = []
-    if (profile.jobTitle) profileParts.push(`Job title: ${profile.jobTitle}`)
-    if (profile.grossAnnualPay) {
-      profileParts.push(`Annual pay: $${(profile.grossAnnualPay / 100).toLocaleString()}`)
-    }
-
-    const userPrompt = `Explain in plain language what's going on with ${companyName} based on their ${filing.filingType} filing.
-
-Here is the filing summary to translate:
-${companySummaryText}
-
-Key numbers:
-${keyNumbersText}
-
-The person you're explaining this to has the following background — use it to make your explanation more relatable:
-${profileParts.join('\n')}`
+    const userPrompt = whatThisMeansUserPrompt({
+      companyName,
+      filingType: filing.filingType,
+      companySummary: companySummaryText,
+      keyNumbers: keyNumbersText,
+      userJobTitle: profile.jobTitle ?? undefined,
+      userAnnualPay: profile.grossAnnualPay ? profile.grossAnnualPay / 100 : undefined,
+    })
 
     const client = new Anthropic({ apiKey: anthropicKey })
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 2048,
-      system: systemPrompt,
+      system: whatThisMeansSystemPrompt(),
       messages: [{ role: 'user', content: userPrompt }],
     })
 

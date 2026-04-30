@@ -22,6 +22,9 @@ jobs:
         run: bun audit
         continue-on-error: true
 
+      - name: Verify shared-prompt mirror is up to date
+        run: bun run prompts:check
+
       - name: Lint
         run: bun run lint
 

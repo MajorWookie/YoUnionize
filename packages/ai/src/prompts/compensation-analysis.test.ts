@@ -6,82 +6,99 @@ import {
 
 describe('compensation analysis prompts', () => {
   describe('systemPrompt', () => {
-    it('includes JSON schema instructions', () => {
+    it('declares the 1-100 JSON contract that matches the AnalysisData frontend type', () => {
       const prompt = compensationAnalysisSystemPrompt()
+      expect(prompt).toContain('1-100')
       expect(prompt).toContain('fairness_score')
       expect(prompt).toContain('explanation')
       expect(prompt).toContain('comparisons')
       expect(prompt).toContain('recommendations')
     })
 
-    it('includes scoring guide', () => {
+    it('includes a banded scoring guide so 1-100 outputs are calibrated', () => {
       const prompt = compensationAnalysisSystemPrompt()
       expect(prompt).toContain('80-100')
+      expect(prompt).toContain('60-79')
+      expect(prompt).toContain('40-59')
+      expect(prompt).toContain('20-39')
       expect(prompt).toContain('1-19')
     })
 
-    it('mentions CEO-to-worker pay ratio benchmark', () => {
+    it('names the five expected comparisons', () => {
       const prompt = compensationAnalysisSystemPrompt()
-      expect(prompt).toContain('272:1')
+      expect(prompt).toContain('CEO-to-worker pay ratio')
+      expect(prompt).toContain('revenue-per-employee')
+      expect(prompt).toContain('median worker pay')
+      expect(prompt).toContain('stock awards')
+      expect(prompt).toContain('cost of living')
+    })
+
+    it('frames the model as a compensation fairness analyst', () => {
+      const prompt = compensationAnalysisSystemPrompt()
+      expect(prompt).toContain('compensation fairness analyst')
     })
   })
 
   describe('userPrompt', () => {
-    it('includes company name and exec comp data', () => {
+    it('includes company name, ticker, and exec comp data', () => {
       const prompt = compensationAnalysisUserPrompt({
+        userPayCents: 8_500_000,
+        userJobTitle: null,
         companyName: 'Acme Inc',
-        execComp: '[{"name":"CEO","totalCompensation":25000000}]',
-      })
-
-      expect(prompt).toContain('Acme Inc')
-      expect(prompt).toContain('CEO')
-      expect(prompt).toContain('25000000')
-    })
-
-    it('includes user pay when provided', () => {
-      const prompt = compensationAnalysisUserPrompt({
-        companyName: 'Test Corp',
-        execComp: '[]',
-        userPay: 8_500_000,
-      })
-
-      expect(prompt).toContain('85,000')
-    })
-
-    it('includes cost of living when provided', () => {
-      const prompt = compensationAnalysisUserPrompt({
-        companyName: 'Test Corp',
-        execComp: '[]',
-        costOfLiving: {
-          rentMortgage: 200_000,
-          groceries: 60_000,
-          other: null,
-        },
-      })
-
-      expect(prompt).toContain('rentMortgage')
-      expect(prompt).toContain('2,000')
-    })
-
-    it('omits cost of living section when empty', () => {
-      const prompt = compensationAnalysisUserPrompt({
-        companyName: 'Test Corp',
-        execComp: '[]',
+        companyTicker: 'ACME',
+        companySector: 'Industrials',
+        execComp: [{ name: 'CEO', totalCompensation: 25000000 }],
+        companyFinancials: {},
         costOfLiving: {},
       })
 
-      expect(prompt).not.toContain('monthly expenses')
+      expect(prompt).toContain('Acme Inc')
+      expect(prompt).toContain('ACME')
+      expect(prompt).toContain('Industrials')
+      expect(prompt).toContain('"totalCompensation": 25000000')
     })
 
-    it('includes company financials when provided', () => {
+    it('formats user pay in dollars from the cents input', () => {
       const prompt = compensationAnalysisUserPrompt({
+        userPayCents: 8_500_000,
         companyName: 'Test Corp',
-        execComp: '[]',
-        companyFinancials: '{"revenue": 10000000000}',
+        companyTicker: 'TEST',
+        execComp: [],
+        companyFinancials: {},
+        costOfLiving: {},
       })
 
-      expect(prompt).toContain('Company financial data')
-      expect(prompt).toContain('revenue')
+      expect(prompt).toContain('Employee Pay: $85,000/year')
+    })
+
+    it('falls back to "Not specified" / "Unknown" for missing optional fields', () => {
+      const prompt = compensationAnalysisUserPrompt({
+        userPayCents: 5_000_000,
+        companyName: 'Test Corp',
+        companyTicker: 'TEST',
+        execComp: [],
+        companyFinancials: {},
+        costOfLiving: {},
+      })
+
+      expect(prompt).toContain('Job Title: Not specified')
+      expect(prompt).toContain('Sector: Unknown')
+    })
+
+    it('embeds cost of living and company financials as JSON blocks', () => {
+      const prompt = compensationAnalysisUserPrompt({
+        userPayCents: 5_000_000,
+        companyName: 'Test Corp',
+        companyTicker: 'TEST',
+        execComp: [],
+        companyFinancials: { revenue: 10_000_000_000 },
+        costOfLiving: { rentMortgage: 200_000, groceries: 60_000, other: null },
+      })
+
+      expect(prompt).toContain('Cost of Living')
+      expect(prompt).toContain('rentMortgage')
+      expect(prompt).toContain('Company Financials')
+      expect(prompt).toContain('"revenue": 10000000000')
     })
   })
 })

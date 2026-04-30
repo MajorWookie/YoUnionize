@@ -24,17 +24,9 @@ export interface FilingSummaryResult {
   employee_relevance: string
 }
 
-export interface CompensationComparison {
-  label: string
-  insight: string
-}
-
-export interface CompensationAnalysisResult {
-  fairness_score: number
-  explanation: string
-  comparisons: Array<CompensationComparison>
-  recommendations: Array<string>
-}
+// CompensationFairnessResult lives in prompts/compensation-analysis.ts so it
+// stays co-located with the prompt that emits this shape. Re-exported via
+// index.ts for consumers.
 
 export interface TokenUsage {
   inputTokens: number

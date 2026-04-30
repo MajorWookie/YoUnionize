@@ -7,6 +7,7 @@ import {
 import {
   compensationAnalysisSystemPrompt,
   compensationAnalysisUserPrompt,
+  type CompensationFairnessResult,
 } from './prompts/compensation-analysis'
 import { ragAnswerSystemPrompt, ragAnswerUserPrompt } from './prompts/rag-answer'
 import {
@@ -32,7 +33,6 @@ import {
 import type {
   AiResponse,
   ClaudeClientConfig,
-  CompensationAnalysisResult,
   CompanySummaryResult,
   EmployeeOutlookResult,
   TokenUsage,
@@ -160,27 +160,35 @@ export class ClaudeClient {
   }
 
   // ─── Compensation analysis ──────────────────────────────────────────
+  // Mirrors the production /api/analysis/compensation-fairness Edge Function
+  // contract: 1–10 fairness score, JSON shape with summary/detailed_analysis/
+  // key_findings. See SCALE DECISION note in prompts/compensation-analysis.ts.
 
   async generateCompensationAnalysis(params: {
+    companyName: string
+    companyTicker: string
+    companySector?: string | null
     execComp: Array<Record<string, unknown>>
-    userPay?: number
+    /** User pay in cents (matches DB shape). */
+    userPayCents: number
+    userJobTitle?: string | null
     companyFinancials?: Record<string, unknown>
     costOfLiving?: Record<string, number | null>
-    companyName: string
-  }): Promise<AiResponse<CompensationAnalysisResult>> {
+  }): Promise<AiResponse<CompensationFairnessResult>> {
     const systemPrompt = compensationAnalysisSystemPrompt()
     const userPrompt = compensationAnalysisUserPrompt({
       companyName: params.companyName,
-      execComp: JSON.stringify(params.execComp, null, 2),
-      userPay: params.userPay,
-      costOfLiving: params.costOfLiving,
-      companyFinancials: params.companyFinancials
-        ? JSON.stringify(params.companyFinancials, null, 2)
-        : undefined,
+      companyTicker: params.companyTicker,
+      companySector: params.companySector ?? null,
+      execComp: params.execComp,
+      userPayCents: params.userPayCents,
+      userJobTitle: params.userJobTitle ?? null,
+      companyFinancials: params.companyFinancials ?? {},
+      costOfLiving: params.costOfLiving ?? {},
     })
 
     const { text, usage } = await this.chat(systemPrompt, userPrompt)
-    const data = this.parseJson<CompensationAnalysisResult>(text)
+    const data = this.parseJson<CompensationFairnessResult>(text)
 
     return { data, usage, cached: false }
   }
@@ -282,8 +290,8 @@ export class ClaudeClient {
     companySummary: string
     keyNumbers: string
     userJobTitle?: string
+    /** Annual pay in dollars. */
     userAnnualPay?: number
-    userIndustry?: string
   }): Promise<AiResponse<string>> {
     const systemPrompt = whatThisMeansSystemPrompt()
     const userPrompt = whatThisMeansUserPrompt({
@@ -293,7 +301,6 @@ export class ClaudeClient {
       keyNumbers: params.keyNumbers,
       userJobTitle: params.userJobTitle,
       userAnnualPay: params.userAnnualPay,
-      userIndustry: params.userIndustry,
     })
 
     const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)

@@ -60,59 +60,89 @@ describe('section-summary prompts', () => {
   })
 })
 
-describe('compensation-analysis prompts', () => {
-  it('system prompt contains output JSON structure', () => {
+describe('compensation-analysis prompts (1-100 banded contract)', () => {
+  it('system prompt declares the JSON output structure', () => {
     const prompt = compensationAnalysisSystemPrompt()
     expect(prompt).toContain('fairness_score')
+    expect(prompt).toContain('explanation')
     expect(prompt).toContain('comparisons')
     expect(prompt).toContain('recommendations')
     expect(prompt).toContain('1-100')
   })
 
-  it('system prompt references S&P 500 median pay ratio', () => {
+  it('system prompt includes the banded scoring guide', () => {
+    const prompt = compensationAnalysisSystemPrompt()
+    expect(prompt).toContain('80-100')
+    expect(prompt).toContain('1-19')
+  })
+
+  it('system prompt references the S&P 500 CEO pay ratio benchmark', () => {
     const prompt = compensationAnalysisSystemPrompt()
     expect(prompt).toContain('272:1')
   })
 
-  it('user prompt includes exec comp data', () => {
+  it('system prompt sets a supportive-but-empowering tone', () => {
+    const prompt = compensationAnalysisSystemPrompt()
+    expect(prompt).toContain('supportive and empowering')
+    expect(prompt).toContain('manufacturing outrage')
+  })
+
+  it('user prompt includes exec comp, ticker, and sector', () => {
     const prompt = compensationAnalysisUserPrompt({
+      userPayCents: 8_500_000,
+      userJobTitle: 'Engineer',
       companyName: 'Apple Inc.',
-      execComp: '[{"name": "Tim Cook", "total": 63000000}]',
+      companyTicker: 'AAPL',
+      companySector: 'Technology',
+      execComp: [{ name: 'Tim Cook', total: 63000000 }],
+      companyFinancials: {},
+      costOfLiving: {},
     })
     expect(prompt).toContain('Apple Inc.')
+    expect(prompt).toContain('AAPL')
+    expect(prompt).toContain('Technology')
     expect(prompt).toContain('Tim Cook')
   })
 
-  it('user prompt includes user pay when provided', () => {
+  it('user prompt formats user pay as dollars from cents', () => {
     const prompt = compensationAnalysisUserPrompt({
+      userPayCents: 8_500_000,
       companyName: 'Apple Inc.',
-      execComp: '[]',
-      userPay: 8500000,
+      companyTicker: 'AAPL',
+      execComp: [],
+      companyFinancials: {},
+      costOfLiving: {},
     })
-    expect(prompt).toContain('$85,000')
+    expect(prompt).toContain('Employee Pay: $85,000/year')
   })
 
-  it('user prompt includes cost of living when provided', () => {
+  it('user prompt embeds cost of living JSON when provided', () => {
     const prompt = compensationAnalysisUserPrompt({
+      userPayCents: 5_000_000,
       companyName: 'Apple Inc.',
-      execComp: '[]',
+      companyTicker: 'AAPL',
+      execComp: [],
+      companyFinancials: {},
       costOfLiving: { rentMortgage: 250000, groceries: 80000, gym: null },
     })
-    expect(prompt).toContain('monthly expenses')
+    expect(prompt).toContain('Cost of Living')
     expect(prompt).toContain('rentMortgage')
     expect(prompt).toContain('groceries')
-    // null values should be filtered out
-    expect(prompt).not.toContain('gym')
   })
 
-  it('user prompt omits optional sections when not provided', () => {
+  it('user prompt always emits all five sections (production behaviour)', () => {
     const prompt = compensationAnalysisUserPrompt({
+      userPayCents: 5_000_000,
       companyName: 'Test Corp',
-      execComp: '[]',
+      companyTicker: 'TEST',
+      execComp: [],
+      companyFinancials: {},
+      costOfLiving: {},
     })
-    expect(prompt).not.toContain('monthly expenses')
-    expect(prompt).not.toContain('earns $')
-    expect(prompt).not.toContain('financial data')
+    // Production never conditionally omits sections — empty objects render as `{}`.
+    expect(prompt).toContain('Executive Compensation')
+    expect(prompt).toContain('Company Financials')
+    expect(prompt).toContain('Cost of Living')
   })
 })
 
@@ -242,14 +272,20 @@ describe('rag-answer prompts', () => {
     expect(prompt).toContain('Never give investment advice')
   })
 
-  it('user prompt numbers context sources', () => {
+  it('user prompt joins pre-labeled context chunks with separators', () => {
     const prompt = ragAnswerUserPrompt({
       query: 'What is the revenue?',
-      context: ['Revenue was $100B', 'Profit was $25B'],
+      context: [
+        '[AAPL 10-K — mda]\nRevenue was $100B',
+        '[AAPL 10-K — financial_footnotes]\nProfit was $25B',
+      ],
     })
-    expect(prompt).toContain('[Source 1]')
-    expect(prompt).toContain('[Source 2]')
+    // Production: chunks arrive pre-labeled by the caller (ticker + filing
+    // type + section); the prompt does NOT add [Source N] numbering on top.
+    expect(prompt).toContain('Context from SEC filings:')
+    expect(prompt).toContain('[AAPL 10-K — mda]')
+    expect(prompt).toContain('---')
     expect(prompt).toContain('Revenue was $100B')
-    expect(prompt).toContain('What is the revenue?')
+    expect(prompt).toContain('Question: What is the revenue?')
   })
 })

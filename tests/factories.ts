@@ -3,7 +3,7 @@
  */
 
 import type { Filing, FilingQueryResponse, CompanyMapping, ExecutiveCompensationResponse, InsiderTradingResponse, DirectorsResponse } from '@younionize/sec-api'
-import type { FilingSummaryResult, CompensationAnalysisResult, AiResponse, TokenUsage } from '@younionize/ai'
+import type { FilingSummaryResult, CompensationFairnessResult, AiResponse, TokenUsage } from '@younionize/ai'
 
 // ── Counters for unique IDs ─────────────────────────────────────────────
 
@@ -223,9 +223,9 @@ export function createFilingSummaryResult(
   }
 }
 
-export function createCompensationAnalysisResult(
-  overrides: Partial<CompensationAnalysisResult> = {},
-): CompensationAnalysisResult {
+export function createCompensationFairnessResult(
+  overrides: Partial<CompensationFairnessResult> = {},
+): CompensationFairnessResult {
   return {
     fairness_score: 55,
     explanation:

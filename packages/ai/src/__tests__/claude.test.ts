@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ClaudeClient } from '../claude'
-import type { CompensationAnalysisResult } from '../types'
+import type { CompensationFairnessResult } from '../prompts/compensation-analysis'
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
-const MOCK_COMPENSATION_ANALYSIS: CompensationAnalysisResult = {
+const MOCK_COMPENSATION_ANALYSIS: CompensationFairnessResult = {
   fairness_score: 42,
   explanation:
     "Apple's CEO Tim Cook earned $63 million in 2023, which is 672 times the median worker's pay of $94,118. While Apple is highly profitable, this ratio is above the S&P 500 average of 272:1.",
@@ -27,7 +27,7 @@ const MOCK_COMPENSATION_ANALYSIS: CompensationAnalysisResult = {
   ],
   recommendations: [
     'Your pay is below the company median — consider negotiating based on tenure and performance',
-    "Research market rates for your role on levels.fyi or Glassdoor",
+    'Research market rates for your role on levels.fyi or Glassdoor',
     "Apple's stock compensation may offset the base salary gap — review your total comp package",
   ],
 }
@@ -128,7 +128,7 @@ describe('ClaudeClient', () => {
   // ─── generateCompensationAnalysis ───────────────────────────────────
 
   describe('generateCompensationAnalysis', () => {
-    it('returns parsed CompensationAnalysisResult', async () => {
+    it('returns parsed CompensationFairnessResult', async () => {
       getMockCreate().mockResolvedValueOnce(
         createMockAnthropicResponse(
           JSON.stringify(MOCK_COMPENSATION_ANALYSIS),
@@ -137,18 +137,21 @@ describe('ClaudeClient', () => {
 
       const result = await client.generateCompensationAnalysis({
         companyName: 'Apple Inc.',
+        companyTicker: 'AAPL',
+        companySector: 'Technology',
         execComp: [
           { executiveName: 'Tim Cook', totalCompensation: 6300000000 },
         ],
-        userPay: 8500000, // $85,000 in cents
+        userPayCents: 8500000, // $85,000 in cents
       })
 
       expect(result.data.fairness_score).toBe(42)
-      expect(result.data.comparisons).toHaveLength(3)
+      expect(result.data.explanation).toContain('672 times')
+      expect(result.data.comparisons.length).toBeGreaterThan(0)
       expect(result.data.recommendations.length).toBeGreaterThan(0)
     })
 
-    it('includes cost of living in prompt when provided', async () => {
+    it('embeds cost-of-living, exec-comp and financials in the prompt', async () => {
       getMockCreate().mockResolvedValueOnce(
         createMockAnthropicResponse(
           JSON.stringify(MOCK_COMPENSATION_ANALYSIS),
@@ -157,36 +160,23 @@ describe('ClaudeClient', () => {
 
       await client.generateCompensationAnalysis({
         companyName: 'Apple Inc.',
+        companyTicker: 'AAPL',
         execComp: [{ executiveName: 'Tim Cook', totalCompensation: 6300000000 }],
-        userPay: 8500000,
+        userPayCents: 8500000,
         costOfLiving: {
           rentMortgage: 250000,
           utilities: 20000,
           groceries: 80000,
         },
+        companyFinancials: { revenue: 394000000000 },
       })
 
       const userMsg = getMockCreate().mock.calls[0][0].messages[0].content
-      expect(userMsg).toContain('monthly expenses')
+      expect(userMsg).toContain('Cost of Living')
       expect(userMsg).toContain('rentMortgage')
-    })
-
-    it('works without optional params', async () => {
-      getMockCreate().mockResolvedValueOnce(
-        createMockAnthropicResponse(
-          JSON.stringify(MOCK_COMPENSATION_ANALYSIS),
-        ),
-      )
-
-      const result = await client.generateCompensationAnalysis({
-        companyName: 'Tesla Inc.',
-        execComp: [{ executiveName: 'Elon Musk', totalCompensation: 0 }],
-      })
-
-      expect(result.data.fairness_score).toBe(42)
-      const userMsg = getMockCreate().mock.calls[0][0].messages[0].content
-      expect(userMsg).not.toContain('monthly expenses')
-      expect(userMsg).not.toContain('earns $')
+      expect(userMsg).toContain('Company Financials')
+      expect(userMsg).toContain('Tim Cook')
+      expect(userMsg).toContain('Employee Pay: $85,000/year')
     })
   })
 
@@ -272,8 +262,8 @@ describe('ClaudeClient', () => {
       const result = await client.ragQuery({
         query: 'How much revenue did Apple make?',
         context: [
-          'Apple reported total net revenue of $394.3 billion for fiscal year 2024.',
-          'Services revenue grew 14% to $85.2 billion.',
+          '[AAPL 10-K — financial_footnotes (2024-09-28)]\nApple reported total net revenue of $394.3 billion for fiscal year 2024.',
+          '[AAPL 10-K — mda (2024-09-28)]\nServices revenue grew 14% to $85.2 billion.',
         ],
       })
 
@@ -282,10 +272,13 @@ describe('ClaudeClient', () => {
       const call = getMockCreate().mock.calls[0][0]
       expect(call.system).toContain('YoUnionize')
       expect(call.system).toContain('SEC filings')
-      expect(call.messages[0].content).toContain('[Source 1]')
-      expect(call.messages[0].content).toContain('[Source 2]')
+      // Production: chunks arrive pre-labeled and are joined with '---' separators;
+      // no [Source N] numbering is added.
+      expect(call.messages[0].content).toContain('Context from SEC filings:')
+      expect(call.messages[0].content).toContain('[AAPL 10-K — financial_footnotes')
+      expect(call.messages[0].content).toContain('---')
       expect(call.messages[0].content).toContain(
-        'How much revenue did Apple make?',
+        'Question: How much revenue did Apple make?',
       )
     })
   })

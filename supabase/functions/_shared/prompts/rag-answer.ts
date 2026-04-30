@@ -1,4 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
+// AUTO-GENERATED — DO NOT EDIT
+//
+// Mirror of packages/ai/src/prompts/<name>.ts produced by
+// scripts/generate-shared-prompts.ts. Edit the source file, then run:
+//
+//   bun run prompts:generate
+//
+// CI fails if this file drifts from the source.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RAG answer prompt. Source-of-truth lives here; a verbatim copy is generated
 // into supabase/functions/_shared/prompts/rag-answer.ts by
 // scripts/generate-shared-prompts.ts so Deno-runtime Edge Functions can
