@@ -30,6 +30,7 @@
     "lint:fix": "oxfmt src server packages scripts && oxlint --fix --fix-suggestions src server packages scripts",
     "prompts:generate": "bun run scripts/generate-shared-prompts.ts",
     "prompts:check": "bun run scripts/generate-shared-prompts.ts --check",
+    "eval:section": "bunx dotenvx run -f .env.remote -- bun run scripts/eval-section-prompt.ts",
     "format": "oxfmt src server packages scripts",
     "typecheck": "tsc --noEmit",
     "test": "vitest",

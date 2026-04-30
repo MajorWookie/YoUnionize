@@ -16,3 +16,8 @@ dist
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Section-prompt eval reports (per-run markdown outputs from
+# scripts/eval-section-prompt.ts). Contain real filing snippets and
+# Claude responses; meant for local review, not for committing.
+eval-outputs/
