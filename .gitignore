@@ -11,3 +11,8 @@ dist
 .vite
 *.tsbuildinfo
 .DS_Store
+
+# Lockfiles from non-Bun package managers (project uses bun.lock exclusively)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
