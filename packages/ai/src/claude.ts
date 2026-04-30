@@ -27,6 +27,10 @@ import {
   mdaSummaryUserPrompt,
 } from './prompts/mda-summary'
 import {
+  businessOverviewSummarySystemPrompt,
+  businessOverviewSummaryUserPrompt,
+} from './prompts/business-overview'
+import {
   whatThisMeansSystemPrompt,
   whatThisMeansUserPrompt,
 } from './prompts/what-this-means'
@@ -278,6 +282,25 @@ export class ClaudeClient {
     })
 
     const { text, usage } = await this.chat(systemPrompt, userPrompt, 3072)
+
+    return { data: text, usage, cached: false }
+  }
+
+  // ─── Business Overview summary ─────────────────────────────────────
+
+  async summarizeBusinessOverview(params: {
+    section: string
+    companyName: string
+    filingType: string
+  }): Promise<AiResponse<string>> {
+    const systemPrompt = businessOverviewSummarySystemPrompt()
+    const userPrompt = businessOverviewSummaryUserPrompt({
+      section: params.section,
+      companyName: params.companyName,
+      filingType: params.filingType,
+    })
+
+    const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
 
     return { data: text, usage, cached: false }
   }

@@ -424,8 +424,11 @@ async function callPromptForSection(args: {
       const r = await ai.summarizeMda({ mdaText: sectionText, companyName, filingType })
       return { data: r.data, summaryText: r.data, usage: r.usage }
     }
+    case 'business_overview': {
+      const r = await ai.summarizeBusinessOverview({ section: sectionText, companyName, filingType })
+      return { data: r.data, summaryText: r.data, usage: r.usage }
+    }
     case 'risk_factors':
-    case 'business_overview':
     case 'legal_proceedings':
     case 'executive_compensation':
     case 'financial_footnotes':
@@ -436,7 +439,7 @@ async function callPromptForSection(args: {
     case 'narrative': {
       const r = await ai.summarizeSection({
         section: sectionText,
-        sectionType: PROMPT_KIND_TO_PROMPT_LABEL[promptKind],
+        sectionType: PROMPT_KIND_TO_PROMPT_LABEL[promptKind] ?? promptKind,
         companyName,
         filingType,
       })
@@ -459,15 +462,15 @@ async function callPromptForSection(args: {
 }
 
 /**
- * The Claude prompts in `packages/ai/src/prompts/section-summary.ts` key
- * their guidance off camelCase labels. This map is the single bridge
- * between the new dispatch kinds and that prompt-template contract.
+ * Bridge between dispatch kinds and the camelCase labels expected by the
+ * generic `sectionSummarySystemPrompt` (packages/ai/src/prompts/section-summary.ts).
  *
- * When a specialised prompt template lands (e.g. cybersecurity@v1 with its
- * own system prompt), its label here can change to match the new prompt
- * file without touching the pipeline.
+ * Entries are removed as sections migrate to dedicated prompt modules
+ * (mda, business_overview migrated; the rest still route through the
+ * generic path until Phase 1 of refactor/break-out-section-prompts lands).
+ * Once every kind has its own module, this map can be deleted.
  */
-const PROMPT_KIND_TO_PROMPT_LABEL: Record<SectionPromptKind, string> = {
+const PROMPT_KIND_TO_PROMPT_LABEL: Partial<Record<SectionPromptKind, string>> = {
   rollup_executive_summary: 'rollup_executive_summary',
   rollup_employee_impact: 'rollup_employee_impact',
   rollup_workforce_signals: 'rollup_workforce_signals',
@@ -475,14 +478,10 @@ const PROMPT_KIND_TO_PROMPT_LABEL: Record<SectionPromptKind, string> = {
   xbrl_balance_sheet: 'xbrl_balance_sheet',
   xbrl_cash_flow: 'xbrl_cash_flow',
   xbrl_shareholders_equity: 'xbrl_shareholders_equity',
-  mda: 'mdAndA',
   risk_factors: 'riskFactors',
-  business_overview: 'businessOverview',
   legal_proceedings: 'legalProceedings',
   executive_compensation: 'executiveCompensation',
   financial_footnotes: 'financialStatements',
-  // Until specialised prompts ship in a follow-up branch, these route
-  // through the generic narrative path. See packages/sec-api/src/section-prompts.ts.
   cybersecurity: 'cybersecurity',
   controls_and_procedures: 'controlsAndProcedures',
   related_transactions: 'relatedTransactions',
