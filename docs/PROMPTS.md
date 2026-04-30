@@ -37,7 +37,7 @@ CI runs `bun run prompts:check`, which fails if the mirror is out of date.
 
 | Prompt File | ClaudeClient Method | Output | Where Invoked |
 |---|---|---|---|
-| [section-summary.ts](../packages/ai/src/prompts/section-summary.ts) | `summarizeSection()` | plain text (≤150 words) | Per-section summarization in [summarization-pipeline.ts](../src/server/services/summarization-pipeline.ts). Backs every dispatch kind that doesn't have its own template — see "Dispatch" below. |
+| Per-section dedicated modules — see [Section prompt kinds](#section-prompt-kinds) below | `summarize<Section>()` per kind | plain text (≤150 words) | Per-section summarization in [summarization-pipeline.ts](../server/services/summarization-pipeline.ts). One file per dispatch kind under [packages/ai/src/prompts/](../packages/ai/src/prompts/). |
 | [mda-summary.ts](../packages/ai/src/prompts/mda-summary.ts) | `summarizeMda()` | structured markdown (Big Picture / Revenue / Profitability / Cash / Outlook / Bottom Line for Workers) | MD&A sections only (`mda` dispatch kind). Optional prior-period MD&A passed for comparison. |
 | [company-summary.ts](../packages/ai/src/prompts/company-summary.ts) | `generateCompanySummary()` | JSON (`CompanySummaryResult` — headline, company_health, key_numbers, red_flags, opportunities) | Filing-level rollup. 10-K and 10-Q only. Consumes the markdown-aggregated section summaries built by the pipeline (NOT raw filing JSON). Stored on `filing_summaries.ai_summary.executive_summary`. |
 | [employee-impact.ts](../packages/ai/src/prompts/employee-impact.ts) | `generateEmployeeImpact()` | JSON (`EmployeeImpactResult` — outlook, job_security, compensation_signals, growth_opportunities, watch_items) | Outlook-only rollup. 10-K and 10-Q only. Consumes aggregated section summaries. Pairs with `workforce-signals.ts` to produce the merged `employee_impact` rollup the frontend reads. |
@@ -52,13 +52,24 @@ CI runs `bun run prompts:check`, which fails if the mirror is out of date.
 
 ### Section prompt kinds (18 total)
 
+Every per-section narrative kind has its own dedicated prompt module under `packages/ai/src/prompts/` and a matching `summarize<Section>()` method on `ClaudeClient`. The dispatch table in `section-prompts.ts` chooses the kind; the pipeline switch in `summarization-pipeline.ts` routes the kind to its dedicated method. There is no shared `summarizeSection` fallback anymore — `narrative` is the catch-all kind for section codes not explicitly mapped, and it has its own dedicated module like everything else.
+
 | Kind | Backed by | Notes |
 |---|---|---|
-| `mda` | `summarizeMda()` → mda-summary.ts | Only specialised template for per-section content. |
-| `risk_factors`, `business_overview`, `legal_proceedings`, `executive_compensation`, `financial_footnotes`, `cybersecurity`, `controls_and_procedures`, `related_transactions`, `proxy`, `narrative` | `summarizeSection()` → section-summary.ts | All share the same template. The dispatch kind is translated to the camelCase `sectionType` key via `PROMPT_KIND_TO_PROMPT_LABEL` (see [summarization-pipeline.ts:434](../src/server/services/summarization-pipeline.ts#L434)), which selects the `SECTION_GUIDANCE` block. Kinds without a matching guidance block fall back to the generic instruction. |
-| `event_8k` | `summarizeSection()` with `sectionType: 'event_summary'` | Used for every 8-K item. The pipeline aggregates per-item summaries into a single markdown rollup at `filing_summaries.ai_summary.event_summary`. |
+| `mda` | `summarizeMda()` → [mda-summary.ts](../packages/ai/src/prompts/mda-summary.ts) | Structured markdown output (the only per-section kind that is not plain-text). Optional prior-period MD&A for comparison. |
+| `risk_factors` | `summarizeRiskFactors()` → [risk-factors.ts](../packages/ai/src/prompts/risk-factors.ts) | Plain text, ≤150 words. |
+| `business_overview` | `summarizeBusinessOverview()` → [business-overview.ts](../packages/ai/src/prompts/business-overview.ts) | Plain text, ≤150 words. |
+| `legal_proceedings` | `summarizeLegalProceedings()` → [legal-proceedings.ts](../packages/ai/src/prompts/legal-proceedings.ts) | Plain text, ≤150 words. |
+| `executive_compensation` | `summarizeExecutiveCompensation()` → [executive-compensation.ts](../packages/ai/src/prompts/executive-compensation.ts) | Plain text, ≤150 words. Also called from the DEF 14A `executive_compensation` rollup (see below). |
+| `financial_footnotes` | `summarizeFinancialFootnotes()` → [financial-footnotes.ts](../packages/ai/src/prompts/financial-footnotes.ts) | Plain text, ≤150 words. Section label in the prompt is `financialStatements`. |
+| `cybersecurity` | `summarizeCybersecurity()` → [cybersecurity.ts](../packages/ai/src/prompts/cybersecurity.ts) | Plain text, ≤150 words. Generic catch-all guidance. |
+| `controls_and_procedures` | `summarizeControlsAndProcedures()` → [controls-and-procedures.ts](../packages/ai/src/prompts/controls-and-procedures.ts) | Plain text, ≤150 words. Generic catch-all guidance. |
+| `related_transactions` | `summarizeRelatedTransactions()` → [related-transactions.ts](../packages/ai/src/prompts/related-transactions.ts) | Plain text, ≤150 words. Generic catch-all guidance. |
+| `proxy` | `summarizeProxy()` → [proxy.ts](../packages/ai/src/prompts/proxy.ts) | Plain text, ≤150 words. Generic catch-all guidance. |
+| `event_8k` | `summarize8kEvent()` → [event-8k.ts](../packages/ai/src/prompts/event-8k.ts) | Plain text. Used for every 8-K item. The pipeline prefixes the section text with `${friendlyName}:` (computed via `getSectionFriendlyName` in `@younionize/sec-api`) before calling the prompt, so the model sees the human-readable item label. Per-item outputs are aggregated into the filing-level `event_summary` rollup on `filing_summaries.ai_summary`. |
+| `narrative` | `summarizeNarrative()` → [narrative.ts](../packages/ai/src/prompts/narrative.ts) | Catch-all for section codes not explicitly listed in the dispatch table — e.g. new SEC sub-items or unusual filer conventions. Default for `DEFAULT_DISPATCH`. |
 | `pass_through` | none | Stores raw text only — no Claude call. Used for boilerplate items (Mine Safety, deprecated Selected Financial Data, Item 11 in 10-K which is incorporated-by-reference, signatures, exhibit indexes). |
-| `rollup_executive_summary`, `rollup_employee_impact` | `generateCompanySummary()` / `generateEmployeeImpact()` + `generateWorkforceSignals()` | Filing-level rollups, not per-section. Live on `filing_summaries`. |
+| `rollup_executive_summary`, `rollup_employee_impact`, `rollup_workforce_signals` | `generateCompanySummary()` / `generateEmployeeImpact()` / `generateWorkforceSignals()` | Filing-level rollups, not per-section. Live on `filing_summaries`. |
 | `xbrl_income_statement`, `xbrl_balance_sheet`, `xbrl_cash_flow`, `xbrl_shareholders_equity` | `transformXbrlToStatements()` | Pure structured transformation — no Claude call. |
 
 ### Per-section vs. rollup grain
@@ -75,7 +86,7 @@ filing_summaries.ai_summary
     └── executive_compensation       ← DEF 14A only: top-5 + analysis
 ```
 
-The DEF 14A `executive_compensation` rollup is built by `buildExecCompRollup()` in the pipeline — it pulls the top 5 executives by total comp from the `executive_compensation` table and calls `summarizeSection()` (with `sectionType: 'executiveCompensation'`) on the proxy text, *not* `generateCompensationAnalysis()`.
+The DEF 14A `executive_compensation` rollup is built by `buildExecCompRollup()` in the pipeline — it pulls the top 5 executives by total comp from the `executive_compensation` table and calls `summarizeExecutiveCompensation()` on the proxy text, *not* `generateCompensationAnalysis()`. The rollup checks for a cached per-section `executive_compensation` summary first (most filers put exec-comp in `part1item7` / CD&A, which routes through the per-section dispatch) and only fires a fresh Claude call when the section landed in `part1item1` (proxy intro) and was therefore summarised under the `proxy` kind.
 
 ## Prompt Versioning
 
@@ -98,7 +109,7 @@ The DEF 14A `executive_compensation` rollup is built by `buildExecCompRollup()` 
 ## ClaudeClient Internals
 
 - **Default model**: `claude-haiku-4-5` (overridable via `ClaudeClientConfig.model`). Edge Functions hard-code the same model.
-- **Default `max_tokens`**: 4096. `summarizeSection()` and `whatThisMeans()` use 2048; `summarizeMda()` uses 3072.
+- **Default `max_tokens`**: 4096. The per-section `summarize<Section>()` methods and `whatThisMeans()` use 2048; `summarizeMda()` uses 3072.
 - **Retries**: 5 attempts with exponential backoff + ±25% jitter. Honors the `retry-after` header on 429s; otherwise `2000 * 2^attempt` ms. Triggers on HTTP 429 and 529.
 - **Logging**: every call logs `[ClaudeClient] {model} — {in} in / {out} out` via `console.info`.
 

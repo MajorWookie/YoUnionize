@@ -79,9 +79,12 @@ describe('ClaudeClient', () => {
     return (client as any).anthropic.messages.create as ReturnType<typeof vi.fn>
   }
 
-  // ─── summarizeSection ───────────────────────────────────────────────
+  // ─── summarizeRiskFactors (representative dedicated section method) ──
+  // The summarize<Section>() methods all share the same chat-plumbing
+  // shape; testing one of them exercises the full flow. Risk Factors is
+  // chosen because it has the richest section-specific guidance.
 
-  describe('summarizeSection', () => {
+  describe('summarizeRiskFactors', () => {
     it('returns plain text summary for a section', async () => {
       const summaryText =
         'Apple faces significant competition in smartphones and services. The main risk is that iPhone sales have plateaued.'
@@ -89,9 +92,8 @@ describe('ClaudeClient', () => {
         createMockAnthropicResponse(summaryText),
       )
 
-      const result = await client.summarizeSection({
+      const result = await client.summarizeRiskFactors({
         section: 'The Company faces intense competition...',
-        sectionType: 'riskFactors',
         companyName: 'Apple Inc.',
         filingType: '10-K',
       })
@@ -112,9 +114,8 @@ describe('ClaudeClient', () => {
         createMockAnthropicResponse('Summary of risk factors section'),
       )
 
-      await client.summarizeSection({
+      await client.summarizeRiskFactors({
         section: 'The Company faces several risks...',
-        sectionType: 'riskFactors',
         companyName: 'Tesla Inc.',
         filingType: '10-K',
       })
@@ -292,9 +293,8 @@ describe('ClaudeClient', () => {
         usage: { input_tokens: 500, output_tokens: 50 },
       })
 
-      const result = await client.summarizeSection({
+      const result = await client.summarizeBusinessOverview({
         section: 'Short section',
-        sectionType: 'businessOverview',
         companyName: 'Test Corp',
         filingType: '10-K',
       })

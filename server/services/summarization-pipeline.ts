@@ -473,12 +473,7 @@ async function callPromptForSection(args: {
       return { data: r.data, summaryText: r.data, usage: r.usage }
     }
     case 'narrative': {
-      const r = await ai.summarizeSection({
-        section: sectionText,
-        sectionType: PROMPT_KIND_TO_PROMPT_LABEL[promptKind] ?? promptKind,
-        companyName,
-        filingType,
-      })
+      const r = await ai.summarizeNarrative({ section: sectionText, companyName, filingType })
       return { data: r.data, summaryText: r.data, usage: r.usage }
     }
     // Rollup / XBRL / pass_through don't appear here — they're handled
@@ -486,23 +481,6 @@ async function callPromptForSection(args: {
     default:
       throw new Error(`Unsupported prompt kind in section dispatch: ${promptKind}`)
   }
-}
-
-/**
- * Bridge between dispatch kinds and the camelCase labels expected by the
- * generic `sectionSummarySystemPrompt` (packages/ai/src/prompts/section-summary.ts).
- *
- * After Phase 1 of refactor/break-out-section-prompts, only `narrative`
- * still routes through the generic path. Every other narrative kind has
- * its own dedicated prompt module and corresponding ClaudeClient method.
- * Once `narrative` is also migrated (or proven unused), this map can be
- * deleted along with section-summary.ts itself.
- *
- * Rollup / XBRL / pass_through kinds are handled outside processSection
- * and never reach the lookup, so they remain absent from this map.
- */
-const PROMPT_KIND_TO_PROMPT_LABEL: Partial<Record<SectionPromptKind, string>> = {
-  narrative: 'narrative',
 }
 
 // ─── Section persistence ────────────────────────────────────────────────────
@@ -929,9 +907,8 @@ async function buildExecCompRollup(args: {
     if (proxyText || compData.length > 0) {
       try {
         const contextText = proxyText ?? JSON.stringify(top5, null, 2)
-        const response = await ai.summarizeSection({
+        const response = await ai.summarizeExecutiveCompensation({
           section: contextText,
-          sectionType: 'executiveCompensation',
           companyName,
           filingType: 'DEF 14A',
         })
@@ -985,8 +962,9 @@ async function loadCachedExecCompAnalysis(
   const stored = row?.aiSummary
   if (stored == null) return null
 
-  // section ai_summary is jsonb; summarizeSection produces a string but it
-  // round-trips through JSON.stringify/parse. Coerce defensively.
+  // section ai_summary is jsonb; the dedicated `summarize<Section>`
+  // methods produce strings but round-trip through JSON.stringify/parse.
+  // Coerce defensively.
   const text = typeof stored === 'string' ? stored : JSON.stringify(stored)
   return text.trim().length > 0 ? text : null
 }

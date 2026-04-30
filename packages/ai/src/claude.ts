@@ -1,10 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { extractJson } from './extract-json'
 import {
-  sectionSummarySystemPrompt,
-  sectionSummaryUserPrompt,
-} from './prompts/section-summary'
-import {
   compensationAnalysisSystemPrompt,
   compensationAnalysisUserPrompt,
   type CompensationFairnessResult,
@@ -66,6 +62,10 @@ import {
   event8kSummarySystemPrompt,
   event8kSummaryUserPrompt,
 } from './prompts/event-8k'
+import {
+  narrativeSummarySystemPrompt,
+  narrativeSummaryUserPrompt,
+} from './prompts/narrative'
 import {
   whatThisMeansSystemPrompt,
   whatThisMeansUserPrompt,
@@ -178,24 +178,16 @@ export class ClaudeClient {
     return extractJson<T>(text)
   }
 
-  // ─── Summarize a filing section ─────────────────────────────────────
+  // ─── Narrative (catch-all) summary ─────────────────────────────────
 
-  async summarizeSection(params: {
+  async summarizeNarrative(params: {
     section: string
-    sectionType: string
     companyName: string
     filingType: string
   }): Promise<AiResponse<string>> {
-    const systemPrompt = sectionSummarySystemPrompt(params.sectionType)
-    const userPrompt = sectionSummaryUserPrompt({
-      section: params.section,
-      sectionType: params.sectionType,
-      companyName: params.companyName,
-      filingType: params.filingType,
-    })
-
+    const systemPrompt = narrativeSummarySystemPrompt()
+    const userPrompt = narrativeSummaryUserPrompt(params)
     const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
-
     return { data: text, usage, cached: false }
   }
 
