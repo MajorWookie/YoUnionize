@@ -10,9 +10,18 @@ This is a snapshot of every per-section prompt's rendered content as of the post
 
 > **For automated eval (old vs. new) see:** [`scripts/eval-section-prompt.ts`](../scripts/eval-section-prompt.ts). The frozen-in-time content for that script lives in [`scripts/eval/v1-section-prompts.ts`](../scripts/eval/v1-section-prompts.ts) — the TypeScript twin of this markdown.
 
-## Shared scaffold
+## Two prompt shapes
 
-Every per-section prompt below (except `mda`) follows the same scaffold:
+The 12 sections split into two prompt-architecture families. **Both are equally eligible Phase 3 candidates** — the choice of which to pilot first is about expected quality lift, not about which prompt shape is "easier" to migrate.
+
+| Family | Sections | Output shape | Phase 3 considerations |
+|---|---|---|---|
+| **Shared-scaffold narrative** | 11 sections (everything except mda) | Plain text, ≤150 words | Each follows the same `Section type: … / Specific guidance / Rules / Respond with plain text` skeleton with section-specific guidance plugged in. Council prompts replace the whole body. |
+| **Bespoke structured-markdown** | `mda` only | Structured markdown with fixed `## …` headings (300–500 words) | Different contract; outputs are rendered through `MarkdownContent` with `remark-gfm`. Already has optional prior-period (`priorMdaText`) plumbing that Phase 3 prompts can leverage. |
+
+## Shared-scaffold layout
+
+Every shared-scaffold prompt follows the same skeleton:
 
 ```
 You are a financial translator who converts dense SEC filing sections into plain-language summaries for everyday workers.
@@ -34,9 +43,7 @@ Rules:
 Respond with a plain text summary. No JSON, no markdown headers.
 ```
 
-Five sections (`risk_factors`, `business_overview`, `legal_proceedings`, `executive_compensation`, `financial_footnotes`) have section-specific guidance. Five (`cybersecurity`, `controls_and_procedures`, `related_transactions`, `proxy`, `event_8k`) plus `narrative` use a generic catch-all guidance line.
-
-`mda` is fully bespoke — its own structured-markdown contract.
+Within the shared-scaffold family, five sections (`risk_factors`, `business_overview`, `legal_proceedings`, `executive_compensation`, `financial_footnotes`) have section-specific guidance fragments. Six (`cybersecurity`, `controls_and_procedures`, `related_transactions`, `proxy`, `event_8k`, `narrative`) use a generic catch-all guidance line.
 
 ## Token caps and labels
 
@@ -53,7 +60,7 @@ Five sections (`risk_factors`, `business_overview`, `legal_proceedings`, `execut
 | `proxy` | `proxy` | 2048 |
 | `event_8k` | `event_summary` | 2048 |
 | `narrative` | `narrative` | 2048 |
-| `mda` | _(no label — bespoke prompt)_ | 3072 |
+| `mda` | bespoke (no `Section type:` line — uses `## …` markdown headings instead) | 3072 |
 
 ---
 
@@ -508,11 +515,17 @@ Section content:
 
 ---
 
-## `mda` (bespoke — different shape)
+## `mda`
 
 **Module:** [packages/ai/src/prompts/mda-summary.ts](../packages/ai/src/prompts/mda-summary.ts)
 **Method:** `ClaudeClient.summarizeMda()`
-**Note:** does not follow the shared scaffold. Outputs structured markdown with fixed headings. Accepts an optional prior-period MD&A summary for year-over-year comparison.
+**Family:** bespoke structured-markdown (the only section that doesn't use the shared scaffold)
+
+**Architecture notes:**
+- Outputs structured markdown with six fixed `## …` headings — see system prompt below.
+- Accepts an optional `priorMdaText: string` parameter for year-over-year comparison; the user prompt builder appends a `For comparison, here is the prior period's MD&A summary:` block when it's passed in. The summarisation pipeline already wires this when prior-period data is available.
+- `max_tokens: 3072` (vs. 2048 for the shared-scaffold sections).
+- Frontend rendering: same `MarkdownContent` component as other sections — `react-markdown` + `remark-gfm`. The structured headings come through as proper HTML `<h2>` elements.
 
 ### System prompt
 
@@ -585,22 +598,53 @@ For comparison, here is the prior period's MD&A summary:
 
 ## What to feed Council Workbench
 
-When iterating on a replacement prompt for any section, paste:
+The constraint set differs between the two prompt families. Pick the right one for the section you're iterating on.
+
+### For shared-scaffold sections (11 of 12)
+
+Paste:
 
 1. The current **system prompt** for that section (verbatim from above).
-2. A short note about constraints that don't show in the prompt itself:
+2. The constraints that aren't in the prompt itself:
    - **Output ends up in `filing_sections.ai_summary`** as a JSONB string. The frontend renders it via `MarkdownContent` (`react-markdown` + `remark-gfm`).
    - **Reading level: 6th grade.**
+   - **Plain text only — no `Section type: …` header in the output, no markdown headings.** The `Section type:` line is *input* (instructions to Claude), not part of the response.
    - **No XML tags or chain-of-thought blocks** unless you also commit to writing an extractor (`extractTaggedBlock(text, 'final')`) and updating the corresponding `summarize<Section>()` method to call it.
    - **`max_tokens: 2048`** by default; bump in `claude.ts` if the new prompt produces longer output.
-   - **No prior-period plumbing exists** for any section except `mda`. If your new prompt wants year-over-year comparison, scope that as a separate refactor — it requires editing `summarization-pipeline.ts`, `section-prompts.ts` lookups, and the `summarize<Section>()` signature.
+   - **No prior-period plumbing.** If your new prompt wants year-over-year comparison, scope it as a separate refactor — `summarization-pipeline.ts`, `section-prompts.ts` lookups, and the `summarize<Section>()` signature all need updates.
 3. A short brief on what you want different (e.g. "Be more specific about which categories of risk to extract, drop the boilerplate-skip rule because it's vague, structure the output by category instead of by importance").
+
+### For `mda` (the bespoke one)
+
+Paste:
+
+1. The current **system prompt** for `mda` (the long structured-markdown one above).
+2. The mda-specific constraints:
+   - **Output is structured markdown** rendered into the company dashboard via `MarkdownContent` (`react-markdown` + `remark-gfm`). The current contract is six `## …` headings: *The Big Picture / Revenue & Growth / Profitability / Cash & Spending / Management's Outlook / Bottom Line for Workers*. Changing the heading set is allowed but every consumer that reads MD&A markdown should be checked first (currently just the company-detail surface).
+   - **Length budget: 300–500 words total**, 2–4 sentences per section. Council can expand this but bumping `max_tokens` in `claude.ts:summarizeMda()` (currently 3072) may be required.
+   - **Prior-period plumbing already exists.** `MdaSummaryParams.priorMdaText?` is honored by `mdaSummaryUserPrompt` and routed through the pipeline when the prior period is available. Council prompts can lean on this for year-over-year comparison without any plumbing work.
+   - **The "Bottom Line for Workers" section is the YoUnionize-specific lens.** It's where corporate-speak euphemism translation ("right-sizing" → "layoffs") lands. Don't drop it unless you're consciously rebalancing the prompt's audience.
+   - **No JSON, no XML tags.** Plain markdown only.
+3. A short brief on what you want different (e.g. "Add a 'Compared to last year' bullet under each heading when prior MD&A is available," or "Make the 'Bottom Line for Workers' section more direct about hiring vs. layoffs signals").
+
+### Running the eval (any section)
 
 When you have a candidate prompt, drop it into the live module and run:
 
 ```bash
-bunx dotenvx run -f .env.remote -- \
-  bun run scripts/eval-section-prompt.ts --kind <kind> --limit 5
+bun run eval:section -- --kind <kind> --limit 5
 ```
 
-The script writes a side-by-side markdown report to `eval-outputs/<kind>-<timestamp>.md` for manual review.
+`<kind>` is one of: `business_overview`, `risk_factors`, `legal_proceedings`, `financial_footnotes`, `executive_compensation`, `cybersecurity`, `controls_and_procedures`, `related_transactions`, `proxy`, `event_8k`, `narrative`, `mda`. Output lands in `eval-outputs/<kind>-<timestamp>.md` for manual review.
+
+## Phase 3 priority recommendations
+
+Strongest expected lift (in rough order):
+
+1. **`risk_factors`** — current generic guidance is too thin for a 30+ item section.
+2. **`mda`** — already the most elaborate prompt, prior-period plumbing is in place, surfaces directly on every company dashboard. High-impact rewrites are well-scoped.
+3. **`executive_compensation`** — adversarial framing ("be direct about the gap") benefits from Council Workbench's specificity.
+4. **`business_overview`** — used as the prominent "what does this company do" surface; small lift but high impact.
+5. **The catch-all sections** (`cybersecurity`, `controls_and_procedures`, `related_transactions`, `proxy`, `narrative`) — eval-gated. The current generic guidance is thin enough that almost any specific Council prompt should beat it, but the user-visible impact is lower than for the top tier.
+
+Avoid scope-creep PRs that swap multiple sections at once. Each Phase 3 change should be one section, one PR, one eval report attached.
