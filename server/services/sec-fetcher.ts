@@ -1,6 +1,10 @@
 import { eq, sql } from 'drizzle-orm'
 import { getDb, rawSecResponses, companies } from '@younionize/postgres'
-import { getActualSectionItems, getSectionItemsForFilingType } from '@younionize/sec-api'
+import {
+  getActualSectionItems,
+  getSectionItemsForFilingType,
+  scrapeDef14aSection,
+} from '@younionize/sec-api'
 import type { Filing, SectionItemInfo } from '@younionize/sec-api'
 import { pMapSettled } from '@younionize/helpers'
 import { getSecApiClient } from '../sec-api-client'
@@ -137,7 +141,27 @@ export async function fetchAllSecData(company: CompanyRecord): Promise<FetchResu
     const sectionResults = await pMapSettled(
       sectionItems,
       async (item: SectionItemInfo) => {
-        const text = await client.extractSection(filing.linkToFilingDetails!, item.code)
+        let text = await client.extractSection(filing.linkToFilingDetails!, item.code)
+        // DEF 14A: sec-api.io's /extractor 404s on free-form proxy items
+        // (returns '' through the empty-fallback path). Recover ~2 missed
+        // sections per DEF 14A by scraping the primary HTML directly.
+        if (!text && filing.formType === 'DEF 14A') {
+          const htmlUrl = filing.linkToHtml ?? filing.linkToFilingDetails!
+          try {
+            const scraped = await scrapeDef14aSection(htmlUrl, item.code)
+            if (scraped) {
+              text = scraped
+              console.info(
+                `[SecFetcher] DEF 14A scrape fallback hit for ${filing.accessionNo}:${item.code} (${scraped.length} chars)`,
+              )
+            }
+          } catch (scrapeErr) {
+            const msg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr)
+            console.info(
+              `[SecFetcher] DEF 14A scrape fallback errored for ${filing.accessionNo}:${item.code}: ${msg}`,
+            )
+          }
+        }
         return { item, text }
       },
       4,
