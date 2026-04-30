@@ -1,6 +1,6 @@
 import { sql, and, eq, type SQL } from 'drizzle-orm'
 import { getDb } from './database'
-import { embeddings } from '../../../src/database/schema/embeddings'
+import { embeddings } from './schema/embeddings'
 
 export interface VectorSearchFilters {
   companyId?: string

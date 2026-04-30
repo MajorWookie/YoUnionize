@@ -23,17 +23,17 @@
 import { eq } from 'drizzle-orm'
 import { getDb, filingSummaries, filingSections } from '@younionize/postgres'
 import { pMapSettled } from '@younionize/helpers'
-import { getSecApiClient } from '../src/server/sec-api-client'
-import { lookupCompany } from '../src/server/services/company-lookup'
-import { ingestCompensation } from '../src/server/services/compensation-ingestion'
-import { ingestInsiderTrading } from '../src/server/services/insider-trading-ingestion'
-import { ingestDirectors } from '../src/server/services/directors-ingestion'
-import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
+import { getSecApiClient } from '../server/sec-api-client'
+import { lookupCompany } from '../server/services/company-lookup'
+import { ingestCompensation } from '../server/services/compensation-ingestion'
+import { ingestInsiderTrading } from '../server/services/insider-trading-ingestion'
+import { ingestDirectors } from '../server/services/directors-ingestion'
+import { summarizeCompanyFilings } from '../server/services/summarization-pipeline'
 import {
   retryFailedFilingSections,
   retryFailedRawResponses,
-} from '../src/server/services/sec-retry'
-import type { CompanyRecord } from '../src/server/services/company-lookup'
+} from '../server/services/sec-retry'
+import type { CompanyRecord } from '../server/services/company-lookup'
 import type { Filing } from '@younionize/sec-api'
 import { getActualSectionItems } from '@younionize/sec-api'
 

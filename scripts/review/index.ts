@@ -102,12 +102,12 @@ Commands:
 
   show <filing-id>           Show full review state for a filing
 
-  edit-raw <filing-id>       Open \$EDITOR on raw_data (or existing override)
+  edit-raw <filing-id>       Open $EDITOR on raw_data (or existing override)
                              — sets summary_version=0 to trigger re-run
 
   summarize <ticker>         Enqueue (re-)summarization for a company
 
-  edit-summary <filing-id>   Open \$EDITOR on the summary; status set from
+  edit-summary <filing-id>   Open $EDITOR on the summary; status set from
                              value-only diff vs the AI baseline (≥80% = authored)
 
   verify <filing-id>         Mark the AI summary as Human Verified (no edit)

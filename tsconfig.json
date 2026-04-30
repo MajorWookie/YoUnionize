@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "Preserve",
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
@@ -11,29 +11,21 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["node", "bun-types", "vite/client"],
+    "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "./src/*"
-      ]
-    },
-    "types": [
-      "node",
-      "react",
-      "vite/client",
-      "bun-types"
-    ]
+      "~/*": ["./src/*"]
+    }
   },
   "include": [
     "./src",
-    "./app",
-    "./env.d.ts",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "./server",
+    "./scripts",
+    "./tests",
+    "./vite.config.ts",
+    "./vitest.config.ts",
+    "./vitest.setup.ts"
   ],
-  "exclude": [
-    "./packages",
-    "node_modules",
-    "dist"
-  ],
-  "extends": "expo/tsconfig.base"
+  "exclude": ["./packages", "node_modules", "dist"]
 }
