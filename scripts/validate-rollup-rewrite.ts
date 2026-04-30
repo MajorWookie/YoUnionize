@@ -45,16 +45,16 @@ import type {
   EmployeeOutlookResult,
   WorkforceSignalsResult,
 } from '@younionize/ai'
-import { transformXbrlToStatements } from '../src/server/services/xbrl-transformer'
-import type { FinancialStatement } from '../src/server/services/xbrl-transformer'
+import { transformXbrlToStatements } from '../server/services/xbrl-transformer'
+import type { FinancialStatement } from '../server/services/xbrl-transformer'
 import {
   buildAggregatedContext,
   findSectionTextByPromptKind,
   loadAllSectionSummariesByCode,
   loadAllSectionTextByCode,
   mergeEmployeeImpact,
-} from '../src/server/services/summarization-pipeline'
-import { getAiClient } from '../src/server/ai-client'
+} from '../server/services/summarization-pipeline'
+import { getAiClient } from '../server/ai-client'
 
 // ─── CLI args ───────────────────────────────────────────────────────────────
 

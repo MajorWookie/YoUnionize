@@ -16,7 +16,7 @@
 import { inArray } from 'drizzle-orm'
 import { getDb, companies } from '@younionize/postgres'
 import { pMapSettled } from '@younionize/helpers'
-import { summarizeCompanyFilings } from '../src/server/services/summarization-pipeline'
+import { summarizeCompanyFilings } from '../server/services/summarization-pipeline'
 import { startHeartbeat, stopHeartbeat, startPhase, endPhase } from './lib/progress'
 
 const COMPANY_CONCURRENCY = 2
