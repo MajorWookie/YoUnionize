@@ -27,7 +27,7 @@ You MUST respond with valid JSON matching this exact structure:
 }
 
 Guidelines:
-- Write at an 8th-grade reading level
+- Write at an 6th-grade reading level
 - When you mention a financial term, define it immediately in parentheses: "EBITDA (earnings before interest, taxes, depreciation, and amortization — basically, how much cash the business generates from operations)"
 - Use concrete numbers from the structured statements: "$4.2 billion in revenue" not "strong revenue"
 - Always anchor large numbers to something relatable: "That's enough to pay every employee $180,000 per year"

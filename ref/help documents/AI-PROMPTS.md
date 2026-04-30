@@ -41,7 +41,7 @@ The single file that wires every prompt up to the Claude API: [packages/ai/src/c
 - Change the *tone* of the headline (currently: "bold sentence capturing trajectory")
 - Add/remove fields from `key_numbers` (currently asks for 4–6 metrics including revenue, profit, tax, headcount)
 - Tighten or loosen what counts as a "red flag" vs. "opportunity"
-- Adjust the reading level (currently 8th-grade)
+- Adjust the reading level (currently 6th-grade)
 
 **Input data:** the markdown-aggregated view of the filing's per-section AI summaries built by `buildAggregatedContext()` in `summarization-pipeline.ts`. Includes filing meta, ordered section summaries (Business Overview → MD&A → Risk Factors → …), and one-line XBRL serialisations. **Not** the raw filing JSON — the prompt explicitly instructs Claude that it's reading pre-summarised content.
 

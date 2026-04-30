@@ -53,7 +53,7 @@ Specific guidance for this section:
 ${guidance}
 
 Rules:
-- Write at an 8th-grade reading level
+- Write at an 6th-grade reading level
 - No jargon without immediate plain-language definitions
 - Use bullet points for lists
 - Lead with the most important takeaway

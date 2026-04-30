@@ -135,7 +135,7 @@ See `docs/MODULE-MAP.md` for detailed module/directory descriptions.
 
 ### AI/API Patterns
 - Claude API calls centralized in `packages/ai/` — don't scatter across components.
-- **Prompt templates** in `packages/ai/src/prompts/` — one file per prompt, 8th-grade reading level, define financial terms. See `docs/PROMPTS.md` for the full prompt map, dispatch table, and per-section vs. rollup grain.
+- **Prompt templates** in `packages/ai/src/prompts/` — one file per prompt, 6th-grade reading level, define financial terms. See `docs/PROMPTS.md` for the full prompt map, dispatch table, and per-section vs. rollup grain.
 - **Per-section grain**: AI summaries for individual SEC items live on `filing_sections.ai_summary`; filing-level rollups (executive_summary, employee_impact, XBRL statements, 8-K event_summary) live on `filing_summaries.ai_summary`. Dispatch is owned by `packages/sec-api/src/section-prompts.ts`.
 - **Summary versioning**: `CURRENT_SUMMARY_VERSION = 2` in `packages/ai/src/types.ts` gates the rendered shape. `PROMPT_VERSIONS` in `packages/sec-api/src/section-prompts.ts` is finer-grained — bump the per-kind suffix (e.g. `risk_factors@v1` → `@v2`) to invalidate just that prompt's rows for re-summarization.
 - **ClaudeClient methods**: `summarizeSection()`, `summarizeMda()`, `generateCompanySummary()`, `generateEmployeeImpact()`, `generateFilingSummary()`, `generateWhatThisMeans()`, `generateCompensationAnalysis()`, `ragQuery()`, `generateEmbedding()`. All chat methods use exponential backoff with ±25% jitter (5 retries; honors `retry-after` on 429, also handles 529). Default model `claude-haiku-4-5`.

@@ -9,7 +9,7 @@ export function ragAnswerSystemPrompt(): string {
 You answer questions using ONLY the provided context from SEC filings and company data. If the context doesn't contain enough information to answer the question, say so honestly — never make up financial data.
 
 Rules:
-- Write at an 8th-grade reading level
+- Write at an 6th-grade reading level
 - Define any financial terms in parentheses when first used
 - Use specific numbers from the context when available
 - If the question is about pay fairness, be balanced but honest

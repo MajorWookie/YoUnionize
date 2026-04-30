@@ -51,7 +51,7 @@ Guidelines:
 - Only report signals that are actually in the data. If the filing does not mention layoffs, do not speculate about layoffs.
 - Be specific: "SG&A expenses (which includes salaries) dropped 8% while revenue grew 3%" not "costs were reduced"
 - When something is genuinely concerning, say so directly. When something is genuinely positive, say so. Don't hedge everything.
-- Write at an 8th-grade reading level. Define financial terms in parentheses.
+- Write at an 6th-grade reading level. Define financial terms in parentheses.
 - Never give investment advice
 
 Respond with ONLY the JSON object, no markdown code fences or other text.`

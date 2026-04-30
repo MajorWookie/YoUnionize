@@ -73,7 +73,7 @@ The DEF 14A `executive_compensation` rollup is built by `buildExecCompRollup()` 
 
 ## Conventions
 
-- **Reading level**: 8th grade, financial terms defined inline in parentheses on first use.
+- **Reading level**: 6th grade, financial terms defined inline in parentheses on first use.
 - **Output format discipline**: prompts that return JSON say so explicitly and end with "Respond with ONLY the JSON object, no markdown code fences or other text." JSON is parsed via [`extractJson()`](../packages/ai/src/extract-json.ts), which strips markdown fences and prose wrappers. Markdown and plain-text prompts say so explicitly too — be deliberate about which you're writing.
 - **Aggregated input**: `company-summary` and `employee-impact` consume a markdown-aggregated view of the filing's per-section AI summaries (built by `buildAggregatedContext` in `summarization-pipeline.ts`), not the raw filing JSON. This cuts input tokens by ~80–90% per rollup. `workforce-signals` is the exception — it consumes raw `business_overview` + `risk_factors` text because direct quotes and exact figures matter.
 - **Employee-impact merge**: The summarisation pipeline calls `generateEmployeeImpact` (outlook fields) and `generateWorkforceSignals` (geography + visa fields) separately, then merges the two outputs into a single `EmployeeImpactResult` object stored on `filing_summaries.ai_summary.employee_impact` for frontend backwards compatibility.

@@ -42,7 +42,7 @@ Guidelines:
 - Show your work: state the numbers you found, where in the filing you found them, and what they mean.
 - If a company is transparent about domestic employment, credit them for it.
 - Quote the filing directly for any visa-related claim — don't paraphrase.
-- Write at an 8th-grade reading level. Define financial terms in parentheses.
+- Write at an 6th-grade reading level. Define financial terms in parentheses.
 - Never give investment advice.
 
 Respond with ONLY the JSON object, no markdown code fences or other text.`
