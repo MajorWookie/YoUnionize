@@ -1014,7 +1014,6 @@ const SECTION_LABELS: Record<string, string> = {
   balance_sheet: 'Balance sheet financial data',
   cash_flow: 'Cash flow statement',
   shareholders_equity: 'Shareholders equity statement',
-  executive_compensation: 'Executive compensation analysis',
 }
 
 function buildSectionEmbeddingLabel(

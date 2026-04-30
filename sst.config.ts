@@ -110,9 +110,6 @@ export default $config({
       capacity: isStaging ? 'spot' : undefined,
       environment: {
         ...commonEnv,
-        ONE_SERVER_URL: isProd
-          ? 'https://younion.app'
-          : `https://${stage}.younion.app`,
         NODE_OPTIONS: isProd ? '--max-old-space-size=3072' : '--max-old-space-size=512',
       },
       scaling: {
