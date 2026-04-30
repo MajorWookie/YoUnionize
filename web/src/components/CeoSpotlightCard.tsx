@@ -41,14 +41,50 @@ interface BarSegment {
 }
 
 function buildSegments(ceo: Executive): Array<BarSegment> {
-  const segments: Array<BarSegment> = [
-    { label: 'Salary', value: ceo.salary ?? 0, color: 'navy.6' },
-    { label: 'Bonus + Incentive', value: (ceo.bonus ?? 0) + (ceo.nonEquityIncentive ?? 0), color: 'navy.4' },
-    { label: 'Stock Awards', value: ceo.stockAwards ?? 0, color: 'green.6' },
-    { label: 'Options', value: ceo.optionAwards ?? 0, color: 'green.4' },
-    { label: 'Other', value: (ceo.otherCompensation ?? 0) + (ceo.changeInPensionValue ?? 0), color: 'orange.5' },
-  ]
-  return segments.filter((s) => s.value > 0)
+  // Itemize the comp components individually rather than collapsing
+  // bonus+incentive together — when several adjacent items share a
+  // color family the bar visually reads as one solid block. Each
+  // component now gets a distinct color so even small slices are
+  // visible.
+  const itemized: Array<BarSegment> = [
+    { label: 'Salary', value: ceo.salary ?? 0, color: 'navy.7' },
+    { label: 'Bonus', value: ceo.bonus ?? 0, color: 'cyan.6' },
+    { label: 'Stock Awards', value: ceo.stockAwards ?? 0, color: 'green.7' },
+    { label: 'Options', value: ceo.optionAwards ?? 0, color: 'lime.6' },
+    {
+      label: 'Non-Equity Incentive',
+      value: ceo.nonEquityIncentive ?? 0,
+      color: 'teal.6',
+    },
+    {
+      label: 'Pension / NQDC',
+      value: ceo.changeInPensionValue ?? 0,
+      color: 'grape.5',
+    },
+    {
+      label: 'Other (perks)',
+      value: ceo.otherCompensation ?? 0,
+      color: 'orange.6',
+    },
+  ].filter((s) => s.value > 0)
+
+  // Reconcile against totalCompensation. The proxy summary table's
+  // total can exceed the sum of itemized line items when the API
+  // surfaced the total but didn't expose every sub-line (or rounding).
+  // Fill the gap with a muted "Other (unitemized)" segment so the
+  // bar reflects the real total — otherwise the bar appears 100%
+  // salary even when salary is only ~85% of total comp.
+  const knownSum = itemized.reduce((s, x) => s + x.value, 0)
+  const gap = ceo.totalCompensation - knownSum
+  if (gap > knownSum * 0.005 && knownSum > 0) {
+    itemized.push({
+      label: 'Other (unitemized)',
+      value: gap,
+      color: 'gray.5',
+    })
+  }
+
+  return itemized
 }
 
 export function CeoSpotlightCard({ executives, ticker }: Props) {
@@ -117,24 +153,30 @@ export function CeoSpotlightCard({ executives, ticker }: Props) {
               ))}
             </Progress.Root>
             <Group gap="md" wrap="wrap">
-              {segments.map((seg) => (
-                <Group key={seg.label} gap={6}>
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      backgroundColor: `var(--mantine-color-${seg.color.replace('.', '-')})`,
-                      borderRadius: 2,
-                    }}
-                  />
-                  <Text size="xs" c="slate.7">
-                    <Text span fw={600} c="slate.9">
-                      {formatDollarsCompact(seg.value)}
-                    </Text>{' '}
-                    {seg.label}
-                  </Text>
-                </Group>
-              ))}
+              {segments.map((seg) => {
+                const pct = ((seg.value / total) * 100).toFixed(0)
+                return (
+                  <Group key={seg.label} gap={6}>
+                    <div
+                      style={{
+                        width: 10,
+                        height: 10,
+                        backgroundColor: `var(--mantine-color-${seg.color.replace('.', '-')})`,
+                        borderRadius: 2,
+                      }}
+                    />
+                    <Text size="xs" c="slate.7">
+                      <Text span fw={600} c="slate.9">
+                        {formatDollarsCompact(seg.value)}
+                      </Text>{' '}
+                      {seg.label}{' '}
+                      <Text span c="slate.6">
+                        ({pct}%)
+                      </Text>
+                    </Text>
+                  </Group>
+                )
+              })}
             </Group>
           </Stack>
         )}
