@@ -5,13 +5,10 @@ import react from '@vitejs/plugin-react'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 
-// Read env vars from the repo root (one level up) so the same .env file the
-// Expo app uses is the single source of truth. envPrefix accepts both VITE_*
-// (web-specific overrides) and EXPO_PUBLIC_* (shared with iOS); only those
-// prefixes reach the client bundle — server-side secrets stay out.
+// envPrefix keeps the historical EXPO_PUBLIC_* keys readable so
+// existing .env files still work without renaming every variable.
 export default defineConfig({
   plugins: [react()],
-  envDir: path.resolve(root, '..'),
   envPrefix: ['VITE_', 'EXPO_PUBLIC_'],
   resolve: {
     alias: {

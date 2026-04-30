@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "Preserve",
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
@@ -11,8 +11,21 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["node", "bun-types"]
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["node", "bun-types", "vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["./src/*"]
+    }
   },
-  "include": ["./server", "./scripts", "./tests", "./vitest.setup.ts"],
-  "exclude": ["./packages", "./web", "node_modules", "dist"]
+  "include": [
+    "./src",
+    "./server",
+    "./scripts",
+    "./tests",
+    "./vite.config.ts",
+    "./vitest.config.ts",
+    "./vitest.setup.ts"
+  ],
+  "exclude": ["./packages", "node_modules", "dist"]
 }
