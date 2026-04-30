@@ -28,13 +28,17 @@ export function loadCliConfig(): CliConfig {
   const supabaseUrl =
     process.env.EXPO_PUBLIC_SUPABASE_URL
     ?? process.env.SUPABASE_URL
-    ?? 'http://127.0.0.1:54321'
   const supabaseKey =
     process.env.EXPO_PUBLIC_SUPABASE_KEY
     ?? process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
     ?? process.env.SUPABASE_KEY
     ?? process.env.SUPABASE_ANON_KEY
     ?? ''
+  if (!supabaseUrl) {
+    throw new Error(
+      'No Supabase URL found. Set EXPO_PUBLIC_SUPABASE_URL or SUPABASE_URL in your .env.',
+    )
+  }
   if (!supabaseKey) {
     throw new Error(
       'No Supabase publishable key found. Set EXPO_PUBLIC_SUPABASE_KEY in your .env.',

@@ -6,28 +6,37 @@
  * EXPO_PUBLIC_* (Expo) or VITE_* (Vite) env vars.
  */
 
+// Read via globalThis so Vite cannot statically replace `process.env` with `{}`
+// at bundle time. The browser env-shim populates globalThis.process.env from
+// import.meta.env before this code runs.
+function readEnv(): Record<string, string | undefined> {
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+  return proc?.env ?? {}
+}
+
 function getSupabaseUrl(): string {
-  if (typeof process !== 'undefined' && process.env) {
-    return (
-      process.env.EXPO_PUBLIC_SUPABASE_URL ??
-      process.env.VITE_SUPABASE_URL ??
-      'http://127.0.0.1:54321'
+  const env = readEnv()
+  const url =
+    env.EXPO_PUBLIC_SUPABASE_URL ??
+    env.VITE_SUPABASE_URL ??
+    env.SUPABASE_URL
+  if (!url) {
+    throw new Error(
+      'Supabase URL is missing. Set VITE_SUPABASE_URL (or EXPO_PUBLIC_SUPABASE_URL) in your .env.',
     )
   }
-  return 'http://127.0.0.1:54321'
+  return url
 }
 
 function getSupabaseKey(): string {
-  if (typeof process !== 'undefined' && process.env) {
-    return (
-      process.env.EXPO_PUBLIC_SUPABASE_KEY ??
-      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
-      process.env.VITE_SUPABASE_KEY ??
-      process.env.VITE_SUPABASE_ANON_KEY ??
-      ''
-    )
-  }
-  return ''
+  const env = readEnv()
+  return (
+    env.EXPO_PUBLIC_SUPABASE_KEY ??
+    env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+    env.VITE_SUPABASE_KEY ??
+    env.VITE_SUPABASE_ANON_KEY ??
+    ''
+  )
 }
 
 /**
@@ -83,7 +92,7 @@ const DYNAMIC_ROUTES: Array<{
  * Convert an /api/* URL to the Supabase Edge Function URL.
  *
  * Examples:
- *   apiUrl('/api/user/me') → 'http://127.0.0.1:54321/functions/v1/user-me'
+ *   apiUrl('/api/user/me') → '{SUPABASE_URL}/functions/v1/user-me'
  *   apiUrl('/api/companies/search?q=AAPL') → '.../functions/v1/companies-search?q=AAPL'
  *   apiUrl('/api/companies/AAPL/detail') → '.../functions/v1/company-detail?ticker=AAPL'
  */
