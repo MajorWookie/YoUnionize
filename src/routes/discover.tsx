@@ -2,19 +2,28 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Alert,
+  Badge,
   Card,
-  Center,
   Container,
   Group,
   Loader,
+  SegmentedControl,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core'
+import { IconArrowRight, IconSearch } from '@tabler/icons-react'
 import { useDebounce } from '@younionize/hooks'
 import { fetchWithRetry } from '@younionize/api-client'
 import { AskBar } from '~/components/AskBar'
+import {
+  EmptyState,
+  Eyebrow,
+  PageHeader,
+  SectionHeader,
+} from '~/components/primitives'
+import cardClasses from '~/theme/Card.module.css'
 
 interface SearchResult {
   name: string
@@ -23,6 +32,48 @@ interface SearchResult {
   sector: string
   industry: string
 }
+
+type Mode = 'browse' | 'ask'
+
+interface FeaturedStory {
+  eyebrow: string
+  headline: string
+  subhead: string
+  ticker: string
+}
+
+// Hand-curated stories shown when the user lands on Discover with no query.
+// Edit freely — these are editorial entry points, not derived from any API.
+const FEATURED_STORIES: ReadonlyArray<FeaturedStory> = [
+  {
+    eyebrow: 'Pay ratio',
+    headline: "Oracle's executive pay, in context",
+    subhead:
+      'How a tenured leadership team is compensated — equity, salary, and the gap to the median worker.',
+    ticker: 'ORCL',
+  },
+  {
+    eyebrow: 'Stock-heavy',
+    headline: "Tesla's equity-driven compensation",
+    subhead:
+      "Why Tesla's CEO comp swings hardest with the share price — and what shareholders are voting on.",
+    ticker: 'TSLA',
+  },
+  {
+    eyebrow: 'Big tech',
+    headline: "Amazon's leadership pay",
+    subhead:
+      'Cash, equity, and the gap between executives and the typical Amazon employee.',
+    ticker: 'AMZN',
+  },
+  {
+    eyebrow: 'Governance',
+    headline: "Meta's executive compensation",
+    subhead:
+      'How performance, tenure, and equity grants shape what leadership takes home.',
+    ticker: 'META',
+  },
+]
 
 function mergeResults(
   local: Array<SearchResult>,
@@ -34,6 +85,9 @@ function mergeResults(
 
 export function DiscoverPage() {
   const navigate = useNavigate()
+  const [mode, setMode] = useState<Mode>('browse')
+
+  // Browse state
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Array<SearchResult>>([])
   const [loading, setLoading] = useState(false)
@@ -42,7 +96,6 @@ export function DiscoverPage() {
   const [secSearched, setSecSearched] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
 
-  // Discard stale SEC results that arrive after a newer local query has fired.
   const latestQueryRef = useRef('')
   const debouncedQuery = useDebounce(query, 300)
 
@@ -115,7 +168,8 @@ export function DiscoverPage() {
       }
     } catch (err) {
       if (latestQueryRef.current === trimmed) {
-        const message = err instanceof Error ? err.message : 'Network request failed'
+        const message =
+          err instanceof Error ? err.message : 'Network request failed'
         setSearchError(`Could not reach the server. ${message}`)
         setResults([])
         setHasSearched(true)
@@ -137,103 +191,144 @@ export function DiscoverPage() {
     !secLoading &&
     !searchError
 
+  const goToCompany = (ticker: string) => navigate(`/companies/${ticker}`)
+
   return (
-    <Container size="md" py="xl">
-      <Stack gap="lg">
-        <Stack gap="xs">
-          <Title order={1} c="navy.6">
-            Discover
-          </Title>
-          <Text c="slate.7">
-            Search public companies and explore their SEC filings.
-          </Text>
-        </Stack>
+    <Container size="lg" py="xl">
+      <Stack gap="xl">
+        <PageHeader
+          title="Discover"
+          description="Browse public companies or ask questions about their SEC filings — pay, financials, leadership."
+        />
 
-        <AskBar placeholder="Ask about any public company…" />
-
-        <TextInput
-          placeholder="Search by company name or ticker..."
-          value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
-          autoComplete="off"
-          autoCorrect="off"
-          rightSection={loading ? <Loader size="xs" /> : null}
+        <SegmentedControl
+          value={mode}
+          onChange={(v) => setMode(v as Mode)}
+          data={[
+            { label: 'Browse companies', value: 'browse' },
+            { label: 'Ask a question', value: 'ask' },
+          ]}
+          fullWidth
           size="md"
         />
 
-        {searchError ? (
-          <Alert color="red" variant="light" title="Search unavailable">
-            {searchError}
-          </Alert>
-        ) : !hasSearched && query.length === 0 ? (
-          <Center py="xl">
-            <Stack gap="xs" align="center" maw={420} ta="center">
-              <Text fw={600}>Search for a company</Text>
-              <Text size="sm" c="slate.7">
-                Look up any public company by name or ticker to see their
-                financial filings, executive compensation, and more.
-              </Text>
-            </Stack>
-          </Center>
-        ) : showNoResults ? (
-          <Center py="xl">
-            <Stack gap="xs" align="center" maw={420} ta="center">
-              <Text fw={600}>No results found</Text>
-              <Text size="sm" c="slate.7">
-                No companies match &ldquo;{query}&rdquo;. Try a different name
-                or ticker symbol.
-              </Text>
-            </Stack>
-          </Center>
-        ) : (
-          <Stack gap="xs">
-            {results.map((company) => (
-              <Card
-                key={company.ticker}
-                withBorder
-                padding="md"
-                radius="md"
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate(`/companies/${company.ticker}`)}
-              >
-                <Group justify="space-between" wrap="nowrap">
-                  <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-                    <Text fw={600} size="md" lineClamp={1}>
-                      {company.name}
-                    </Text>
-                    <Group gap="xs">
-                      <Text fw={700} c="navy.6" size="sm">
-                        {company.ticker}
-                      </Text>
-                      {company.exchange && (
-                        <Text c="slate.6" size="xs">
-                          {company.exchange}
-                        </Text>
-                      )}
-                    </Group>
-                    {company.sector && (
-                      <Text c="slate.7" size="xs" lineClamp={1}>
-                        {company.sector}
-                        {company.industry ? ` · ${company.industry}` : ''}
-                      </Text>
-                    )}
-                  </Stack>
-                  <Text c="slate.6" size="lg">
-                    ›
-                  </Text>
-                </Group>
-              </Card>
-            ))}
+        {mode === 'browse' ? (
+          <Stack gap="md">
+            <TextInput
+              value={query}
+              onChange={(e) => setQuery(e.currentTarget.value)}
+              placeholder="Search by company name or ticker…"
+              autoComplete="off"
+              autoCorrect="off"
+              size="md"
+              leftSection={<IconSearch size={16} stroke={1.6} />}
+              rightSection={loading ? <Loader size="xs" /> : null}
+            />
 
-            {secLoading && (
-              <Group gap="xs" justify="center" py="xs">
-                <Loader size="xs" />
-                <Text size="sm" c="slate.6">
-                  Searching more companies...
-                </Text>
-              </Group>
+            {searchError ? (
+              <Alert color="red" variant="light" title="Search unavailable">
+                {searchError}
+              </Alert>
+            ) : !hasSearched && query.length === 0 ? (
+              <Stack gap="md">
+                <SectionHeader
+                  title="Featured stories"
+                  description="A few entry points for exploring how public companies pay their leadership."
+                />
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  {FEATURED_STORIES.map((story) => (
+                    <Card
+                      key={story.ticker}
+                      className={cardClasses.interactive}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => goToCompany(story.ticker)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          goToCompany(story.ticker)
+                        }
+                      }}
+                    >
+                      <Stack gap="xs">
+                        <Eyebrow>{story.eyebrow}</Eyebrow>
+                        <Text fz="lg" fw={600} lh={1.3}>
+                          {story.headline}
+                        </Text>
+                        <Text size="sm" c="dimmed">
+                          {story.subhead}
+                        </Text>
+                        <Group gap={4} mt="xs" c="navy.7" align="center">
+                          <Text size="xs" fw={600}>
+                            Read story
+                          </Text>
+                          <IconArrowRight size={12} stroke={2} />
+                        </Group>
+                      </Stack>
+                    </Card>
+                  ))}
+                </SimpleGrid>
+              </Stack>
+            ) : showNoResults ? (
+              <EmptyState
+                title="No results"
+                description={`No companies match "${query.trim()}". Try a different name or ticker.`}
+              />
+            ) : (
+              <Stack gap="sm">
+                {results.map((company) => (
+                  <Card
+                    key={company.ticker}
+                    className={cardClasses.interactive}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => goToCompany(company.ticker)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        goToCompany(company.ticker)
+                      }
+                    }}
+                  >
+                    <Stack gap={6}>
+                      {company.sector ? (
+                        <Eyebrow>
+                          {company.sector}
+                          {company.industry ? ` · ${company.industry}` : ''}
+                        </Eyebrow>
+                      ) : null}
+                      <Group justify="space-between" wrap="nowrap" align="center" gap="md">
+                        <Text fw={600} size="md" lineClamp={1} style={{ flex: 1 }}>
+                          {company.name}
+                        </Text>
+                        <Group gap="xs" align="center" wrap="nowrap">
+                          <Badge color="navy" variant="light">
+                            {company.ticker}
+                          </Badge>
+                          {company.exchange ? (
+                            <Text c="dimmed" size="xs">
+                              {company.exchange}
+                            </Text>
+                          ) : null}
+                        </Group>
+                      </Group>
+                    </Stack>
+                  </Card>
+                ))}
+
+                {secLoading ? (
+                  <Group gap="xs" justify="center" py="xs">
+                    <Loader size="xs" />
+                    <Text size="sm" c="dimmed">
+                      Searching SEC for more…
+                    </Text>
+                  </Group>
+                ) : null}
+              </Stack>
             )}
           </Stack>
+        ) : (
+          <AskBar placeholder="Ask about any public company…" />
         )}
       </Stack>
     </Container>
