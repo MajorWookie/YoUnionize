@@ -1,16 +1,20 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Alert,
   Anchor,
   Button,
+  Group,
   PasswordInput,
+  SimpleGrid,
   Stack,
+  Text,
   TextInput,
-  Title,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
+import { IconLock } from '@tabler/icons-react'
 import { useAuth } from '@younionize/hooks'
+import { PageHeader } from '~/components/primitives'
 
 export function SignUpPage() {
   const navigate = useNavigate()
@@ -45,7 +49,9 @@ export function SignUpPage() {
         navigate('/onboarding')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setError(
+        err instanceof Error ? err.message : 'An unexpected error occurred',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -54,54 +60,71 @@ export function SignUpPage() {
   const busy = submitting || isLoading
 
   return (
-    <Stack gap="md">
-      <Title order={3} ta="center">
-        Create your account
-      </Title>
-      {error && (
+    <Stack gap="lg">
+      <PageHeader
+        title="Create your account"
+        description="Understand your compensation in context. Free, takes a minute."
+      />
+
+      {error ? (
         <Alert color="red" variant="light">
           {error}
         </Alert>
-      )}
+      ) : null}
+
       <form onSubmit={form.onSubmit(onSubmit)}>
         <Stack gap="md">
-          <TextInput
-            label="Name"
-            placeholder="Jane Smith"
-            autoComplete="name"
-            disabled={busy}
-            {...form.getInputProps('name')}
-          />
-          <TextInput
-            label="Email"
-            placeholder="you@example.com"
-            type="email"
-            autoComplete="email"
-            disabled={busy}
-            {...form.getInputProps('email')}
-          />
-          <PasswordInput
-            label="Password"
-            placeholder="At least 8 characters"
-            autoComplete="new-password"
-            disabled={busy}
-            {...form.getInputProps('password')}
-          />
-          <PasswordInput
-            label="Confirm password"
-            placeholder="••••••••"
-            autoComplete="new-password"
-            disabled={busy}
-            {...form.getInputProps('confirmPassword')}
-          />
-          <Button type="submit" loading={busy} fullWidth>
-            Sign Up
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <TextInput
+              label="Name"
+              placeholder="Jane Smith"
+              autoComplete="name"
+              disabled={busy}
+              {...form.getInputProps('name')}
+            />
+            <TextInput
+              label="Email"
+              placeholder="you@example.com"
+              type="email"
+              autoComplete="email"
+              disabled={busy}
+              {...form.getInputProps('email')}
+            />
+            <PasswordInput
+              label="Password"
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              disabled={busy}
+              {...form.getInputProps('password')}
+            />
+            <PasswordInput
+              label="Confirm password"
+              placeholder="Re-enter your password"
+              autoComplete="new-password"
+              disabled={busy}
+              {...form.getInputProps('confirmPassword')}
+            />
+          </SimpleGrid>
+
+          <Group gap="xs" align="center" wrap="nowrap" c="dimmed" mt="xs">
+            <IconLock size={14} stroke={1.8} />
+            <Text size="xs" c="dimmed">
+              Your pay details never leave your account. We never share with
+              employers.
+            </Text>
+          </Group>
+
+          <Button type="submit" loading={busy}>
+            Create account
           </Button>
         </Stack>
       </form>
-      <Anchor component={Link} to="/sign-in" ta="center" size="sm">
-        Already have an account? Sign in
-      </Anchor>
+
+      <Group justify="center" gap={4} mt="xs">
+        <Anchor component={Link} to="/sign-in" size="sm" c="dimmed">
+          Already have an account? Sign in
+        </Anchor>
+      </Group>
     </Stack>
   )
 }
