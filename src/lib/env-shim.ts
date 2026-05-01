@@ -23,10 +23,12 @@ const meta = import.meta.env
 const KEYS = [
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_KEY',
-  'VITE_DEV_SKIP_AUTH',
+  'VITE_DEV_TEST_EMAIL',
+  'VITE_DEV_TEST_PASSWORD',
   'EXPO_PUBLIC_SUPABASE_URL',
   'EXPO_PUBLIC_SUPABASE_KEY',
-  'EXPO_PUBLIC_DEV_SKIP_AUTH',
+  'EXPO_PUBLIC_DEV_TEST_EMAIL',
+  'EXPO_PUBLIC_DEV_TEST_PASSWORD',
 ] as const
 
 for (const k of KEYS) {
@@ -34,8 +36,11 @@ for (const k of KEYS) {
   if (v !== undefined && v !== '') env[k] = v
 }
 
-// useAuth reads EXPO_PUBLIC_DEV_SKIP_AUTH; if only VITE_DEV_SKIP_AUTH is set,
-// mirror it so the auth-bypass flag still resolves correctly on web.
-if (env.EXPO_PUBLIC_DEV_SKIP_AUTH === undefined && env.VITE_DEV_SKIP_AUTH !== undefined) {
-  env.EXPO_PUBLIC_DEV_SKIP_AUTH = env.VITE_DEV_SKIP_AUTH
+// useAuth reads the EXPO_PUBLIC_* names; mirror VITE_* aliases so a developer
+// can use either prefix in their .env without it silently no-op'ing.
+if (env.EXPO_PUBLIC_DEV_TEST_EMAIL === undefined && env.VITE_DEV_TEST_EMAIL !== undefined) {
+  env.EXPO_PUBLIC_DEV_TEST_EMAIL = env.VITE_DEV_TEST_EMAIL
+}
+if (env.EXPO_PUBLIC_DEV_TEST_PASSWORD === undefined && env.VITE_DEV_TEST_PASSWORD !== undefined) {
+  env.EXPO_PUBLIC_DEV_TEST_PASSWORD = env.VITE_DEV_TEST_PASSWORD
 }

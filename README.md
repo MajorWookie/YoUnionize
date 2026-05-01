@@ -64,6 +64,8 @@ cp .env.example .env
 
 Edit `.env` with your API keys. See [Environment Variables Reference](#environment-variables-reference) for all options.
 
+For a smoother dev loop against remote Supabase, optionally set `EXPO_PUBLIC_DEV_TEST_EMAIL` and `EXPO_PUBLIC_DEV_TEST_PASSWORD` in your local env. The web app will sign in with these credentials on mount so `/api/*` calls have a real Supabase JWT — the first run against a fresh Supabase project auto-provisions the user. Without these, you'll go through the normal `/sign-in` form.
+
 ### 3. Start local Supabase
 
 ```bash

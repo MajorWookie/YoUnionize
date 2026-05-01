@@ -58,7 +58,15 @@
       "Bash(sed -i '' \"s|import type { FinancialStatement, FinancialLineItem } from '../types'|import type { FinancialStatement, FinancialLineItem } from '~/lib/financial-types'|\" web/src/lib/income-data-extractor.ts)",
       "Bash(sed -i '' \"s|import { formatFinancial } from '../format'|import { formatDollarsCompact as formatFinancial } from '~/lib/format'|\" web/src/lib/income-data-extractor.ts)",
       "Bash(git log *)",
-      "Bash(yes)"
+      "Bash(yes)",
+      "Skill(schedule)",
+      "Skill(schedule:*)",
+      "Bash(uuidgen)",
+      "Bash(grep -r \"#[0-9a-fA-F]\\\\{3,6\\\\}\" /Users/majorwookie/Documents/GitHub/YoUnionize/src --include=\"*.tsx\" --include=\"*.ts\")",
+      "Bash(xargs -I {} basename {})",
+      "Bash(grep -r \"#[0-9a-fA-F]\\\\{3,8\\\\}\" /Users/majorwookie/Documents/GitHub/YoUnionize/src --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(grep -c \"#[0-9a-fA-F]\\\\{3,8\\\\}\" /Users/majorwookie/Documents/GitHub/YoUnionize/src/lib/income-data-extractor.ts)",
+      "Bash(bunx vitest *)"
     ]
   },
   "enableAllProjectMcpServers": true,
