@@ -1,6 +1,9 @@
 // MUST be first import — bridges Vite env to process.env for shared packages.
 import './lib/env-shim'
 
+import '@fontsource-variable/inter'
+import '@fontsource-variable/source-serif-4'
+
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import '@mantine/charts/styles.css'

@@ -7,6 +7,7 @@
  */
 import type { FinancialStatement, FinancialLineItem } from '~/lib/financial-types'
 import { formatDollarsCompact as formatFinancial } from '~/lib/format'
+import { incomeWaterfall, opexRamp, revenueRamp } from '~/theme/tokens'
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -64,18 +65,9 @@ function extractYear(dateStr: string): string | null {
   return null
 }
 
-// ── Color palette ──────────────────────────────────────────────────────
-
-const REVENUE_COLORS = ['#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af']
-const OPEX_COLOR = '#f59e0b'
-const OPEX_SUB_COLORS = ['#f59e0b', '#d97706', '#b45309', '#92400e', '#fbbf24', '#f97316']
-const OPERATING_INCOME_COLOR = '#9ca3af'
-const INTEREST_EXPENSE_COLOR = '#f87171'
-const NON_OP_POSITIVE_COLOR = '#4ade80'
-const NON_OP_NEGATIVE_COLOR = '#f87171'
-const TAX_COLOR = '#a78bfa'
-const NET_INCOME_COLOR = '#10b981'
-const NET_LOSS_COLOR = '#ef4444'
+// Color references resolve to design tokens in `src/theme/tokens.ts`. The
+// values are CSS variable strings (e.g. `var(--mantine-color-navy-6)`), so
+// any palette change in `src/theme.ts` propagates automatically.
 
 // ── Label classification ───────────────────────────────────────────────
 
@@ -230,7 +222,7 @@ function extractForPeriod(
           rawValue: val,
           formattedValue: formatFinancial(val),
           percentOfRevenue: round((val / totalRevenue) * 100),
-          color: REVENUE_COLORS[idx % REVENUE_COLORS.length],
+          color: revenueRamp[idx % revenueRamp.length],
           isNegative: val < 0,
         }
       }),
@@ -268,7 +260,7 @@ function extractForPeriod(
       rawValue: opExpVal,
       formattedValue: formatFinancial(opExpVal),
       percentOfRevenue: round((opExpVal / totalRevenue) * 100),
-      color: OPEX_COLOR,
+      color: incomeWaterfall.opex,
       isNegative: false,
       breakdown: expenseItems.length > 0 ? expenseItems : undefined,
     })
@@ -282,7 +274,7 @@ function extractForPeriod(
       rawValue: opIncVal,
       formattedValue: formatFinancial(opIncVal),
       percentOfRevenue: round((opIncVal / totalRevenue) * 100),
-      color: OPERATING_INCOME_COLOR,
+      color: incomeWaterfall.operatingIncome,
       isNegative: false,
     })
   } else if (opIncVal < 0) {
@@ -294,7 +286,7 @@ function extractForPeriod(
       rawValue: opIncVal,
       formattedValue: formatFinancial(opIncVal),
       percentOfRevenue: round((Math.abs(opIncVal) / totalRevenue) * 100),
-      color: NET_LOSS_COLOR,
+      color: incomeWaterfall.netLoss,
       isNegative: true,
     })
   }
@@ -314,7 +306,7 @@ function extractForPeriod(
       rawValue: item.value,
       formattedValue: item.formattedValue,
       percentOfRevenue: item.percentOfRevenue,
-      color: OPEX_SUB_COLORS[idx % OPEX_SUB_COLORS.length],
+      color: opexRamp[idx % opexRamp.length],
       isNegative: false,
     }))
 
@@ -326,7 +318,7 @@ function extractForPeriod(
         rawValue: remainder,
         formattedValue: formatFinancial(remainder),
         percentOfRevenue: round((remainder / totalRevenue) * 100),
-        color: OPEX_SUB_COLORS[opexSubSlices.length % OPEX_SUB_COLORS.length],
+        color: opexRamp[opexSubSlices.length % opexRamp.length],
         isNegative: false,
       })
     }
@@ -361,7 +353,7 @@ function extractForPeriod(
         rawValue: -interest,
         formattedValue: formatFinancial(interest),
         percentOfRevenue: round((interest / totalRevenue) * 100),
-        color: INTEREST_EXPENSE_COLOR,
+        color: incomeWaterfall.interestExpense,
         isNegative: true,
       })
     }
@@ -375,7 +367,7 @@ function extractForPeriod(
         rawValue: -nonOp,
         formattedValue: formatFinancial(Math.abs(nonOp)),
         percentOfRevenue: round((Math.abs(nonOp) / totalRevenue) * 100),
-        color: isNeg ? NON_OP_NEGATIVE_COLOR : NON_OP_POSITIVE_COLOR,
+        color: isNeg ? incomeWaterfall.nonOpNegative : incomeWaterfall.nonOpPositive,
         isNegative: isNeg,
       })
     }
@@ -388,7 +380,7 @@ function extractForPeriod(
         rawValue: -tax,
         formattedValue: formatFinancial(tax),
         percentOfRevenue: round((tax / totalRevenue) * 100),
-        color: TAX_COLOR,
+        color: incomeWaterfall.tax,
         isNegative: true,
       })
     }
@@ -401,7 +393,7 @@ function extractForPeriod(
         rawValue: ni,
         formattedValue: formatFinancial(ni),
         percentOfRevenue: round((ni / totalRevenue) * 100),
-        color: NET_INCOME_COLOR,
+        color: incomeWaterfall.netIncome,
         isNegative: false,
       })
     } else {
@@ -412,7 +404,7 @@ function extractForPeriod(
         rawValue: ni,
         formattedValue: formatFinancial(ni),
         percentOfRevenue: round((Math.abs(ni) / totalRevenue) * 100),
-        color: NET_LOSS_COLOR,
+        color: incomeWaterfall.netLoss,
         isNegative: true,
       })
     }
