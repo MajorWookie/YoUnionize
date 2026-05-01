@@ -20,6 +20,7 @@ import {
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@younionize/hooks'
 import classes from './Layout.module.css'
+import { Wordmark } from './Wordmark'
 
 const NAV_GROUPS = [
   {
@@ -85,11 +86,7 @@ export function Layout() {
                 aria-label="Toggle navigation"
               />
             )}
-            <Anchor component={Link} to="/" underline="never" className={classes.logo}>
-              <span className={classes.logoYo}>Yo</span>
-              <span className={classes.logoUnion}>Union</span>
-              <span className={classes.logoIze}>ize</span>
-            </Anchor>
+            <Wordmark />
           </Group>
           <Group gap="md">
             {user ? (

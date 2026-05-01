@@ -1,7 +1,7 @@
 import { Anchor, Button, Container, Group } from '@mantine/core'
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '@younionize/hooks'
-import classes from './Layout.module.css'
+import { Wordmark } from './Wordmark'
 
 /**
  * Marketing-page shell. Header + main + (future) footer slot, no navbar,
@@ -29,11 +29,7 @@ export function PublicLayout() {
       >
         <Container size="lg" h="100%">
           <Group h="100%" justify="space-between">
-            <Anchor component={Link} to="/" underline="never" className={classes.logo}>
-              <span className={classes.logoYo}>Yo</span>
-              <span className={classes.logoUnion}>Union</span>
-              <span className={classes.logoIze}>ize</span>
-            </Anchor>
+            <Wordmark />
             <Group gap="md">
               {user ? (
                 <Button component={Link} to="/discover" variant="subtle">

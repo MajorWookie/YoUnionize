@@ -1,16 +1,17 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Alert,
   Anchor,
   Button,
+  Group,
   PasswordInput,
   Stack,
   TextInput,
-  Title,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { useAuth } from '@younionize/hooks'
+import { PageHeader } from '~/components/primitives'
 
 export function SignInPage() {
   const navigate = useNavigate()
@@ -34,8 +35,7 @@ export function SignInPage() {
       if (signInError) {
         setError(signInError.message ?? 'Sign in failed')
       } else {
-        // TODO: redirect to /discover once that route exists (Phase 2b-ii).
-        navigate('/')
+        navigate('/discover')
       }
     } catch {
       setError('An unexpected error occurred')
@@ -47,15 +47,18 @@ export function SignInPage() {
   const busy = submitting || isLoading
 
   return (
-    <Stack gap="md">
-      <Title order={3} ta="center">
-        Sign In
-      </Title>
-      {error && (
+    <Stack gap="lg">
+      <PageHeader
+        title="Sign in"
+        description="Welcome back. Sign in to pick up where you left off."
+      />
+
+      {error ? (
         <Alert color="red" variant="light">
           {error}
         </Alert>
-      )}
+      ) : null}
+
       <form onSubmit={form.onSubmit(onSubmit)}>
         <Stack gap="md">
           <TextInput
@@ -73,14 +76,30 @@ export function SignInPage() {
             disabled={busy}
             {...form.getInputProps('password')}
           />
-          <Button type="submit" loading={busy} fullWidth>
-            Sign In
-          </Button>
+          <Group justify="space-between" align="center" mt="xs">
+            <Anchor
+              component="button"
+              type="button"
+              size="sm"
+              c="dimmed"
+              onClick={() => {
+                // Password reset flow not wired yet — surfaces in a future PR.
+              }}
+            >
+              Forgot password?
+            </Anchor>
+            <Button type="submit" loading={busy}>
+              Sign in
+            </Button>
+          </Group>
         </Stack>
       </form>
-      <Anchor component={Link} to="/sign-up" ta="center" size="sm">
-        Need an account? Sign up
-      </Anchor>
+
+      <Group justify="center" gap={4} mt="xs">
+        <Anchor component={Link} to="/sign-up" size="sm" c="dimmed">
+          Need an account? Sign up
+        </Anchor>
+      </Group>
     </Stack>
   )
 }

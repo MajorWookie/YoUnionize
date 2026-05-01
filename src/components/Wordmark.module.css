@@ -1,0 +1,22 @@
+/* The "YoUnionize" wordmark. Split-color rendering: "Yo" + "ize" in
+ * terracotta, "Union" in navy. Used in every shell — Layout, PublicLayout,
+ * AuthLayout — so visitors see the same brand mark regardless of context.
+ */
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.yo,
+.ize {
+  color: var(--mantine-color-terracotta-6);
+}
+
+.union {
+  color: var(--mantine-color-navy-7);
+}
