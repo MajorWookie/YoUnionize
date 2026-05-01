@@ -1,0 +1,53 @@
+/* ── Logo wordmark ─────────────────────────────────────────────────── */
+.logo {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.logoYo,
+.logoIze {
+  color: var(--mantine-color-terracotta-6);
+}
+
+.logoUnion {
+  color: var(--mantine-color-navy-7);
+}
+
+/* ── Navbar ────────────────────────────────────────────────────────── */
+.navGroup {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.navSectionLabel {
+  display: block;
+  color: var(--mantine-color-dimmed);
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0 var(--mantine-spacing-sm);
+  margin: var(--mantine-spacing-md) 0 var(--mantine-spacing-xs);
+}
+
+/* The first section's label sits flush with the navbar top so the visual
+ * starts at the right place. */
+.navGroup:first-child .navSectionLabel {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.navLink {
+  border-radius: var(--mantine-radius-md);
+}
+
+/* Mantine sets `data-active` on the active NavLink. The inset box-shadow
+ * provides the left rule without shifting layout. */
+.navLink[data-active] {
+  background: var(--mantine-color-navy-0);
+  color: var(--mantine-color-navy-7);
+  box-shadow: inset 3px 0 0 0 var(--mantine-color-navy-6);
+}

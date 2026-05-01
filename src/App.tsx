@@ -36,6 +36,9 @@ const MyPayPage = lazy(() =>
 const MyCompanyPage = lazy(() =>
   import('~/routes/my-company').then((m) => ({ default: m.MyCompanyPage })),
 )
+const DesignPage = lazy(() =>
+  import('~/routes/design').then((m) => ({ default: m.DesignPage })),
+)
 
 configureApiClient({
   getSession: async () => {
@@ -118,6 +121,7 @@ export function App() {
                     </AuthGuard>
                   }
                 />
+                <Route path="/design" element={<DesignPage />} />
               </Route>
               <Route element={<AuthLayout />}>
                 <Route path="/sign-in" element={<SignInPage />} />

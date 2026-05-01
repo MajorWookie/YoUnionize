@@ -1,0 +1,162 @@
+/* Prose rhythm for AI-generated narrative content (executive summaries,
+ * MD&A, risk factors, RAG answers). Editorial pattern: Inter for headings
+ * + emphasis, Source Serif 4 for body. 65ch measure follows the editorial
+ * standard — paragraphs that fit comfortably on one line of the eye's
+ * focus area.
+ */
+.prose {
+  font-family: 'Source Serif 4 Variable', Charter, Georgia, serif;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--mantine-color-text);
+  max-width: 65ch;
+}
+
+/* Trim outer whitespace so the wrapper sits flush in containers. */
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
+}
+
+.prose p {
+  margin-block: 0 1em;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  color: var(--mantine-color-text);
+  margin-block: 2em 0.5em;
+  line-height: 1.25;
+}
+
+.prose h1 { font-size: 28px; font-weight: 700; }
+.prose h2 { font-size: 24px; font-weight: 700; }
+.prose h3 { font-size: 19px; font-weight: 600; line-height: 1.3; }
+.prose h4 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mantine-color-dimmed);
+}
+.prose h5 { font-size: 14px; font-weight: 600; }
+.prose h6 { font-size: 13px; font-weight: 600; }
+
+.prose ul,
+.prose ol {
+  padding-inline-start: 1.4em;
+  margin-block: 0 1em;
+}
+
+.prose li {
+  margin-block: 0.35em;
+}
+
+.prose ul li::marker {
+  color: var(--mantine-color-navy-6);
+}
+.prose ol li::marker {
+  color: var(--mantine-color-navy-6);
+  font-weight: 600;
+}
+
+.prose a {
+  color: var(--mantine-color-navy-7);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: text-decoration-thickness 120ms ease;
+}
+.prose a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.prose blockquote {
+  border-inline-start: 3px solid var(--mantine-color-terracotta-5);
+  padding-inline-start: 1em;
+  margin-block: 1em;
+  margin-inline: 0;
+  color: var(--mantine-color-dimmed);
+  font-style: italic;
+}
+
+/* Code block. `light-dark()` flips the background so dark mode stays
+ * subtle without an explicit color-scheme attribute selector. */
+.prose pre {
+  background: light-dark(var(--mantine-color-slate-1), var(--mantine-color-slate-8));
+  border-radius: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin-block: 1em;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.prose code {
+  background: light-dark(var(--mantine-color-slate-1), var(--mantine-color-slate-8));
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Emphasis stays sans inside the serif body — gives a different texture
+ * from plain serif italic, a Pudding/Vox pattern. */
+.prose strong {
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--mantine-color-default-border);
+  margin-block: 2em;
+}
+
+/* Tables — switch to sans for tabular legibility, zebra rows, bottom-border
+ * headers in dimmed uppercase. NerdWallet pattern. */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: 1em;
+  font-size: 14px;
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+}
+
+.prose th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--mantine-color-slate-3);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--mantine-color-dimmed);
+}
+
+.prose td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mantine-color-slate-2);
+}
+
+.prose tr:nth-child(even) td {
+  background: light-dark(var(--mantine-color-slate-0), var(--mantine-color-slate-9));
+}

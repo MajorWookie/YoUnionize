@@ -1,0 +1,22 @@
+/* Opt-in className for clickable Cards. Apply via
+ *   <Card className={cardClasses.interactive}>
+ * Gives a subtle hover lift + border highlight without changing the default
+ * Card visual language (which stays flat-editorial). Used on Discover and
+ * any future card-grid surfaces.
+ */
+.interactive {
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-md);
+  border-color: var(--mantine-color-navy-3);
+}
+
+.interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--mantine-shadow-xs);
+  transition-duration: 80ms;
+}
