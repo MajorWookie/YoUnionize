@@ -1,11 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Hand-mirror of packages/ai/src/extract-json.ts.
+// AUTO-GENERATED — DO NOT EDIT
 //
-// Edge Functions run on Deno and cannot import Bun-side workspace packages,
-// so this helper is duplicated here. Keep it in sync with the source — both
-// are tiny and stable, but a divergence would silently regress
-// /api/analysis/compensation-fairness back to its old "persist a junk row
-// when Claude wraps JSON in markdown fences" behavior.
+// Mirror of packages/ai/src/extract-json.ts produced by
+// scripts/generate-shared-prompts.ts. Edit the source file, then run:
+//
+//   bun run prompts:generate
+//
+// CI fails if this file drifts from the source.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -13,14 +14,17 @@
  * Tries direct parse first, then extracts the first JSON object/array from the text.
  */
 export function extractJson<T>(text: string): T {
+  // Strip markdown code fences if present
   const cleaned = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
 
+  // Happy path: direct parse
   try {
     return JSON.parse(cleaned) as T
   } catch {
     // Fall through to extraction
   }
 
+  // Find first JSON object or array delimiter
   const firstBrace = cleaned.indexOf('{')
   const firstBracket = cleaned.indexOf('[')
 
@@ -43,6 +47,6 @@ export function extractJson<T>(text: string): T {
   }
 
   const extracted = cleaned.slice(startIndex, lastEnd + 1)
-  console.info(`[extractJson] Extracted JSON from prose response (stripped ${startIndex} leading chars)`)
+  console.info(`[ClaudeClient] Extracted JSON from prose response (stripped ${startIndex} leading chars)`)
   return JSON.parse(extracted) as T
 }

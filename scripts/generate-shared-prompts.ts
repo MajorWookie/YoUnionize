@@ -1,21 +1,26 @@
 #!/usr/bin/env bun
 /**
- * Mirror prompt files from packages/ai/src/prompts/ into
- * supabase/functions/_shared/prompts/ so Deno-runtime Edge Functions can
- * consume the same template that ClaudeClient (Bun) uses.
+ * Mirror Bun-side files into supabase/functions/_shared/ so Deno-runtime Edge
+ * Functions can consume the same source-of-truth that ClaudeClient and other
+ * Bun consumers use.
  *
- * Source-of-truth: packages/ai/src/prompts/<name>.ts
- * Mirror:          supabase/functions/_shared/prompts/<name>.ts
+ * Currently mirrored:
+ *   - Cross-runtime prompts (packages/ai/src/prompts/<name>.ts)
+ *   - extractJson helper    (packages/ai/src/extract-json.ts)
  *
  * Run on demand:   bun run prompts:generate
  * Verify in CI:    bun run prompts:check  (runs this with --check; fails if
- *                  the on-disk mirror is out of date relative to source).
+ *                  any on-disk mirror is out of date relative to its source).
  *
  * Why a mirror and not a direct cross-tree import: Supabase's Edge Function
  * deploy bundler walks the import graph from supabase/functions/. Files
  * outside that directory aren't reliably picked up. Keeping a committed
  * mirror inside _shared/ matches the pattern used by _shared/schema.ts and
  * removes any deploy-time uncertainty.
+ *
+ * Adding a new shared file: append to SHARED_FILES below, run the script,
+ * and commit both the new mirror and any banner-only updates to existing
+ * mirrors that result.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
@@ -23,26 +28,38 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const SOURCE_DIR = resolve(REPO_ROOT, 'packages/ai/src/prompts')
-const MIRROR_DIR = resolve(
-  REPO_ROOT,
-  'supabase/functions/_shared/prompts',
-)
 
-/**
- * Files to mirror. Other prompts in packages/ai/src/prompts/ stay Bun-only —
- * they are consumed only by ClaudeClient and never by an Edge Function.
- */
-const SHARED_PROMPTS = [
-  'rag-answer.ts',
-  'what-this-means.ts',
-  'compensation-analysis.ts',
-] as const
+interface SharedFile {
+  /** Repo-relative path to the source file (Bun-side, source of truth). */
+  source: string
+  /** Repo-relative path to the Deno-side mirror under supabase/functions/_shared/. */
+  mirror: string
+}
 
-const BANNER = `// ─────────────────────────────────────────────────────────────────────────────
+const SHARED_FILES: ReadonlyArray<SharedFile> = [
+  {
+    source: 'packages/ai/src/prompts/rag-answer.ts',
+    mirror: 'supabase/functions/_shared/prompts/rag-answer.ts',
+  },
+  {
+    source: 'packages/ai/src/prompts/what-this-means.ts',
+    mirror: 'supabase/functions/_shared/prompts/what-this-means.ts',
+  },
+  {
+    source: 'packages/ai/src/prompts/compensation-analysis.ts',
+    mirror: 'supabase/functions/_shared/prompts/compensation-analysis.ts',
+  },
+  {
+    source: 'packages/ai/src/extract-json.ts',
+    mirror: 'supabase/functions/_shared/extract-json.ts',
+  },
+]
+
+function bannerFor(sourceRelPath: string): string {
+  return `// ─────────────────────────────────────────────────────────────────────────────
 // AUTO-GENERATED — DO NOT EDIT
 //
-// Mirror of packages/ai/src/prompts/<name>.ts produced by
+// Mirror of ${sourceRelPath} produced by
 // scripts/generate-shared-prompts.ts. Edit the source file, then run:
 //
 //   bun run prompts:generate
@@ -51,53 +68,54 @@ const BANNER = `// ────────────────────�
 // ─────────────────────────────────────────────────────────────────────────────
 
 `
+}
 
-function mirrorContent(sourceText: string): string {
-  return BANNER + sourceText
+function mirrorContent(sourceRelPath: string, sourceText: string): string {
+  return bannerFor(sourceRelPath) + sourceText
 }
 
 function main(): void {
   const checkOnly = process.argv.includes('--check')
-
-  if (!existsSync(MIRROR_DIR)) {
-    if (checkOnly) {
-      console.error(
-        `[prompts] mirror dir missing: ${MIRROR_DIR}\nRun \`bun run prompts:generate\`.`,
-      )
-      process.exit(1)
-    }
-    mkdirSync(MIRROR_DIR, { recursive: true })
-  }
-
   const drifted: Array<string> = []
 
-  for (const filename of SHARED_PROMPTS) {
-    const sourcePath = resolve(SOURCE_DIR, filename)
-    const mirrorPath = resolve(MIRROR_DIR, filename)
+  for (const entry of SHARED_FILES) {
+    const sourceAbs = resolve(REPO_ROOT, entry.source)
+    const mirrorAbs = resolve(REPO_ROOT, entry.mirror)
+    const mirrorDir = dirname(mirrorAbs)
 
-    const sourceText = readFileSync(sourcePath, 'utf8')
-    const expected = mirrorContent(sourceText)
+    if (!existsSync(mirrorDir)) {
+      if (checkOnly) {
+        console.error(
+          `[mirror] mirror dir missing: ${mirrorDir}\nRun \`bun run prompts:generate\`.`,
+        )
+        process.exit(1)
+      }
+      mkdirSync(mirrorDir, { recursive: true })
+    }
+
+    const sourceText = readFileSync(sourceAbs, 'utf8')
+    const expected = mirrorContent(entry.source, sourceText)
 
     if (checkOnly) {
-      const actual = existsSync(mirrorPath) ? readFileSync(mirrorPath, 'utf8') : ''
+      const actual = existsSync(mirrorAbs) ? readFileSync(mirrorAbs, 'utf8') : ''
       if (actual !== expected) {
-        drifted.push(filename)
+        drifted.push(entry.mirror)
       }
       continue
     }
 
-    writeFileSync(mirrorPath, expected, 'utf8')
-    console.info(`[prompts] wrote ${mirrorPath}`)
+    writeFileSync(mirrorAbs, expected, 'utf8')
+    console.info(`[mirror] wrote ${entry.mirror}`)
   }
 
   if (checkOnly) {
     if (drifted.length > 0) {
       console.error(
-        `[prompts] mirror out of date for:\n  ${drifted.join('\n  ')}\nRun \`bun run prompts:generate\` and commit the result.`,
+        `[mirror] out of date:\n  ${drifted.join('\n  ')}\nRun \`bun run prompts:generate\` and commit the result.`,
       )
       process.exit(1)
     }
-    console.info('[prompts] mirror is up to date')
+    console.info('[mirror] all mirrors up to date')
   }
 }
 

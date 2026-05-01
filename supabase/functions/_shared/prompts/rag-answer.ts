@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTO-GENERATED — DO NOT EDIT
 //
-// Mirror of packages/ai/src/prompts/<name>.ts produced by
+// Mirror of packages/ai/src/prompts/rag-answer.ts produced by
 // scripts/generate-shared-prompts.ts. Edit the source file, then run:
 //
 //   bun run prompts:generate
