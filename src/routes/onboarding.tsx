@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Alert,
   Button,
+  Card,
   Container,
   Group,
   NumberInput,
@@ -12,12 +13,13 @@ import {
   Stepper,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core'
 import { fetchWithRetry } from '@younionize/api-client'
 import { CompanyTypeahead } from '~/components/CompanyTypeahead'
+import { PageHeader, TrustStrip } from '~/components/primitives'
 import {
   COST_OF_LIVING_FIELDS,
+  COST_OF_LIVING_GROUPS,
   ORG_LEVELS,
   PAY_FREQUENCIES,
   type CostOfLivingKey,
@@ -40,6 +42,12 @@ const EMPTY_COST: CostOfLiving = COST_OF_LIVING_FIELDS.reduce(
   (acc, f) => ({ ...acc, [f.key]: null }),
   {} as CostOfLiving,
 )
+
+const STEP_DESCRIPTIONS = [
+  'First, your job. Role and company so we can find your peers.',
+  "Now your pay. We'll use this to estimate take-home and compare you to peers.",
+  'Last, your monthly costs. Optional, but unlocks better insights.',
+] as const
 
 export function OnboardingPage() {
   const navigate = useNavigate()
@@ -118,12 +126,10 @@ export function OnboardingPage() {
   return (
     <Container size="md" py="xl">
       <Stack gap="xl">
-        <Stack gap={4} align="center">
-          <Title order={2}>Welcome to YoUnionize</Title>
-          <Text size="sm" c="slate.7">
-            A few quick details so we can tailor your insights.
-          </Text>
-        </Stack>
+        <PageHeader
+          title="Welcome to YoUnionize"
+          description={STEP_DESCRIPTIONS[active]}
+        />
 
         <Stepper
           active={active}
@@ -131,95 +137,134 @@ export function OnboardingPage() {
           allowNextStepsSelect={false}
         >
           <Stepper.Step label="Your job" description="Role & company">
-            <Stack gap="md" mt="md">
-              <TextInput
-                label="Job Title"
-                placeholder="e.g. Software Engineer"
-                value={job.jobTitle}
-                onChange={(e) =>
-                  setJob((p) => ({ ...p, jobTitle: e.currentTarget.value }))
-                }
-              />
-              <Select
-                label="Organization Level"
-                placeholder="Select your level…"
-                data={[...ORG_LEVELS]}
-                value={job.orgLevel || null}
-                onChange={(v) => setJob((p) => ({ ...p, orgLevel: v ?? '' }))}
-                clearable
-              />
-              <CompanyTypeahead
-                value={job.companyTicker}
-                onSelect={(ticker) =>
-                  setJob((p) => ({ ...p, companyTicker: ticker }))
-                }
-              />
-            </Stack>
+            <Card mt="md">
+              <Stack gap="md">
+                <TextInput
+                  label="Job title"
+                  placeholder="e.g. Software Engineer"
+                  value={job.jobTitle}
+                  onChange={(e) => {
+                    // Read synchronously — React clears `currentTarget` after
+                    // the handler returns, so the setState updater can't
+                    // safely access `e.currentTarget.value` later.
+                    const value = e.currentTarget.value
+                    setJob((p) => ({ ...p, jobTitle: value }))
+                  }}
+                />
+                <Select
+                  label="Organization level"
+                  placeholder="Select your level…"
+                  data={[...ORG_LEVELS]}
+                  value={job.orgLevel || null}
+                  onChange={(v) => setJob((p) => ({ ...p, orgLevel: v ?? '' }))}
+                  clearable
+                />
+                <CompanyTypeahead
+                  value={job.companyTicker}
+                  onSelect={(ticker) =>
+                    setJob((p) => ({ ...p, companyTicker: ticker }))
+                  }
+                />
+                <TrustStrip>
+                  Used to benchmark your role against peers in your sector.
+                  Never shared with employers.
+                </TrustStrip>
+              </Stack>
+            </Card>
           </Stepper.Step>
 
           <Stepper.Step label="Your pay" description="Compensation">
-            <Stack gap="md" mt="md">
-              <Text size="sm" c="slate.7">
-                Your pay is stored securely and never shared with your
-                employer.
-              </Text>
-              <NumberInput
-                label="Gross Annual Pay"
-                placeholder="85,000"
-                prefix="$"
-                thousandSeparator=","
-                allowNegative={false}
-                hideControls
-                value={pay.grossAnnualPay ?? ''}
-                onChange={(v) =>
-                  setPay((p) => ({
-                    ...p,
-                    grossAnnualPay: typeof v === 'number' ? v : null,
-                  }))
-                }
-              />
-              <Select
-                label="Pay Frequency"
-                placeholder="How often are you paid?"
-                data={[...PAY_FREQUENCIES]}
-                value={pay.payFrequency || null}
-                onChange={(v) =>
-                  setPay((p) => ({ ...p, payFrequency: v ?? '' }))
-                }
-                clearable
-              />
-            </Stack>
+            <Card mt="md">
+              <Stack gap="md">
+                <NumberInput
+                  label="Gross annual pay"
+                  placeholder="85,000"
+                  prefix="$"
+                  thousandSeparator=","
+                  allowNegative={false}
+                  hideControls
+                  value={pay.grossAnnualPay ?? ''}
+                  onChange={(v) =>
+                    setPay((p) => ({
+                      ...p,
+                      grossAnnualPay: typeof v === 'number' ? v : null,
+                    }))
+                  }
+                />
+                <Select
+                  label="Pay frequency"
+                  placeholder="How often are you paid?"
+                  data={[...PAY_FREQUENCIES]}
+                  value={pay.payFrequency || null}
+                  onChange={(v) =>
+                    setPay((p) => ({ ...p, payFrequency: v ?? '' }))
+                  }
+                  clearable
+                />
+                <TrustStrip>
+                  Stored privately. Used only to estimate your take-home and
+                  compare you to peers — never shared.
+                </TrustStrip>
+              </Stack>
+            </Card>
           </Stepper.Step>
 
-          <Stepper.Step label="Cost of living" description="Monthly expenses">
-            <Stack gap="md" mt="md">
-              <Text size="sm" c="slate.7">
-                Monthly amounts. Leave blank if you'd rather not say.
-              </Text>
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-                {COST_OF_LIVING_FIELDS.map((field) => (
-                  <NumberInput
-                    key={field.key}
-                    label={field.label}
-                    prefix="$"
-                    thousandSeparator=","
-                    allowNegative={false}
-                    hideControls
-                    value={cost[field.key] ?? ''}
-                    onChange={(v) =>
-                      updateCost(
-                        field.key,
-                        typeof v === 'number' ? v : null,
-                      )
-                    }
-                  />
-                ))}
-              </SimpleGrid>
-            </Stack>
+          <Stepper.Step
+            label="Cost of living"
+            description="Monthly expenses"
+          >
+            <Card mt="md">
+              <Stack gap="lg">
+                <Text size="sm" c="dimmed">
+                  Monthly amounts. Leave any field blank to skip.
+                </Text>
+                {COST_OF_LIVING_GROUPS.map((group) => {
+                  const fields = COST_OF_LIVING_FIELDS.filter(
+                    (f) => f.group === group.id,
+                  )
+                  return (
+                    <Stack key={group.id} gap="sm">
+                      <Text
+                        size="xs"
+                        fw={600}
+                        c="dimmed"
+                        tt="uppercase"
+                        lts="0.04em"
+                      >
+                        {group.label}
+                      </Text>
+                      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                        {fields.map((field) => (
+                          <NumberInput
+                            key={field.key}
+                            label={field.label}
+                            prefix="$"
+                            thousandSeparator=","
+                            allowNegative={false}
+                            hideControls
+                            value={cost[field.key] ?? ''}
+                            onChange={(v) =>
+                              updateCost(
+                                field.key,
+                                typeof v === 'number' ? v : null,
+                              )
+                            }
+                          />
+                        ))}
+                      </SimpleGrid>
+                    </Stack>
+                  )
+                })}
+                <TrustStrip>
+                  Used only to compare your monthly outgoings against typical
+                  patterns in your area. Never leaves your account.
+                </TrustStrip>
+              </Stack>
+            </Card>
           </Stepper.Step>
         </Stepper>
 
-        {error && <Alert color="red">{error}</Alert>}
+        {error ? <Alert color="red">{error}</Alert> : null}
 
         <Group justify="space-between">
           <Button variant="default" onClick={handleSkip} disabled={saving}>
