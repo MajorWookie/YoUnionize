@@ -3,12 +3,16 @@ import {
   Alert,
   Button,
   Card,
+  Divider,
   Group,
   Stack,
   Text,
   TextInput,
 } from '@mantine/core'
+import { IconSparkles } from '@tabler/icons-react'
 import { extractErrorMessage, fetchWithRetry } from '@younionize/api-client'
+import { MarkdownContent } from '~/components/MarkdownContent'
+import { Eyebrow } from '~/components/primitives'
 
 interface Source {
   filingType: string
@@ -65,7 +69,7 @@ export function AskBar({
   }, [question, companyTicker])
 
   return (
-    <Stack gap="sm">
+    <Stack gap="md">
       <Group gap="sm" wrap="nowrap" align="flex-start">
         <TextInput
           value={question}
@@ -78,36 +82,53 @@ export function AskBar({
               ask()
             }
           }}
+          size="md"
           style={{ flex: 1 }}
+          leftSection={<IconSparkles size={16} stroke={1.6} />}
         />
-        <Button onClick={ask} loading={loading} disabled={!question.trim()}>
+        <Button
+          onClick={ask}
+          loading={loading}
+          disabled={!question.trim()}
+          size="md"
+        >
           Ask
         </Button>
       </Group>
 
-      {error && <Alert color="red">{error}</Alert>}
+      {error ? <Alert color="red">{error}</Alert> : null}
 
-      {answer && (
-        <Card withBorder padding="md">
+      {answer ? (
+        <Card>
           <Stack gap="md">
-            <Text>{answer}</Text>
-            {sources.length > 0 && (
-              <Stack gap={2}>
-                <Text size="xs" c="slate.7" fw={600}>
-                  Sources
-                </Text>
-                {sources.map((src, idx) => (
-                  <Text key={idx} size="xs" c="slate.6">
-                    {src.companyTicker} {src.filingType} ·{' '}
-                    {formatSection(src.section)}
-                    {src.periodEnd ? ` (${src.periodEnd})` : ''}
-                  </Text>
-                ))}
-              </Stack>
-            )}
+            <MarkdownContent>{answer}</MarkdownContent>
+            {sources.length > 0 ? (
+              <>
+                <Divider />
+                <Stack gap="xs">
+                  <Eyebrow>Sources</Eyebrow>
+                  <Stack gap={4}>
+                    {sources.map((src, idx) => (
+                      <Group key={idx} gap="xs" wrap="nowrap" align="baseline">
+                        <Text size="xs" fw={600} c="navy.7">
+                          {idx + 1}.
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          <Text component="span" fw={600} c="navy.7">
+                            {src.companyTicker}
+                          </Text>{' '}
+                          {src.filingType} · {formatSection(src.section)}
+                          {src.periodEnd ? ` (${src.periodEnd})` : ''}
+                        </Text>
+                      </Group>
+                    ))}
+                  </Stack>
+                </Stack>
+              </>
+            ) : null}
           </Stack>
         </Card>
-      )}
+      ) : null}
     </Stack>
   )
 }

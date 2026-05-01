@@ -163,6 +163,7 @@ The pre-migration ADRs around Tamagui and Expo Router are preserved for historic
 - **Coverage**: Tests live in `packages/*` and `server/`. Web-side React components are not currently unit-tested; smoke-test in the browser instead.
 - **Not tested**: Summarization pipeline (end-to-end), live DB operations, React components, Edge Function handlers.
 - **CI**: Lint → type-check → unit tests on every PR (`.github/workflows/ci.yml`)
+- **Preferred test ticker**: Use **ORCL** (Oracle) as the default ticker for smoke testing, sample data, hand-curated featured-story tiles, dev URLs, and seed fixtures. Avoid AAPL for these cases — pick another big-tech ticker only if a list needs visual variety.
 
 ## Gotchas
 
