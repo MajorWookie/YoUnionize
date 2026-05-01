@@ -22,20 +22,38 @@ export const PAY_FREQUENCIES = [
   { label: 'Monthly', value: 'monthly' },
 ] as const
 
-export const COST_OF_LIVING_FIELDS = [
-  { key: 'rentMortgage', label: 'Rent / Mortgage' },
-  { key: 'internet', label: 'Internet' },
-  { key: 'mobilePhone', label: 'Mobile Phone' },
-  { key: 'utilities', label: 'Utilities (electric, gas, water)' },
-  { key: 'studentLoans', label: 'Student Loans' },
-  { key: 'consumerDebt', label: 'Consumer Debt (credit cards, personal loans)' },
-  { key: 'carLoan', label: 'Car Loan / Payment' },
-  { key: 'groceries', label: 'Groceries' },
-  { key: 'gym', label: 'Gym / Fitness' },
-  { key: 'entertainment', label: 'Entertainment / Going Out' },
-  { key: 'clothing', label: 'Clothing' },
-  { key: 'savingsTarget', label: 'Savings Target' },
-  { key: 'other', label: 'Other' },
+/**
+ * Groups for the cost-of-living step. Ordering here determines the order
+ * sections render in. Each `COST_OF_LIVING_FIELDS` entry references one
+ * of these via its `group` key.
+ */
+export const COST_OF_LIVING_GROUPS = [
+  { id: 'housing', label: 'Housing & utilities' },
+  { id: 'debt', label: 'Debt payments' },
+  { id: 'living', label: 'Daily living' },
+  { id: 'discretionary', label: 'Discretionary & savings' },
 ] as const
+
+export type CostOfLivingGroupId = (typeof COST_OF_LIVING_GROUPS)[number]['id']
+
+export const COST_OF_LIVING_FIELDS = [
+  { key: 'rentMortgage', label: 'Rent / Mortgage', group: 'housing' },
+  { key: 'internet', label: 'Internet', group: 'housing' },
+  { key: 'mobilePhone', label: 'Mobile Phone', group: 'housing' },
+  { key: 'utilities', label: 'Utilities (electric, gas, water)', group: 'housing' },
+  { key: 'studentLoans', label: 'Student Loans', group: 'debt' },
+  { key: 'consumerDebt', label: 'Consumer Debt (credit cards, personal loans)', group: 'debt' },
+  { key: 'carLoan', label: 'Car Loan / Payment', group: 'debt' },
+  { key: 'groceries', label: 'Groceries', group: 'living' },
+  { key: 'gym', label: 'Gym / Fitness', group: 'living' },
+  { key: 'entertainment', label: 'Entertainment / Going Out', group: 'discretionary' },
+  { key: 'clothing', label: 'Clothing', group: 'discretionary' },
+  { key: 'savingsTarget', label: 'Savings Target', group: 'discretionary' },
+  { key: 'other', label: 'Other', group: 'discretionary' },
+] as const satisfies ReadonlyArray<{
+  key: string
+  label: string
+  group: CostOfLivingGroupId
+}>
 
 export type CostOfLivingKey = (typeof COST_OF_LIVING_FIELDS)[number]['key']

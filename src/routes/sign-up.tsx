@@ -8,13 +8,11 @@ import {
   PasswordInput,
   SimpleGrid,
   Stack,
-  Text,
   TextInput,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
-import { IconLock } from '@tabler/icons-react'
 import { useAuth } from '@younionize/hooks'
-import { PageHeader } from '~/components/primitives'
+import { PageHeader, TrustStrip } from '~/components/primitives'
 
 export function SignUpPage() {
   const navigate = useNavigate()
@@ -106,13 +104,10 @@ export function SignUpPage() {
             />
           </SimpleGrid>
 
-          <Group gap="xs" align="center" wrap="nowrap" c="dimmed" mt="xs">
-            <IconLock size={14} stroke={1.8} />
-            <Text size="xs" c="dimmed">
-              Your pay details never leave your account. We never share with
-              employers.
-            </Text>
-          </Group>
+          <TrustStrip>
+            Your pay details never leave your account. We never share with
+            employers.
+          </TrustStrip>
 
           <Button type="submit" loading={busy}>
             Create account
