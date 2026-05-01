@@ -1,21 +1,50 @@
 import {
   Anchor,
   AppShell,
+  Avatar,
   Burger,
   Button,
   Group,
+  Menu,
   NavLink,
+  Text,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
+import {
+  IconBuilding,
+  IconCash,
+  IconCompass,
+  IconLogout,
+  IconUser,
+} from '@tabler/icons-react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@younionize/hooks'
+import classes from './Layout.module.css'
 
-const NAV_ITEMS = [
-  { to: '/discover', label: 'Discover' },
-  { to: '/my-company', label: 'My Company' },
-  { to: '/my-pay', label: 'My Pay' },
-  { to: '/profile', label: 'Profile' },
+const NAV_GROUPS = [
+  {
+    label: 'Explore',
+    items: [
+      { to: '/discover', label: 'Discover', icon: IconCompass },
+      { to: '/my-company', label: 'My Company', icon: IconBuilding },
+      { to: '/my-pay', label: 'My Pay', icon: IconCash },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [{ to: '/profile', label: 'Profile', icon: IconUser }],
+  },
 ] as const
+
+function getInitials(name: string, email: string): string {
+  const source = name.trim() || email.split('@')[0] || ''
+  if (!source) return '?'
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return (parts[0][0]! + parts[1][0]!).toUpperCase()
+  }
+  return source.slice(0, 2).toUpperCase()
+}
 
 export function Layout() {
   const { user, signOut } = useAuth()
@@ -35,7 +64,7 @@ export function Layout() {
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: 240,
+        width: 260,
         breakpoint: 'sm',
         collapsed: {
           mobile: !mobileOpened || !showNavbar,
@@ -56,29 +85,52 @@ export function Layout() {
                 aria-label="Toggle navigation"
               />
             )}
-            <Anchor
-              component={Link}
-              to="/"
-              underline="never"
-              fw={700}
-              size="xl"
-              c="navy.6"
-            >
-              YoUnionize
+            <Anchor component={Link} to="/" underline="never" className={classes.logo}>
+              <span className={classes.logoYo}>Yo</span>
+              <span className={classes.logoUnion}>Union</span>
+              <span className={classes.logoIze}>ize</span>
             </Anchor>
           </Group>
-          <Group gap="xs">
+          <Group gap="md">
             {user ? (
-              <Button variant="subtle" onClick={handleSignOut}>
-                Sign Out
-              </Button>
+              <Menu position="bottom-end" shadow="md" width={220}>
+                <Menu.Target>
+                  <Avatar
+                    color="navy"
+                    radius="xl"
+                    size="sm"
+                    style={{ cursor: 'pointer' }}
+                    aria-label="Account menu"
+                  >
+                    {getInitials(user.name, user.email)}
+                  </Avatar>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>{user.email || user.name}</Menu.Label>
+                  <Menu.Item
+                    leftSection={<IconUser size={14} />}
+                    component={Link}
+                    to="/profile"
+                  >
+                    Profile
+                  </Menu.Item>
+                  <Menu.Divider />
+                  <Menu.Item
+                    leftSection={<IconLogout size={14} />}
+                    onClick={handleSignOut}
+                    color="red"
+                  >
+                    Sign out
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             ) : (
               <>
-                <Button variant="subtle" component={Link} to="/sign-in">
-                  Sign In
-                </Button>
+                <Anchor component={Link} to="/sign-in" size="sm" c="dimmed">
+                  Sign in
+                </Anchor>
                 <Button component={Link} to="/sign-up">
-                  Sign Up
+                  Sign up
                 </Button>
               </>
             )}
@@ -86,18 +138,28 @@ export function Layout() {
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="xs">
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.to}
-            component={Link}
-            to={item.to}
-            label={item.label}
-            active={
-              location.pathname === item.to ||
-              location.pathname.startsWith(`${item.to}/`)
-            }
-            onClick={closeMobile}
-          />
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className={classes.navGroup}>
+            <Text className={classes.navSectionLabel}>{group.label}</Text>
+            {group.items.map((item) => {
+              const Icon = item.icon
+              return (
+                <NavLink
+                  key={item.to}
+                  component={Link}
+                  to={item.to}
+                  label={item.label}
+                  leftSection={<Icon size={18} stroke={1.6} />}
+                  active={
+                    location.pathname === item.to ||
+                    location.pathname.startsWith(`${item.to}/`)
+                  }
+                  onClick={closeMobile}
+                  className={classes.navLink}
+                />
+              )
+            })}
+          </div>
         ))}
       </AppShell.Navbar>
       <AppShell.Main>
