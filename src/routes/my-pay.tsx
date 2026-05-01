@@ -508,15 +508,16 @@ function WhatYouNeedSection({
 }
 
 function AiInsightsSection({ analysis }: { analysis: AnalysisData }) {
+  const comparisons = analysis.comparisons ?? []
   return (
     <Stack gap="md">
       <Title order={4}>AI Insights</Title>
       <Card withBorder padding="md">
-        <Text>{analysis.explanation}</Text>
+        <Text>{analysis.explanation ?? 'No explanation available for this analysis.'}</Text>
       </Card>
-      {analysis.comparisons.length > 0 && (
+      {comparisons.length > 0 && (
         <Stack gap="sm">
-          {analysis.comparisons.map((comp, idx) => (
+          {comparisons.map((comp, idx) => (
             <Card key={idx} withBorder padding="md">
               <Stack gap={4}>
                 <Text fw={600}>{comp.label}</Text>
@@ -535,14 +536,15 @@ function ConversationStartersSection({
 }: {
   analysis: AnalysisData
 }) {
-  if (analysis.recommendations.length === 0) return null
+  const recommendations = analysis.recommendations ?? []
+  if (recommendations.length === 0) return null
   return (
     <Stack gap="md">
       <Title order={4}>Conversation Starters</Title>
       <Text size="sm" c="slate.7">
         Data-backed talking points for your next salary review or negotiation.
       </Text>
-      {analysis.recommendations.map((rec, idx) => (
+      {recommendations.map((rec, idx) => (
         <Card key={idx} withBorder padding="md">
           <Group align="flex-start" gap="sm" wrap="nowrap">
             <Box

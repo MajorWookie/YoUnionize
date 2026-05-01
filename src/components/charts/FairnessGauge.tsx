@@ -1,7 +1,8 @@
 import { RingProgress, Stack, Text } from '@mantine/core'
 
 export function FairnessGauge({ score }: { score: number }) {
-  const clamped = Math.max(0, Math.min(100, score))
+  const safe = Number.isFinite(score) ? score : 0
+  const clamped = Math.max(0, Math.min(100, safe))
   const color = scoreColor(clamped)
   const label = scoreLabel(clamped)
   return (

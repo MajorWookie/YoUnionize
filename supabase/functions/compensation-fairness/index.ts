@@ -21,6 +21,26 @@ import {
   compensationAnalysisSystemPrompt,
   compensationAnalysisUserPrompt,
 } from '../_shared/prompts/compensation-analysis.ts'
+import { extractJson } from '../_shared/extract-json.ts'
+
+interface FairnessShape {
+  fairness_score: number
+  explanation: string
+  comparisons: Array<{ label: string; insight: string }>
+  recommendations: Array<string>
+}
+
+function isFairnessShape(value: unknown): value is FairnessShape {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return (
+    typeof v.fairness_score === 'number' &&
+    Number.isFinite(v.fairness_score) &&
+    typeof v.explanation === 'string' &&
+    Array.isArray(v.comparisons) &&
+    Array.isArray(v.recommendations)
+  )
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -147,9 +167,20 @@ Deno.serve(async (req) => {
 
       let analysisData: unknown
       try {
-        analysisData = JSON.parse(analysisText)
-      } catch {
-        analysisData = { raw_analysis: analysisText }
+        analysisData = extractJson<unknown>(analysisText)
+      } catch (parseErr) {
+        const detail = parseErr instanceof Error ? parseErr.message : String(parseErr)
+        return externalServiceError(
+          'AI',
+          `Analysis response was not valid JSON: ${detail}`,
+        )
+      }
+
+      if (!isFairnessShape(analysisData)) {
+        return externalServiceError(
+          'AI',
+          'Analysis response was missing required fields (fairness_score, explanation, comparisons, recommendations).',
+        )
       }
 
       result = {
