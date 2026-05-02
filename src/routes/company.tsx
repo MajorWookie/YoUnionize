@@ -9,6 +9,7 @@ import {
   Card,
   Center,
   Container,
+  Grid,
   Group,
   Loader,
   SimpleGrid,
@@ -40,7 +41,6 @@ import {
   MetricCard,
   PageHeader,
   SectionHeader,
-  StatGrid,
 } from '~/components/primitives'
 import { formatDollarsCompact } from '~/lib/format'
 import {
@@ -315,7 +315,30 @@ export function CompanyPage() {
     summary,
     /^(net\s+)(income|earnings)/i,
   )
+  // Effective tax rate = provision-for-taxes / pre-tax-income. Skip the
+  // card if pre-tax income is non-positive (loss makes effective rate
+  // meaningless) or either line item is missing.
+  const taxesItem = findIncomeStatementMetric(
+    summary,
+    /^(provision\s+for\s+(income\s+)?tax(es)?|income\s+tax\s+(expense|provision))$/i,
+  )
+  const preTaxItem = findIncomeStatementMetric(
+    summary,
+    /^(income|earnings)\s+before\s+(income\s+)?tax(es)?$/i,
+  )
+  const taxes =
+    taxesItem && preTaxItem && preTaxItem.value > 0
+      ? {
+          effectiveRate: (taxesItem.value / preTaxItem.value) * 100,
+          ofRevenue:
+            revenue && revenue.value > 0
+              ? (taxesItem.value / revenue.value) * 100
+              : null,
+        }
+      : null
   const ceo = findCeo(executives)
+
+  const keyFactCards = buildKeyFactCards({ revenue, netIncome, taxes, ceo })
 
   const topExecs = executives
     .slice()
@@ -362,30 +385,57 @@ export function CompanyPage() {
           }
         />
 
-        {/* Headline editorial card — first paragraph + serif lede */}
-        {(headline || summaryText) && (
-          <Card>
-            <Stack gap="md">
-              <Eyebrow>This year's story</Eyebrow>
-              {headline ? (
-                <Text fz="22px" fw={600} lh={1.35} style={SERIF_HEADLINE}>
-                  {headline}
-                </Text>
-              ) : null}
-              {summaryText ? (
-                <MarkdownContent>{firstParagraph(summaryText)}</MarkdownContent>
-              ) : null}
-            </Stack>
-          </Card>
-        )}
-
+        {/* AskBar — top-of-page primary action */}
         <AskBar
           companyTicker={company.ticker}
           placeholder={`Ask about ${company.name}…`}
         />
 
-        {/* ── At-a-glance ─────────────────────────────────────────── */}
-        <AtAGlanceStrip revenue={revenue} netIncome={netIncome} ceo={ceo} />
+        {/* ── Hero: editorial lede + key-facts rail ──────────────── */}
+        {(headline || summaryText) ? (
+          <Grid gutter="md">
+            <Grid.Col span={{ base: 12, lg: 7 }}>
+              <Card h="100%">
+                <Stack gap="md">
+                  <Eyebrow>This year's story</Eyebrow>
+                  {headline ? (
+                    <Text
+                      fz="22px"
+                      fw={600}
+                      lh={1.35}
+                      style={SERIF_HEADLINE}
+                    >
+                      {headline}
+                    </Text>
+                  ) : null}
+                  {summaryText ? (
+                    <MarkdownContent>
+                      {firstParagraph(summaryText)}
+                    </MarkdownContent>
+                  ) : null}
+                </Stack>
+              </Card>
+            </Grid.Col>
+            {keyFactCards.length > 0 ? (
+              <Grid.Col span={{ base: 12, lg: 5 }}>
+                <Stack gap="sm">{keyFactCards}</Stack>
+              </Grid.Col>
+            ) : null}
+          </Grid>
+        ) : keyFactCards.length > 0 ? (
+          // No editorial lede — fall back to a horizontal strip so the
+          // metrics still anchor the page above the fold.
+          <SimpleGrid
+            cols={{
+              base: 2,
+              sm: 2,
+              lg: Math.min(keyFactCards.length, 4),
+            }}
+            spacing="md"
+          >
+            {keyFactCards}
+          </SimpleGrid>
+        ) : null}
 
         {/* ── For employees ───────────────────────────────────────── */}
         {(employeeImpactText || ceo) && (
@@ -552,17 +602,30 @@ export function CompanyPage() {
   )
 }
 
-// ── Subcomponents ────────────────────────────────────────────────────
+// ── Helpers / subcomponents ──────────────────────────────────────────
 
-function AtAGlanceStrip({
+interface TaxesMetric {
+  effectiveRate: number
+  ofRevenue: number | null
+}
+
+/**
+ * Build the at-a-glance MetricCards in canonical order:
+ * Revenue → Net Income → Taxes → CEO Comp → CEO-to-worker.
+ * Each card filters itself out when source data is missing, so the
+ * returned array length varies (0–5) per company.
+ */
+function buildKeyFactCards({
   revenue,
   netIncome,
+  taxes,
   ceo,
 }: {
   revenue: IncomeStatementMetric | null
   netIncome: IncomeStatementMetric | null
+  taxes: TaxesMetric | null
   ceo: Executive | null
-}) {
+}): Array<React.ReactNode> {
   const cards: Array<React.ReactNode> = []
 
   if (revenue) {
@@ -589,6 +652,21 @@ function AtAGlanceStrip({
     )
   }
 
+  if (taxes) {
+    cards.push(
+      <MetricCard
+        key="taxes"
+        label="Taxes"
+        value={`${taxes.effectiveRate.toFixed(1)}% effective`}
+        hint={
+          taxes.ofRevenue != null
+            ? `${taxes.ofRevenue.toFixed(1)}% of revenue`
+            : 'of pre-tax income'
+        }
+      />,
+    )
+  }
+
   if (ceo) {
     cards.push(
       <MetricCard
@@ -611,9 +689,7 @@ function AtAGlanceStrip({
     }
   }
 
-  if (cards.length === 0) return null
-
-  return <StatGrid cols={{ base: 2, sm: 2, lg: 4 }}>{cards}</StatGrid>
+  return cards
 }
 
 function CompensationDeepDive({
