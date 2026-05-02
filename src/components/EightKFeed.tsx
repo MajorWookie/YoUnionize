@@ -1,4 +1,15 @@
-import { Anchor, Avatar, Badge, Card, Group, Spoiler, Stack, Text, Title } from '@mantine/core'
+import {
+  Anchor,
+  Avatar,
+  Badge,
+  Card,
+  Group,
+  ScrollArea,
+  Spoiler,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core'
 import { MarkdownContent } from '~/components/MarkdownContent'
 import { Eyebrow } from '~/components/primitives'
 import { formatDate, formatRelativeTime } from '~/lib/format'
@@ -45,12 +56,18 @@ export function EightKFeed({ events }: Props) {
     )
   }
 
+  // Autosize caps the feed at ~5 collapsed cards and adds an internal
+  // scrollbar; below the cap it renders at content height with no scroll.
+  // Pixel-based ceiling rather than a card-count threshold so the feed
+  // never dominates the dashboard on companies with heavy 8-K activity.
   return (
-    <Stack gap="sm">
-      {events.map((event) => (
-        <EventCard key={event.id} event={event} />
-      ))}
-    </Stack>
+    <ScrollArea.Autosize mah={800} type="hover" offsetScrollbars>
+      <Stack gap="sm">
+        {events.map((event) => (
+          <EventCard key={event.id} event={event} />
+        ))}
+      </Stack>
+    </ScrollArea.Autosize>
   )
 }
 
