@@ -43,6 +43,8 @@ import {
   SectionHeader,
 } from '~/components/primitives'
 import { formatDollarsCompact } from '~/lib/format'
+import { metricDelta } from '~/lib/metric-delta'
+import { resolveTaxes, type ResolvedTaxes } from '~/lib/tax-metric'
 import {
   asEmployeeImpact,
   asString,
@@ -186,23 +188,6 @@ function buildCompBreakdown(exec: Executive) {
   ].filter((d) => d.value > 0)
 }
 
-function metricDelta(
-  changePercent: number | null,
-): { value: string; direction: 'up' | 'down' | 'flat' } | undefined {
-  if (changePercent == null) return undefined
-  const direction =
-    changePercent > 0.05
-      ? ('up' as const)
-      : changePercent < -0.05
-        ? ('down' as const)
-        : ('flat' as const)
-  const sign = changePercent > 0 ? '+' : ''
-  return {
-    value: `${sign}${changePercent.toFixed(1)}% YoY`,
-    direction,
-  }
-}
-
 export function CompanyPage() {
   const { ticker: tickerParam } = useParams<{ ticker: string }>()
   const navigate = useNavigate()
@@ -315,31 +300,14 @@ export function CompanyPage() {
     summary,
     /^(net\s+)(income|earnings)/i,
   )
-  // Effective tax rate = provision-for-taxes / pre-tax-income. Skip the
-  // card if pre-tax income is non-positive (loss makes effective rate
-  // meaningless) or either line item is missing.
-  //
-  // Both patterns are start-anchored so we don't grab nested items like
-  // "Deferred income taxes" or "Foreign income taxes" — only the canonical
-  // top-line provision and the canonical pre-tax income line match.
-  const taxesItem = findIncomeStatementMetric(
+  // Taxes is a universal anchor metric — the card always renders. The
+  // resolver walks a tiered strategy (income-statement label match →
+  // cash-flow taxes-paid → derive from pre-tax minus net-income →
+  // prior-year → "—" fallback) so every filer gets a sensible value.
+  const taxes = resolveTaxes(
     summary,
-    /^(provision\s+for\s+(income\s+)?tax(es)?|income\s+tax(es)?(\s+(expense|provision))?)$/i,
+    revenue ? { value: revenue.value, period: revenue.period } : null,
   )
-  const preTaxItem = findIncomeStatementMetric(
-    summary,
-    /^((income|earnings)\s+before\s+(provision\s+for\s+)?(income\s+)?tax(es)?|pre-?tax\s+(income|earnings))$/i,
-  )
-  const taxes =
-    taxesItem && preTaxItem && preTaxItem.value > 0
-      ? {
-          effectiveRate: (taxesItem.value / preTaxItem.value) * 100,
-          ofRevenue:
-            revenue && revenue.value > 0
-              ? (taxesItem.value / revenue.value) * 100
-              : null,
-        }
-      : null
   const ceo = findCeo(executives)
 
   const keyFactCards = buildKeyFactCards({ revenue, netIncome, taxes, ceo })
@@ -608,16 +576,12 @@ export function CompanyPage() {
 
 // ── Helpers / subcomponents ──────────────────────────────────────────
 
-interface TaxesMetric {
-  effectiveRate: number
-  ofRevenue: number | null
-}
-
 /**
  * Build the at-a-glance MetricCards in canonical order:
  * Revenue → Net Income → Taxes → CEO Comp → CEO-to-worker.
- * Each card filters itself out when source data is missing, so the
- * returned array length varies (0–5) per company.
+ * Revenue/Net income/CEO cards filter themselves out when source data
+ * is missing; the Taxes card is universal — `resolveTaxes` always
+ * returns a render-ready value (with a "—" fallback as a last resort).
  */
 function buildKeyFactCards({
   revenue,
@@ -627,7 +591,7 @@ function buildKeyFactCards({
 }: {
   revenue: IncomeStatementMetric | null
   netIncome: IncomeStatementMetric | null
-  taxes: TaxesMetric | null
+  taxes: ResolvedTaxes
   ceo: Executive | null
 }): Array<React.ReactNode> {
   const cards: Array<React.ReactNode> = []
@@ -656,20 +620,15 @@ function buildKeyFactCards({
     )
   }
 
-  if (taxes) {
-    cards.push(
-      <MetricCard
-        key="taxes"
-        label="Taxes"
-        value={`${taxes.effectiveRate.toFixed(1)}% effective`}
-        hint={
-          taxes.ofRevenue != null
-            ? `${taxes.ofRevenue.toFixed(1)}% of revenue`
-            : 'of pre-tax income'
-        }
-      />,
-    )
-  }
+  cards.push(
+    <MetricCard
+      key="taxes"
+      label={taxes.label}
+      value={taxes.displayValue}
+      delta={taxes.delta}
+      hint={taxes.hint}
+    />,
+  )
 
   if (ceo) {
     cards.push(
