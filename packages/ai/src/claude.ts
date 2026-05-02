@@ -61,6 +61,7 @@ import {
 import {
   event8kSummarySystemPrompt,
   event8kSummaryUserPrompt,
+  type Event8kSummaryResult,
 } from './prompts/event-8k'
 import {
   narrativeSummarySystemPrompt,
@@ -293,24 +294,16 @@ export class ClaudeClient {
     return { data, usage, cached: false }
   }
 
-  // ─── MD&A summary (structured markdown) ───────────────────────────
+  // ─── MD&A summary (structured markdown — 6 sections, ~500 words) ──
 
   async summarizeMda(params: {
-    mdaText: string
+    section: string
     companyName: string
     filingType: string
-    priorMdaText?: string
   }): Promise<AiResponse<string>> {
     const systemPrompt = mdaSummarySystemPrompt()
-    const userPrompt = mdaSummaryUserPrompt({
-      companyName: params.companyName,
-      filingType: params.filingType,
-      mdaText: params.mdaText,
-      priorMdaText: params.priorMdaText,
-    })
-
+    const userPrompt = mdaSummaryUserPrompt(params)
     const { text, usage } = await this.chat(systemPrompt, userPrompt, 3072)
-
     return { data: text, usage, cached: false }
   }
 
@@ -447,11 +440,12 @@ export class ClaudeClient {
     section: string
     companyName: string
     filingType: string
-  }): Promise<AiResponse<string>> {
+  }): Promise<AiResponse<Event8kSummaryResult>> {
     const systemPrompt = event8kSummarySystemPrompt()
     const userPrompt = event8kSummaryUserPrompt(params)
     const { text, usage } = await this.chat(systemPrompt, userPrompt, 2048)
-    return { data: text, usage, cached: false }
+    const data = this.parseJson<Event8kSummaryResult>(text)
+    return { data, usage, cached: false }
   }
 
   // ─── Personalized "What This Means" overlay ───────────────────────

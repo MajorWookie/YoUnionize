@@ -70,6 +70,87 @@ function mergeSummary(
   return { ...base, ...sections }
 }
 
+interface RecentEightKItem {
+  id: string
+  filedAt: string
+  itemType: string
+  accessionNumber: string
+  cik: string
+  summary: { headline: string | null; event_summary: string | null }
+}
+
+/**
+ * Load recent 8-K items as one row per `filing_sections` entry, joined to
+ * the parent `filing_summaries` for date / accession context. Each row
+ * carries its own AI summary (the per-section `event_8k` prompt now emits
+ * `{ headline, summary }`), so the dashboard's social-feed UI can render
+ * one card per item rather than one card per filing.
+ *
+ * Pre-v3 rows (`event_8k@v2` and earlier) wrote a markdown string into
+ * ai_summary; we coerce those into the current `{ headline, summary }`
+ * shape with a null headline so the feed degrades gracefully until the
+ * backfill (`scripts/invalidate-8k-summaries.ts`) re-runs them.
+ *
+ * 'signature' sections are dispatched as pass_through and have null
+ * ai_summary, so the IS NOT NULL filter naturally excludes them.
+ */
+async function loadRecentEightKItems(
+  db: ReturnType<typeof getDb>,
+  companyId: string,
+  cik: string,
+  limit = 12,
+): Promise<RecentEightKItem[]> {
+  const rows = await db
+    .select({
+      id: filingSections.id,
+      sectionCode: filingSections.sectionCode,
+      aiSummary: filingSections.aiSummary,
+      filedAt: filingSummaries.filedAt,
+      accessionNumber: filingSummaries.accessionNumber,
+    })
+    .from(filingSections)
+    .innerJoin(filingSummaries, eq(filingSections.filingId, filingSummaries.id))
+    .where(
+      and(
+        eq(filingSummaries.companyId, companyId),
+        eq(filingSummaries.filingType, '8-K'),
+        isNotNull(filingSections.aiSummary),
+      ),
+    )
+    .orderBy(desc(filingSummaries.filedAt))
+    .limit(limit)
+
+  const items: RecentEightKItem[] = []
+  for (const row of rows) {
+    const raw = row.aiSummary
+    let headline: string | null = null
+    let body: string | null = null
+
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const obj = raw as Record<string, unknown>
+      if (typeof obj.headline === 'string') headline = obj.headline
+      if (typeof obj.summary === 'string') body = obj.summary
+      // Defensive: if a v2-shaped string snuck through but happens to be
+      // wrapped in an object with no `summary` key, render nothing rather
+      // than crashing.
+    } else if (typeof raw === 'string') {
+      body = raw
+    }
+
+    if (!body && !headline) continue
+
+    items.push({
+      id: row.id,
+      filedAt: row.filedAt,
+      itemType: row.sectionCode,
+      accessionNumber: row.accessionNumber,
+      cik,
+      summary: { headline, event_summary: body },
+    })
+  }
+  return items
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
 
@@ -153,19 +234,19 @@ Deno.serve(async (req) => {
     const latestAnnual = filingsData.find((f) => f.filingType === '10-K' && f.aiSummary != null)
     const latestQuarterly = filingsData.find((f) => f.filingType === '10-Q' && f.aiSummary != null)
     const latestProxy = filingsData.find((f) => f.filingType === 'DEF 14A' && f.aiSummary != null)
-    const recentEvents = filingsData
-      .filter((f) => f.filingType === '8-K' && f.aiSummary != null)
-      .slice(0, 5)
 
     // Per-item summaries (Risk Factors, MD&A, Business Overview, etc.)
     // live on filing_sections after the per-section rewrite; merge them
     // into the rollup-shaped `summary` field for each headline filing
     // so the web's existing `summary.<key>` reads keep working without
     // any client change.
-    const [annualSections, quarterlySections, proxySections] = await Promise.all([
+    // Recent 8-K events also come from filing_sections — one row per item
+    // — so the dashboard's social-feed UI can render one card per event.
+    const [annualSections, quarterlySections, proxySections, recentEvents] = await Promise.all([
       latestAnnual ? loadSectionRollup(db, latestAnnual.id) : Promise.resolve({}),
       latestQuarterly ? loadSectionRollup(db, latestQuarterly.id) : Promise.resolve({}),
       latestProxy ? loadSectionRollup(db, latestProxy.id) : Promise.resolve({}),
+      loadRecentEightKItems(db, company.id, company.cik),
     ])
 
     const totalFilings = filingsData.length
@@ -212,7 +293,7 @@ Deno.serve(async (req) => {
             summary: mergeSummary(latestProxy.aiSummary, proxySections),
           }
         : null,
-      recentEvents: recentEvents.map((e) => ({ id: e.id, filedAt: e.filedAt, summary: e.aiSummary })),
+      recentEvents,
       availableFiscalYears,
       selectedFiscalYear,
       executives: execCompData.map((e) => ({

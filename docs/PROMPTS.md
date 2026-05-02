@@ -38,7 +38,7 @@ CI runs `bun run prompts:check`, which fails if the mirror is out of date.
 | Prompt File | ClaudeClient Method | Output | Where Invoked |
 |---|---|---|---|
 | Per-section dedicated modules — see [Section prompt kinds](#section-prompt-kinds) below | `summarize<Section>()` per kind | plain text (≤150 words) | Per-section summarization in [summarization-pipeline.ts](../server/services/summarization-pipeline.ts). One file per dispatch kind under [packages/ai/src/prompts/](../packages/ai/src/prompts/). |
-| [mda-summary.ts](../packages/ai/src/prompts/mda-summary.ts) | `summarizeMda()` | structured markdown (Big Picture / Revenue / Profitability / Cash / Outlook / Bottom Line for Workers) | MD&A sections only (`mda` dispatch kind). Optional prior-period MD&A passed for comparison. |
+| [mda-summary.ts](../packages/ai/src/prompts/mda-summary.ts) | `summarizeMda()` | structured markdown (6 required `## Heading` sections, ≤500 words) | MD&A sections only (`mda` dispatch kind). Uses the shared `_scaffold.ts` with `outputFormat: 'structured-markdown'` overrides. |
 | [company-summary.ts](../packages/ai/src/prompts/company-summary.ts) | `generateCompanySummary()` | JSON (`CompanySummaryResult` — headline, company_health, key_numbers, red_flags, opportunities) | Filing-level rollup. 10-K and 10-Q only. Consumes the markdown-aggregated section summaries built by the pipeline (NOT raw filing JSON). Stored on `filing_summaries.ai_summary.executive_summary`. |
 | [employee-impact.ts](../packages/ai/src/prompts/employee-impact.ts) | `generateEmployeeImpact()` | JSON (`EmployeeImpactResult` — outlook, job_security, compensation_signals, growth_opportunities, watch_items) | Outlook-only rollup. 10-K and 10-Q only. Consumes aggregated section summaries. Pairs with `workforce-signals.ts` to produce the merged `employee_impact` rollup the frontend reads. |
 | [workforce-signals.ts](../packages/ai/src/prompts/workforce-signals.ts) | `generateWorkforceSignals()` | JSON (workforce_geography, h1b_and_visa_dependency) | Filing-level rollup. 10-K and 10-Q only. Consumes RAW `business_overview` + `risk_factors` text — direct quotes and exact figures matter for these signals. Output is merged with `generateEmployeeImpact()` into the `employee_impact` rollup. |
@@ -56,7 +56,7 @@ Every per-section narrative kind has its own dedicated prompt module under `pack
 
 | Kind | Backed by | Notes |
 |---|---|---|
-| `mda` | `summarizeMda()` → [mda-summary.ts](../packages/ai/src/prompts/mda-summary.ts) | Structured markdown output (the only per-section kind that is not plain-text). Optional prior-period MD&A for comparison. |
+| `mda` | `summarizeMda()` → [mda-summary.ts](../packages/ai/src/prompts/mda-summary.ts) | Structured markdown with 6 required `## Heading` sections (Big Picture / Revenue & Growth / Profitability / Cash & Spending / Management's Outlook / Bottom Line for Workers), ≤500 words. Uses the shared `_scaffold.ts` with `outputFormat: 'structured-markdown'` overrides — same scaffold contract as every other per-section kind, just with different parameters. |
 | `risk_factors` | `summarizeRiskFactors()` → [risk-factors.ts](../packages/ai/src/prompts/risk-factors.ts) | Plain text, ≤150 words. |
 | `business_overview` | `summarizeBusinessOverview()` → [business-overview.ts](../packages/ai/src/prompts/business-overview.ts) | Plain text, ≤150 words. |
 | `legal_proceedings` | `summarizeLegalProceedings()` → [legal-proceedings.ts](../packages/ai/src/prompts/legal-proceedings.ts) | Plain text, ≤150 words. |

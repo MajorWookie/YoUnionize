@@ -68,37 +68,21 @@ const LIVE_BUILDERS: Record<V1Kind, LiveBuilders> = {
   },
   mda: {
     system: live.mdaSummarySystemPrompt,
-    // mda's user prompt takes mdaText not section — adapt for the test.
-    user: (p) =>
-      live.mdaSummaryUserPrompt({
-        companyName: p.companyName,
-        filingType: p.filingType,
-        mdaText: p.section,
-      }),
+    user: (p) => live.mdaSummaryUserPrompt(p),
   },
 }
 
 /**
  * Sections whose v1 fixture is still expected to match the live module.
- * As Phase 3 lands per-section Council prompt swaps, the corresponding
- * entry must be REMOVED from this set — the fixture is intentionally
- * frozen, so divergence from the live module is the expected post-swap
- * state.
+ *
+ * Empty as of the foundation PR (feat/prompt-scaffold-foundation):
+ * all 12 kinds adopted the shared scaffold (XML-wrapped source text,
+ * "Write your summary now" closer, system/user split). Every kind now
+ * intentionally diverges from its v1 baseline. The byte-equality test
+ * loop is preserved as a no-op so future-Phase additions of new kinds
+ * can opt into the regression net before they land.
  */
-const EXPECT_BYTE_EQUAL: ReadonlySet<V1Kind> = new Set<V1Kind>([
-  'business_overview',
-  'risk_factors',
-  'legal_proceedings',
-  'financial_footnotes',
-  'executive_compensation',
-  'cybersecurity',
-  'controls_and_procedures',
-  'related_transactions',
-  'proxy',
-  'event_8k',
-  'narrative',
-  'mda',
-])
+const EXPECT_BYTE_EQUAL: ReadonlySet<V1Kind> = new Set<V1Kind>()
 
 describe('v1 section-prompts fixture', () => {
   it.each(V1_KINDS)(

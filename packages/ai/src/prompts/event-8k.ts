@@ -1,3 +1,5 @@
+import { scaffoldSystemPrompt, scaffoldUserPrompt } from './_scaffold'
+
 export interface Event8kSummaryParams {
   /**
    * The 8-K event text. The caller is expected to prefix this with the
@@ -12,29 +14,37 @@ export interface Event8kSummaryParams {
   filingType: string
 }
 
+/** Parsed JSON shape returned by `summarize8kEvent`. */
+export interface Event8kSummaryResult {
+  /** ~10-word action-led headline, plain language. */
+  headline: string
+  /** 2-3 sentence markdown body, plain-language summary of the event. */
+  summary: string
+}
+
+const GUIDANCE = `Summarize this 8-K event for a social-feed-style card.
+
+Produce two fields:
+- "headline": a short, action-led sentence (about 10 words) that names the event in plain language. Lead with the subject and verb, e.g. "CEO Smith retires effective March 31" or "Company announces $500M debt offering". Do not start with "Item …" or the filing item number.
+- "summary": 2-3 sentences in markdown that explain what happened, why it matters to regular employees, and any concrete numbers from the source. Stay grounded in the section text.`
+
+const JSON_SHAPE =
+  '{ "headline": "string, ~10 words, action-led", "summary": "string, markdown, 2-3 sentences" }'
+
 export function event8kSummarySystemPrompt(): string {
-  return `You are a financial translator who converts dense SEC filing sections into plain-language summaries for everyday workers.
-
-Section type: event_summary
-
-Specific guidance for this section:
-Summarize this section in plain language, focusing on what matters most to regular employees and non-finance people.
-
-Rules:
-- Write at an 6th-grade reading level
-- No jargon without immediate plain-language definitions
-- Use bullet points for lists
-- Lead with the most important takeaway
-- Keep the total summary under 150 words (2-3 short paragraphs maximum)
-- Be honest — employees deserve to know the truth
-- Be concise: every sentence must add new information
-
-Respond with a plain text summary. No JSON, no markdown headers.`
+  return scaffoldSystemPrompt({
+    guidance: GUIDANCE,
+    outputFormat: 'json',
+    jsonShape: JSON_SHAPE,
+    maxWords: 120,
+  })
 }
 
 export function event8kSummaryUserPrompt(params: Event8kSummaryParams): string {
-  return `Summarize this "event_summary" section from ${params.companyName}'s ${params.filingType} filing.
-
-Section content:
-${params.section}`
+  return scaffoldUserPrompt({
+    sectionLabel: 'Event',
+    section: params.section,
+    companyName: params.companyName,
+    filingType: params.filingType,
+  })
 }

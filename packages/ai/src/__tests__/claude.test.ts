@@ -104,9 +104,11 @@ describe('ClaudeClient', () => {
       expect(result.cached).toBe(false)
 
       const createCall = getMockCreate().mock.calls[0][0]
-      expect(createCall.system).toContain('riskFactors')
+      expect(createCall.system).toContain('Job security')
       expect(createCall.messages[0].content).toContain('Apple Inc.')
-      expect(createCall.messages[0].content).toContain('riskFactors')
+      expect(createCall.messages[0].content).toContain('Risk Factors')
+      expect(createCall.messages[0].content).toContain('<sec_filing_section>')
+      expect(createCall.messages[0].content).toContain('Write your summary now.')
     })
 
     it('uses section-specific guidance in system prompt', async () => {
@@ -121,8 +123,9 @@ describe('ClaudeClient', () => {
       })
 
       const systemPrompt = getMockCreate().mock.calls[0][0].system
-      expect(systemPrompt).toContain('riskFactors')
+      expect(systemPrompt).toContain('financial translator')
       expect(systemPrompt).toContain('Job security')
+      expect(systemPrompt).toContain('6th-grade reading level')
     })
   })
 
@@ -178,6 +181,33 @@ describe('ClaudeClient', () => {
       expect(userMsg).toContain('Company Financials')
       expect(userMsg).toContain('Tim Cook')
       expect(userMsg).toContain('Employee Pay: $85,000/year')
+    })
+  })
+
+  // ─── summarize8kEvent (JSON-parsed) ─────────────────────────────────
+
+  describe('summarize8kEvent', () => {
+    it('parses {headline, summary} JSON out of the model response', async () => {
+      const json = JSON.stringify({
+        headline: 'CFO Jane Doe steps down effective March 31',
+        summary:
+          '**Jane Doe is leaving the CFO role at the end of Q1.** The board has named John Smith as interim CFO. No severance terms have been disclosed.',
+      })
+      getMockCreate().mockResolvedValueOnce(createMockAnthropicResponse(json))
+
+      const result = await client.summarize8kEvent({
+        section: 'Item 5.02 — Departure of Directors:\nThe board…',
+        companyName: 'Acme Corp',
+        filingType: '8-K',
+      })
+
+      expect(result.data.headline).toBe('CFO Jane Doe steps down effective March 31')
+      expect(result.data.summary).toContain('Jane Doe')
+      expect(result.usage.inputTokens).toBe(1500)
+
+      const systemPrompt = getMockCreate().mock.calls[0][0].system
+      expect(systemPrompt).toContain('Respond with a single JSON object')
+      expect(systemPrompt).toContain('headline')
     })
   })
 

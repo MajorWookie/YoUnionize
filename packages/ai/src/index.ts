@@ -95,7 +95,7 @@ export {
   event8kSummarySystemPrompt,
   event8kSummaryUserPrompt,
 } from './prompts/event-8k'
-export type { Event8kSummaryParams } from './prompts/event-8k'
+export type { Event8kSummaryParams, Event8kSummaryResult } from './prompts/event-8k'
 export {
   narrativeSummarySystemPrompt,
   narrativeSummaryUserPrompt,
