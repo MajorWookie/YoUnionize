@@ -77,7 +77,8 @@
       "Bash(curl -s http://localhost:5174/companies/ORCL -I)",
       "mcp__plugin_playwright_playwright__browser_close",
       "Bash(curl -s -H \"apikey: sb_publishable_JamTb7rJtn3woZCDFGWW_g_Z5JWEox6\" -H \"Authorization: Bearer sb_publishable_JamTb7rJtn3woZCDFGWW_g_Z5JWEox6\" \"https://acewdvjpzhzxyutjfkdg.supabase.co/functions/v1/company-detail?ticker=ORCL\")",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); evs=d.get\\('recentEvents',[]\\); print\\(f'recentEvents count: {len\\(evs\\)}'\\); print\\(json.dumps\\(evs[:2], indent=2\\) if evs else 'no events'\\)\")"
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); evs=d.get\\('recentEvents',[]\\); print\\(f'recentEvents count: {len\\(evs\\)}'\\); print\\(json.dumps\\(evs[:2], indent=2\\) if evs else 'no events'\\)\")",
+      "Bash(git branch *)"
     ]
   },
   "enableAllProjectMcpServers": true,
