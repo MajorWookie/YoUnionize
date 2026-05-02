@@ -231,7 +231,7 @@ describe('compensation-analysis prompts (1-100 banded contract)', () => {
 
   it('user prompt includes exec comp, ticker, and sector', () => {
     const prompt = compensationAnalysisUserPrompt({
-      userPayCents: 8_500_000,
+      userPayDollars: 85_000,
       userJobTitle: 'Engineer',
       companyName: 'Apple Inc.',
       companyTicker: 'AAPL',
@@ -246,9 +246,9 @@ describe('compensation-analysis prompts (1-100 banded contract)', () => {
     expect(prompt).toContain('Tim Cook')
   })
 
-  it('user prompt formats user pay as dollars from cents', () => {
+  it('user prompt formats user pay verbatim from raw dollars (no /100 conversion)', () => {
     const prompt = compensationAnalysisUserPrompt({
-      userPayCents: 8_500_000,
+      userPayDollars: 85_000,
       companyName: 'Apple Inc.',
       companyTicker: 'AAPL',
       execComp: [],
@@ -260,7 +260,7 @@ describe('compensation-analysis prompts (1-100 banded contract)', () => {
 
   it('user prompt embeds cost of living JSON when provided', () => {
     const prompt = compensationAnalysisUserPrompt({
-      userPayCents: 5_000_000,
+      userPayDollars: 50_000,
       companyName: 'Apple Inc.',
       companyTicker: 'AAPL',
       execComp: [],
@@ -274,7 +274,7 @@ describe('compensation-analysis prompts (1-100 banded contract)', () => {
 
   it('user prompt always emits all five sections (production behaviour)', () => {
     const prompt = compensationAnalysisUserPrompt({
-      userPayCents: 5_000_000,
+      userPayDollars: 50_000,
       companyName: 'Test Corp',
       companyTicker: 'TEST',
       execComp: [],

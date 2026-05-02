@@ -143,7 +143,7 @@ describe('ClaudeClient', () => {
         execComp: [
           { executiveName: 'Tim Cook', totalCompensation: 6300000000 },
         ],
-        userPayCents: 8500000, // $85,000 in cents
+        userPayDollars: 85_000,
       })
 
       expect(result.data.fairness_score).toBe(42)
@@ -163,7 +163,7 @@ describe('ClaudeClient', () => {
         companyName: 'Apple Inc.',
         companyTicker: 'AAPL',
         execComp: [{ executiveName: 'Tim Cook', totalCompensation: 6300000000 }],
-        userPayCents: 8500000,
+        userPayDollars: 85_000,
         costOfLiving: {
           rentMortgage: 250000,
           utilities: 20000,

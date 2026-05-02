@@ -42,7 +42,7 @@ describe('compensation analysis prompts', () => {
   describe('userPrompt', () => {
     it('includes company name, ticker, and exec comp data', () => {
       const prompt = compensationAnalysisUserPrompt({
-        userPayCents: 8_500_000,
+        userPayDollars: 85_000,
         userJobTitle: null,
         companyName: 'Acme Inc',
         companyTicker: 'ACME',
@@ -58,9 +58,9 @@ describe('compensation analysis prompts', () => {
       expect(prompt).toContain('"totalCompensation": 25000000')
     })
 
-    it('formats user pay in dollars from the cents input', () => {
+    it('formats user pay verbatim — no /100 conversion (raw dollars in, same dollars out)', () => {
       const prompt = compensationAnalysisUserPrompt({
-        userPayCents: 8_500_000,
+        userPayDollars: 85_000,
         companyName: 'Test Corp',
         companyTicker: 'TEST',
         execComp: [],
@@ -71,9 +71,23 @@ describe('compensation analysis prompts', () => {
       expect(prompt).toContain('Employee Pay: $85,000/year')
     })
 
+    it('regression: a $160,000 profile must NOT render as $1,600 (pre-fix the prompt divided by 100)', () => {
+      const prompt = compensationAnalysisUserPrompt({
+        userPayDollars: 160_000,
+        companyName: 'Test Corp',
+        companyTicker: 'TEST',
+        execComp: [],
+        companyFinancials: {},
+        costOfLiving: {},
+      })
+
+      expect(prompt).toContain('Employee Pay: $160,000/year')
+      expect(prompt).not.toContain('Employee Pay: $1,600/year')
+    })
+
     it('falls back to "Not specified" / "Unknown" for missing optional fields', () => {
       const prompt = compensationAnalysisUserPrompt({
-        userPayCents: 5_000_000,
+        userPayDollars: 50_000,
         companyName: 'Test Corp',
         companyTicker: 'TEST',
         execComp: [],
@@ -87,7 +101,7 @@ describe('compensation analysis prompts', () => {
 
     it('embeds cost of living and company financials as JSON blocks', () => {
       const prompt = compensationAnalysisUserPrompt({
-        userPayCents: 5_000_000,
+        userPayDollars: 50_000,
         companyName: 'Test Corp',
         companyTicker: 'TEST',
         execComp: [],

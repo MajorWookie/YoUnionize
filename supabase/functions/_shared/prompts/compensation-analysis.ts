@@ -31,8 +31,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface CompensationAnalysisParams {
-  /** User's gross annual pay in **cents** (matches Edge Function's DB shape). */
-  userPayCents: number
+  /** User's gross annual pay in **raw dollars** — matches `user_profiles.gross_annual_pay`, which the web app stores in dollars (see CLAUDE.md "Currency convention"). */
+  userPayDollars: number
   userJobTitle?: string | null
   companyName: string
   companyTicker: string
@@ -98,7 +98,7 @@ Respond with ONLY the JSON object, no markdown code fences or other text.`
 export function compensationAnalysisUserPrompt(
   params: CompensationAnalysisParams,
 ): string {
-  const annualPayDollars = (params.userPayCents / 100).toLocaleString()
+  const annualPayDollars = params.userPayDollars.toLocaleString()
   const jobTitle = params.userJobTitle ?? 'Not specified'
   const sector = params.companySector ?? 'Unknown'
 
