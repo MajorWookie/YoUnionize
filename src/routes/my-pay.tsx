@@ -56,6 +56,22 @@ interface AnalysisRecord {
   createdAt: string
 }
 
+/** Reject rows whose `analysisData` is missing the structured shape — e.g.
+ *  the May-2026 incident rows that contained `{ raw_analysis: <text> }`
+ *  because the Edge Function's `JSON.parse` couldn't handle Claude's
+ *  ```json fences. The Edge Function now returns 5xx on parse failure, but
+ *  legacy malformed rows persist in DB until cleared, and we never want
+ *  them showing up as "real" analyses in the UI. */
+function isWellFormedAnalysis(a: AnalysisData | null | undefined): a is AnalysisData {
+  return (
+    !!a &&
+    typeof a.fairness_score === 'number' &&
+    typeof a.explanation === 'string' &&
+    Array.isArray(a.comparisons) &&
+    Array.isArray(a.recommendations)
+  )
+}
+
 const SERIF_HEADLINE: React.CSSProperties = {
   fontFamily: '"Source Serif 4 Variable", Charter, Georgia, serif',
 }
@@ -121,8 +137,12 @@ export function MyPayPage() {
 
       if (analysisRes.ok) {
         const aData = await analysisRes.json()
-        setAnalysis(aData.latest ?? null)
-        setHistory(aData.analyses ?? [])
+        const allAnalyses: Array<AnalysisRecord> = Array.isArray(aData.analyses)
+          ? aData.analyses
+          : []
+        const valid = allAnalyses.filter((r) => isWellFormedAnalysis(r.analysisData))
+        setAnalysis(valid[0] ?? null)
+        setHistory(valid)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load')
