@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
         messages: [{
           role: 'user',
           content: compensationAnalysisUserPrompt({
-            userPayCents: profile.grossAnnualPay,
+            userPayDollars: profile.grossAnnualPay,
             userJobTitle: profile.jobTitle,
             companyName: company.name,
             companyTicker: company.ticker,

@@ -201,8 +201,8 @@ export class ClaudeClient {
     companyTicker: string
     companySector?: string | null
     execComp: Array<Record<string, unknown>>
-    /** User pay in cents (matches DB shape). */
-    userPayCents: number
+    /** User pay in raw dollars (matches `user_profiles.gross_annual_pay`). */
+    userPayDollars: number
     userJobTitle?: string | null
     companyFinancials?: Record<string, unknown>
     costOfLiving?: Record<string, number | null>
@@ -213,7 +213,7 @@ export class ClaudeClient {
       companyTicker: params.companyTicker,
       companySector: params.companySector ?? null,
       execComp: params.execComp,
-      userPayCents: params.userPayCents,
+      userPayDollars: params.userPayDollars,
       userJobTitle: params.userJobTitle ?? null,
       companyFinancials: params.companyFinancials ?? {},
       costOfLiving: params.costOfLiving ?? {},
