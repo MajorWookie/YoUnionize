@@ -318,13 +318,17 @@ export function CompanyPage() {
   // Effective tax rate = provision-for-taxes / pre-tax-income. Skip the
   // card if pre-tax income is non-positive (loss makes effective rate
   // meaningless) or either line item is missing.
+  //
+  // Both patterns are start-anchored so we don't grab nested items like
+  // "Deferred income taxes" or "Foreign income taxes" — only the canonical
+  // top-line provision and the canonical pre-tax income line match.
   const taxesItem = findIncomeStatementMetric(
     summary,
-    /^(provision\s+for\s+(income\s+)?tax(es)?|income\s+tax\s+(expense|provision))$/i,
+    /^(provision\s+for\s+(income\s+)?tax(es)?|income\s+tax(es)?(\s+(expense|provision))?)$/i,
   )
   const preTaxItem = findIncomeStatementMetric(
     summary,
-    /^(income|earnings)\s+before\s+(income\s+)?tax(es)?$/i,
+    /^((income|earnings)\s+before\s+(provision\s+for\s+)?(income\s+)?tax(es)?|pre-?tax\s+(income|earnings))$/i,
   )
   const taxes =
     taxesItem && preTaxItem && preTaxItem.value > 0
