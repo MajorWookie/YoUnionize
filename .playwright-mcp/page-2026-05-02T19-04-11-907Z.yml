@@ -1,0 +1,36 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Yo Union ize" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: Yo
+        - generic [ref=e9]: Union
+        - generic [ref=e10]: ize
+      - generic [ref=e11]:
+        - link "Sign in" [ref=e12] [cursor=pointer]:
+          - /url: /sign-in
+        - link "Sign up" [ref=e13] [cursor=pointer]:
+          - /url: /sign-up
+          - generic [ref=e15]: Sign up
+  - navigation [ref=e16]:
+    - generic [ref=e17]:
+      - paragraph [ref=e18]: Explore
+      - link "Discover" [ref=e19] [cursor=pointer]:
+        - /url: /discover
+        - img [ref=e21]
+        - generic [ref=e24]: Discover
+      - link "My Company" [ref=e25] [cursor=pointer]:
+        - /url: /my-company
+        - img [ref=e27]
+        - generic [ref=e29]: My Company
+      - link "My Pay" [ref=e30] [cursor=pointer]:
+        - /url: /my-pay
+        - img [ref=e32]
+        - generic [ref=e36]: My Pay
+    - generic [ref=e37]:
+      - paragraph [ref=e38]: Account
+      - link "Profile" [ref=e39] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e41]
+        - generic [ref=e44]: Profile
+  - main [ref=e45]

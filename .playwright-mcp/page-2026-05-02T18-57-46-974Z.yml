@@ -1,0 +1,41 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e7]:
+        - img "EBA" [ref=e8]
+        - heading "Enterprise" [level=1] [ref=e9]
+      - heading "Page not found" [level=2] [ref=e11]
+      - button [ref=e14] [cursor=pointer]:
+        - img [ref=e16]
+  - navigation [ref=e19]:
+    - navigation [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - img [ref=e24] [cursor=pointer]
+          - link [ref=e28] [cursor=pointer]:
+            - /url: /
+            - img [ref=e29]
+          - link [ref=e33] [cursor=pointer]:
+            - /url: /profile
+            - img [ref=e34]
+        - heading "Navigation" [level=4] [ref=e38]
+  - main [ref=e39]:
+    - generic [ref=e41]:
+      - heading "404" [level=1] [ref=e42]
+      - paragraph [ref=e43]: We can't find the page you were looking for. It might have moved, or the link might be wrong.
+      - button "Go home" [ref=e45] [cursor=pointer]:
+        - generic [ref=e46]:
+          - img [ref=e48]
+          - generic [ref=e52]: Go home
+  - contentinfo [ref=e53]:
+    - generic [ref=e55]:
+      - link "FAQ" [ref=e57] [cursor=pointer]:
+        - /url: /faq
+      - generic [ref=e60]: Non-Production (v0.7.5.14-alpha)
+      - generic [ref=e61]:
+        - link [ref=e62] [cursor=pointer]:
+          - /url: https://www.youtube.com/@BetterHumanApplications
+          - img [ref=e64]
+        - link [ref=e67] [cursor=pointer]:
+          - /url: https://www.linkedin.com/in/aanderson1017/
+          - img [ref=e69]

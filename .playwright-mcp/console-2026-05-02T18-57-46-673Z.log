@@ -1,0 +1,23 @@
+[     187ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b2b30ac8:20102
+[     203ms] [LOG] Validating environment configuration... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     203ms] [LOG] Environment mode: development @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     203ms] [LOG] Environment validation completed successfully @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     203ms] [LOG] Configuration loaded for development environment @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     203ms] [LOG] Environment configuration (development mode): {SUPABASE_URL: http://127.0.0.1:54361, SUPABASE_ANON_KEY: sb_publishable_ACJWl..., APP_URL: undefined, MODE: development, IS_DEVELOPMENT: true} @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     205ms] [LOG] 🔌 Connecting to Supabase at: http://127.0.0.1:54361 @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/api-client/src/supabase/supabaseClient.ts:8
+[     205ms] [WARNING] GoTrueClient@sb-127-auth-token:1 (2.95.3) 2026-05-02T18:57:46.878Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key. @ http://localhost:5173/node_modules/.vite/deps/@supabase_supabase-js.js?v=b2b30ac8:8681
+[     260ms] [LOG] Redux: Initializing auth from hook... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     261ms] [LOG] 🚀 Redux: Initializing auth... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     262ms] [LOG] Redux: Initializing auth from hook... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     262ms] [LOG] 🚀 Redux: Initializing auth... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     263ms] [LOG] Redux: Initializing auth from hook... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     263ms] [LOG] 🚀 Redux: Initializing auth... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     263ms] [LOG] Redux: Initializing auth from hook... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     263ms] [LOG] 🚀 Redux: Initializing auth... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     423ms] [LOG] ℹ️ Redux: No session found @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     424ms] [LOG] 👂 Redux: Setting up Supabase auth listener... @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     427ms] [LOG] ℹ️ Redux: No session found @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     427ms] [LOG] ℹ️ Redux: No session found @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     427ms] [LOG] ℹ️ Redux: No session found @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[     428ms] [LOG] 🔔 Redux: Auth state change: INITIAL_SESSION no user @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
+[    9681ms] [LOG] 🧹 Redux: Cleaning up auth listener @ http://localhost:5173/@fs/Users/majorwookie/Documents/GitHub/Enterprise-Business-Applications/packages/utils/src/logger.ts:38
