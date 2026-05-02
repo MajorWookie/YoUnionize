@@ -421,7 +421,7 @@ async function callPromptForSection(args: {
 
   switch (promptKind) {
     case 'mda': {
-      const r = await ai.summarizeMda({ mdaText: sectionText, companyName, filingType })
+      const r = await ai.summarizeMda({ section: sectionText, companyName, filingType })
       return { data: r.data, summaryText: r.data, usage: r.usage }
     }
     case 'business_overview': {
@@ -463,14 +463,17 @@ async function callPromptForSection(args: {
     case 'event_8k': {
       // The friendly-name prefix is computed here (rather than inside the
       // prompt module) to avoid a cross-package import from @younionize/ai
-      // into @younionize/sec-api. Byte-identical to the previous generic
-      // path: same prefix shape, same camelCase-equivalent label.
+      // into @younionize/sec-api.
+      // The prompt now returns a structured `{ headline, summary }` object;
+      // we persist the object on filing_sections.ai_summary (JSONB) but use
+      // only the body for embedding text and for the per-filing rollup
+      // aggregator, which expects a markdown string per item.
       const r = await ai.summarize8kEvent({
         section: `${getSectionFriendlyName(sectionCode, filingType)}:\n${sectionText}`,
         companyName,
         filingType,
       })
-      return { data: r.data, summaryText: r.data, usage: r.usage }
+      return { data: r.data, summaryText: r.data.summary, usage: r.usage }
     }
     case 'narrative': {
       const r = await ai.summarizeNarrative({ section: sectionText, companyName, filingType })

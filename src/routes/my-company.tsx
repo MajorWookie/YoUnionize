@@ -31,13 +31,9 @@ import {
   getInitials,
 } from '~/lib/format'
 
-interface FilingSummaryShape {
-  id: string
-  filedAt: string
-  summary: Record<string, unknown>
-}
+import type { RecentEvent } from '~/components/EightKFeed'
 
-interface RecentEvent {
+interface FilingSummaryShape {
   id: string
   filedAt: string
   summary: Record<string, unknown>
@@ -735,7 +731,7 @@ function CompanyPayInsights({ data }: { data: MyCompanyDetail }) {
   const employeeRelevance = execSummary?.employee_relevance
 
   const payRelatedEvents = data.recentEvents.filter((e) => {
-    const text = (e.summary?.event_summary as string) ?? ''
+    const text = e.summary?.event_summary ?? ''
     return /layoff|restructur|compensation|benefit|workforce|headcount|hire|salary/i.test(
       text,
     )
@@ -808,7 +804,7 @@ function CompanyPayInsights({ data }: { data: MyCompanyDetail }) {
           <Stack gap="sm">
             <Text fw={600}>Recent Events Affecting Employees</Text>
             {payRelatedEvents.map((event) => {
-              const text = (event.summary?.event_summary as string) ?? ''
+              const text = event.summary?.event_summary ?? ''
               return (
                 <Stack key={event.id} gap={2}>
                   <Text size="xs" c="slate.7">

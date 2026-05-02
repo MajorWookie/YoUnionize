@@ -60,29 +60,38 @@ import {
   narrativeSummarySystemPrompt,
   narrativeSummaryUserPrompt,
 } from '../prompts/narrative'
+import {
+  mdaSummarySystemPrompt,
+  mdaSummaryUserPrompt,
+} from '../prompts/mda-summary'
+import { scaffoldSystemPrompt } from '../prompts/_scaffold'
 
 // ─── Per-section dedicated prompt content checks ─────────────────────────
 //
-// The byte-identical snapshot assertions used during Phase 0 / Phase 1 of
-// the section-prompts refactor have been removed: they compared each
-// dedicated module against the now-deleted generic `sectionSummary*`
-// functions, and once that reference is gone the comparison can't run.
+// All 12 per-section modules use the shared `_scaffold.ts` helpers:
+// `scaffoldSystemPrompt({ guidance, maxWords?, outputFormat?, requiredSections? })`
+// and `scaffoldUserPrompt({sectionLabel, ...})`.
 //
-// What remains is content-based regression coverage: each dedicated
-// prompt is asserted to contain its expected `Section type: …` label and
-// a section-specific guidance keyword. Any deliberate Phase 3 prompt
-// content swap will replace this content with section-specific assertions
-// for the new prompt's structure.
+// 11 modules pass only `guidance`, getting the default `outputFormat: 'plain'`
+// and `maxWords: 150`. MDA passes `outputFormat: 'structured-markdown'` with
+// `requiredSections` to declare its 6-section breakdown and `maxWords: 500`.
+//
+// These tests assert the scaffold contract: each per-section module's
+// system prompt contains its GUIDANCE keyword + the shared persona/rules,
+// each user prompt embeds the human-readable section label + the
+// XML-wrapped source text, and MDA additionally produces structured-markdown
+// output rules with all 6 required `## Heading` blocks.
 
 describe('business-overview dedicated prompt', () => {
-  it('system prompt contains the businessOverview-specific guidance', () => {
+  it('system prompt contains the businessOverview-specific guidance + shared rules', () => {
     const prompt = businessOverviewSummarySystemPrompt()
-    expect(prompt).toContain('Section type: businessOverview')
+    expect(prompt).toContain('financial translator')
     expect(prompt).toContain('products/services')
     expect(prompt).toContain('competitors')
+    expect(prompt).toContain('6th-grade reading level')
   })
 
-  it('user prompt embeds company, filing type, and section content', () => {
+  it('user prompt embeds company, filing type, section label, and XML-wrapped content', () => {
     const prompt = businessOverviewSummaryUserPrompt({
       section: 'Acme Corp designs and sells widgets to consumers worldwide.',
       companyName: 'Acme Corp',
@@ -90,19 +99,23 @@ describe('business-overview dedicated prompt', () => {
     })
     expect(prompt).toContain('Acme Corp')
     expect(prompt).toContain('10-K')
-    expect(prompt).toContain('businessOverview')
+    expect(prompt).toContain('Business Overview')
+    expect(prompt).toContain('<sec_filing_section>')
+    expect(prompt).toContain('</sec_filing_section>')
     expect(prompt).toContain('designs and sells widgets')
+    expect(prompt).toContain('Write your summary now.')
   })
 })
 
 describe('narrative dedicated prompt (catch-all for unmapped section codes)', () => {
-  it('system prompt uses the generic guidance and "narrative" label', () => {
+  it('system prompt uses the generic guidance + shared rules', () => {
     const prompt = narrativeSummarySystemPrompt()
-    expect(prompt).toContain('Section type: narrative')
+    expect(prompt).toContain('financial translator')
     expect(prompt).toContain('Summarize this section in plain language')
+    expect(prompt).toContain('6th-grade reading level')
   })
 
-  it('user prompt embeds company, filing type, and section content', () => {
+  it('user prompt embeds company, filing type, and XML-wrapped content', () => {
     const prompt = narrativeSummaryUserPrompt({
       section: 'Some long-tail SEC item content.',
       companyName: 'Acme Corp',
@@ -110,7 +123,8 @@ describe('narrative dedicated prompt (catch-all for unmapped section codes)', ()
     })
     expect(prompt).toContain('Acme Corp')
     expect(prompt).toContain('10-K')
-    expect(prompt).toContain('"narrative"')
+    expect(prompt).toContain('Filing')
+    expect(prompt).toContain('<sec_filing_section>')
     expect(prompt).toContain('Some long-tail SEC item content.')
   })
 })
@@ -118,77 +132,78 @@ describe('narrative dedicated prompt (catch-all for unmapped section codes)', ()
 describe.each([
   {
     kind: 'risk_factors',
-    label: 'riskFactors',
+    label: 'Risk Factors',
     system: riskFactorsSummarySystemPrompt,
     user: riskFactorsSummaryUserPrompt,
     contentCheck: 'Job security risks',
   },
   {
     kind: 'legal_proceedings',
-    label: 'legalProceedings',
+    label: 'Legal Proceedings',
     system: legalProceedingsSummarySystemPrompt,
     user: legalProceedingsSummaryUserPrompt,
     contentCheck: 'lawsuits and legal issues',
   },
   {
     kind: 'financial_footnotes',
-    label: 'financialStatements',
+    label: 'Financial Statements',
     system: financialFootnotesSummarySystemPrompt,
     user: financialFootnotesSummaryUserPrompt,
     contentCheck: 'Break down the financial statements',
   },
   {
     kind: 'executive_compensation',
-    label: 'executiveCompensation',
+    label: 'Executive Compensation',
     system: executiveCompensationSummarySystemPrompt,
     user: executiveCompensationSummaryUserPrompt,
     contentCheck: 'CEO pay vs. median worker pay',
   },
   {
     kind: 'cybersecurity',
-    label: 'cybersecurity',
+    label: 'Cybersecurity',
     system: cybersecuritySummarySystemPrompt,
     user: cybersecuritySummaryUserPrompt,
     contentCheck: 'Summarize this section in plain language',
   },
   {
     kind: 'controls_and_procedures',
-    label: 'controlsAndProcedures',
+    label: 'Controls and Procedures',
     system: controlsAndProceduresSummarySystemPrompt,
     user: controlsAndProceduresSummaryUserPrompt,
     contentCheck: 'Summarize this section in plain language',
   },
   {
     kind: 'related_transactions',
-    label: 'relatedTransactions',
+    label: 'Related Party Transactions',
     system: relatedTransactionsSummarySystemPrompt,
     user: relatedTransactionsSummaryUserPrompt,
     contentCheck: 'Summarize this section in plain language',
   },
   {
     kind: 'proxy',
-    label: 'proxy',
+    label: 'Proxy Statement',
     system: proxySummarySystemPrompt,
     user: proxySummaryUserPrompt,
     contentCheck: 'Summarize this section in plain language',
   },
   {
     kind: 'event_8k',
-    label: 'event_summary',
+    label: 'Event',
     system: event8kSummarySystemPrompt,
     user: event8kSummaryUserPrompt,
-    contentCheck: 'Summarize this section in plain language',
+    contentCheck: 'Summarize this 8-K event',
   },
 ])(
   'dedicated $kind prompt module',
   ({ label, system, user, contentCheck }) => {
-    it('system prompt declares the expected section label and guidance', () => {
+    it('system prompt embeds the GUIDANCE content + shared persona + shared rules', () => {
       const prompt = system()
-      expect(prompt).toContain(`Section type: ${label}`)
+      expect(prompt).toContain('financial translator')
       expect(prompt).toContain(contentCheck)
+      expect(prompt).toContain('6th-grade reading level')
     })
 
-    it('user prompt embeds company, filing type, and section content', () => {
+    it('user prompt embeds company, filing type, section label, and XML-wrapped content', () => {
       const prompt = user({
         section: 'Lorem ipsum sample section content for assertion.',
         companyName: 'Acme Corp',
@@ -196,11 +211,136 @@ describe.each([
       })
       expect(prompt).toContain('Acme Corp')
       expect(prompt).toContain('10-K')
-      expect(prompt).toContain(`"${label}"`)
+      expect(prompt).toContain(label)
+      expect(prompt).toContain('<sec_filing_section>')
+      expect(prompt).toContain('</sec_filing_section>')
       expect(prompt).toContain('Lorem ipsum sample section content')
+      expect(prompt).toContain('Write your summary now.')
     })
   },
 )
+
+describe('mda dedicated prompt (structured-markdown override)', () => {
+  it('system prompt contains MDA-specific guidance + universal rules', () => {
+    const prompt = mdaSummarySystemPrompt()
+    expect(prompt).toContain('financial translator')
+    expect(prompt).toContain('Management Discussion & Analysis')
+    expect(prompt).toContain('right-sizing')
+    expect(prompt).toContain('6th-grade reading level')
+  })
+
+  it('system prompt declares all 6 required `## Heading` sections in order', () => {
+    const prompt = mdaSummarySystemPrompt()
+    expect(prompt).toContain('## The Big Picture')
+    expect(prompt).toContain('## Revenue & Growth')
+    expect(prompt).toContain('## Profitability')
+    expect(prompt).toContain('## Cash & Spending')
+    expect(prompt).toContain("## Management's Outlook")
+    expect(prompt).toContain('## Bottom Line for Workers')
+
+    // Heading order must match REQUIRED_SECTIONS in mda-summary.ts
+    const headings = [
+      '## The Big Picture',
+      '## Revenue & Growth',
+      '## Profitability',
+      '## Cash & Spending',
+      "## Management's Outlook",
+      '## Bottom Line for Workers',
+    ]
+    let lastIdx = -1
+    for (const h of headings) {
+      const idx = prompt.indexOf(h)
+      expect(idx).toBeGreaterThan(lastIdx)
+      lastIdx = idx
+    }
+  })
+
+  it('system prompt overrides the plain-text rule with structured-markdown rules', () => {
+    const prompt = mdaSummarySystemPrompt()
+    // Default 'plain' output rule must NOT appear.
+    expect(prompt).not.toContain('Format your response as plain text only')
+    // Structured-markdown output rule must appear.
+    expect(prompt).toContain('Respond in markdown')
+    expect(prompt).toContain('Not discussed in this filing')
+  })
+
+  it('system prompt uses the MDA-specific 500-word cap, not the default 150', () => {
+    const prompt = mdaSummarySystemPrompt()
+    expect(prompt).toContain('500 words')
+    expect(prompt).not.toContain('under 150 words')
+  })
+
+  it('user prompt embeds section label, XML-wrapped content, and closer', () => {
+    const prompt = mdaSummaryUserPrompt({
+      section: 'Revenue grew 12% year-over-year driven by services.',
+      companyName: 'Apple Inc.',
+      filingType: '10-K',
+    })
+    expect(prompt).toContain('Apple Inc.')
+    expect(prompt).toContain('10-K')
+    expect(prompt).toContain('Management Discussion & Analysis')
+    expect(prompt).toContain('<sec_filing_section>')
+    expect(prompt).toContain('</sec_filing_section>')
+    expect(prompt).toContain('Revenue grew 12%')
+    expect(prompt).toContain('Write your summary now.')
+  })
+})
+
+describe('event_8k dedicated prompt (json override)', () => {
+  it('system prompt drops the plain-text rule in favour of JSON output rules', () => {
+    const prompt = event8kSummarySystemPrompt()
+    expect(prompt).not.toContain('Format your response as plain text only')
+    expect(prompt).toContain('Respond with a single JSON object')
+    expect(prompt).toContain('headline')
+    expect(prompt).toContain('summary')
+  })
+
+  it('system prompt asks for an action-led headline and a 2-3 sentence body', () => {
+    const prompt = event8kSummarySystemPrompt()
+    expect(prompt).toContain('action-led')
+    expect(prompt).toMatch(/2-3 sentences?/)
+  })
+})
+
+describe('scaffoldSystemPrompt validation', () => {
+  it('throws when outputFormat is structured-markdown but requiredSections is omitted', () => {
+    expect(() =>
+      scaffoldSystemPrompt({
+        guidance: 'Test guidance.',
+        outputFormat: 'structured-markdown',
+      }),
+    ).toThrow(/requiredSections/)
+  })
+
+  it('throws when outputFormat is json but jsonShape is omitted', () => {
+    expect(() =>
+      scaffoldSystemPrompt({
+        guidance: 'Test guidance.',
+        outputFormat: 'json',
+      }),
+    ).toThrow(/jsonShape/)
+  })
+
+  it('throws when outputFormat is structured-markdown and requiredSections is empty', () => {
+    expect(() =>
+      scaffoldSystemPrompt({
+        guidance: 'Test guidance.',
+        outputFormat: 'structured-markdown',
+        requiredSections: [],
+      }),
+    ).toThrow(/requiredSections/)
+  })
+
+  it('emits the default 150-word cap when maxWords is omitted', () => {
+    const prompt = scaffoldSystemPrompt({ guidance: 'Test guidance.' })
+    expect(prompt).toContain('under 150 words')
+  })
+
+  it('honors a custom maxWords value in the plain output rule', () => {
+    const prompt = scaffoldSystemPrompt({ guidance: 'Test.', maxWords: 75 })
+    expect(prompt).toContain('under 75 words')
+  })
+})
 
 describe('compensation-analysis prompts (1-100 banded contract)', () => {
   it('system prompt declares the JSON output structure', () => {

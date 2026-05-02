@@ -30,10 +30,7 @@ import {
   InsiderTradingTable,
   type InsiderTrade,
 } from '~/components/InsiderTradingTable'
-import {
-  RecentEventsList,
-  type RecentEvent,
-} from '~/components/RecentEventsList'
+import { EightKFeed, type RecentEvent } from '~/components/EightKFeed'
 import { FinancialsSection } from '~/components/FinancialsSection'
 import { IncomeStatementSunburst } from '~/components/IncomeStatementSunburst'
 import {
@@ -558,7 +555,7 @@ export function CompanyPage() {
               title="Recent events"
               description="Material 8-K filings since the latest annual."
             />
-            <RecentEventsList events={recentEvents} />
+            <EightKFeed events={recentEvents} />
           </Stack>
         )}
 

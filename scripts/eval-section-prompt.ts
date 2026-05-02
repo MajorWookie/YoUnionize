@@ -214,12 +214,7 @@ function getLivePrompt(kind: V1Kind): LivePromptPair {
       return {
         maxTokens: 3072,
         system: live.mdaSummarySystemPrompt(),
-        user: (p) =>
-          live.mdaSummaryUserPrompt({
-            companyName: p.companyName,
-            filingType: p.filingType,
-            mdaText: p.section,
-          }),
+        user: (p) => live.mdaSummaryUserPrompt(p),
       }
   }
 }
