@@ -21,6 +21,14 @@ import {
   compensationAnalysisSystemPrompt,
   compensationAnalysisUserPrompt,
 } from '../_shared/prompts/compensation-analysis.ts'
+import { extractJson } from '../_shared/extract-json.ts'
+
+interface ClaudeAnalysisJson {
+  fairness_score: number
+  explanation: string
+  comparisons: Array<{ label: string; insight: string }>
+  recommendations: Array<string>
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return handleCors()
@@ -145,12 +153,12 @@ Deno.serve(async (req) => {
       const textContent = message.content.find((c) => c.type === 'text')
       const analysisText = textContent?.text ?? ''
 
-      let analysisData: unknown
-      try {
-        analysisData = JSON.parse(analysisText)
-      } catch {
-        analysisData = { raw_analysis: analysisText }
-      }
+      // Use the same fence/prose-tolerant parser the Bun-side ClaudeClient uses.
+      // Throwing here propagates to the outer catch and returns a 5xx, instead of
+      // silently saving `{ raw_analysis: ... }` — that fallback creates rows
+      // missing `recommendations`/`comparisons` and crashes the /my-pay page on
+      // `ad.recommendations.length`.
+      const analysisData = extractJson<ClaudeAnalysisJson>(analysisText)
 
       result = {
         data: analysisData,
