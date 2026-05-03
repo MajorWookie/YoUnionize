@@ -606,13 +606,18 @@ function buildKeyFactCards({
   }
 
   if (netIncome) {
+    const margin =
+      revenue && revenue.value > 0
+        ? `${Math.round((netIncome.value / revenue.value) * 100)}% of revenue`
+        : null
+    const hintParts = [margin, netIncome.period].filter(Boolean)
     cards.push(
       <MetricCard
         key="net-income"
         label="Net income"
         value={`$${fmtCompact.format(netIncome.value)}`}
         delta={metricDelta(netIncome.changePercent)}
-        hint={netIncome.period ?? undefined}
+        hint={hintParts.length > 0 ? hintParts.join(' · ') : undefined}
       />,
     )
   }
