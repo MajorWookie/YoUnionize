@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "supabase": {
-      "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=acewdvjpzhzxyutjfkdg"
-    },
     "github": {
       "type": "stdio",
       "command": "npx",
@@ -14,6 +10,10 @@
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "REDACTED_GITHUB_PAT"
       }
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=acewdvjpzhzxyutjfkdg"
     }
   }
 }
